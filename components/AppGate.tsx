@@ -4,8 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUserStore } from '@/store/useUserStore'
-import { verifyDevice } from '@/lib/webauthn'
-import { Fingerprint, X, Delete, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { X, Delete, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react'
 import { sha256 } from '@/lib/crypto'
 import { cn } from '@/lib/utils'
 
@@ -50,18 +49,6 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     checkBackgroundLock()
   }, [hydrated, isAuthRoute, pathname, router, sessionState, checkBackgroundLock, setSessionState, updateLastActive])
 
-  const handleBiometricUnlock = async () => {
-    setIsVerifying(true)
-    setError(null)
-    const success = await verifyDevice()
-    setIsVerifying(false)
-    if (success) {
-      setSessionState('AUTHENTICATED')
-      updateLastActive()
-    } else {
-      setError('Verification failed. Try PIN or Biometrics again.')
-    }
-  }
 
   const handlePinInput = async (num: string) => {
     if (pinInput.length >= 4) return
@@ -170,13 +157,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
                 </button>
               ))}
               <div className="flex items-center justify-center">
-                <button 
-                  disabled={isVerifying}
-                  onClick={handleBiometricUnlock}
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-[#0D7377] hover:bg-[#0D7377]/10 transition-colors"
-                >
-                  <Fingerprint className="w-6 h-6" />
-                </button>
+                {/* Biometric option removed */}
               </div>
               <button 
                 onClick={() => handlePinInput('0')}

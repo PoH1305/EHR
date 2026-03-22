@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, ChevronLeft, Shield, Search, Clock, Tag, CheckCircle, Fingerprint } from 'lucide-react'
+import { X, ChevronRight, ChevronLeft, Shield, Search, Clock, Tag, CheckCircle, Key } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type ConsentTokenRequest, type FHIRBundle } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
 import { filterPatientDataBySpecialty } from '@/lib/minimization'
-import { BiometricUnlock } from './BiometricUnlock'
+import { PinUnlock } from './PinUnlock'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { FilterPreviewCard } from './FilterPreviewCard'
 
@@ -387,16 +387,16 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
 
             {step === 5 && (
               <div className="flex flex-col items-center gap-6 py-8">
-                <div className="w-24 h-24 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(59,130,246,0.1)]">
-                  <Fingerprint className="w-12 h-12 text-blue-500" />
+                <div className="w-20 h-20 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(59,130,246,0.1)]">
+                  <Key className="w-10 h-10 text-blue-500" />
                 </div>
                 <div className="text-center mb-8">
                   <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Authorize Transmission</h3>
-                  <p className="text-sm text-slate-500 max-w-xs mx-auto font-medium leading-relaxed">
-                    Verify biometrics to finalize the filtered bundle and generate your securely encrypted consent token.
+                  <p className="text-sm text-slate-500 max-w-[200px] mx-auto font-medium leading-relaxed">
+                    Confirm your 4-digit PIN to finalize the filtered bundle.
                   </p>
                 </div>
-                <BiometricUnlock onSuccess={handleConfirm} />
+                <PinUnlock onSuccess={handleConfirm} />
                 {isSubmitting && (
                   <div className="mt-8 flex flex-col items-center gap-3">
                     <div className="flex gap-1.5">

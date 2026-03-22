@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { AlertOctagon } from 'lucide-react'
-import { BiometricUnlock } from './BiometricUnlock'
+import { PinUnlock } from './PinUnlock'
 
 interface SecurityAlertModalProps {
   isOpen: boolean
@@ -65,12 +65,12 @@ export function SecurityAlertModal({ isOpen, onUnlock }: SecurityAlertModalProps
               Unauthorized Access Detected
             </h2>
             <p className="text-sm text-foreground/50">
-              Your health identity has been locked. Biometric verification required.
+              Your health identity has been locked. PIN verification required.
             </p>
           </div>
 
           <div className="w-full pt-4 border-t border-foreground/5">
-            <BiometricUnlock onSuccess={onUnlock} />
+            <PinUnlock onSuccess={onUnlock} />
           </div>
         </div>
       </motion.div>

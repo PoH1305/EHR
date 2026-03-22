@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Clock, Tag, Sparkles } from 'lucide-react'
+import { X, ChevronRight, Clock, Tag, Sparkles, Key } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type AccessRequest } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
 import { SENSITIVE_FIELD_CATEGORIES } from '@/lib/aiFilter'
-import { BiometricUnlock } from './BiometricUnlock'
+import { PinUnlock } from './PinUnlock'
 import { useConsentStore } from '@/store/useConsentStore'
 
 interface AccessApprovalModalProps {
@@ -187,8 +187,14 @@ export function AccessApprovalModal({ isOpen, onClose, request }: AccessApproval
 
             {step === 4 && (
               <div className="flex flex-col items-center py-8">
-                <BiometricUnlock onSuccess={handleConfirm} />
-                {isSubmitting && <p className="mt-4 text-xs text-[#5B8DEF] animate-pulse">Generating Secure Token...</p>}
+                <div className="text-center mb-8">
+                  <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Authorize Access</h3>
+                  <p className="text-sm text-white/40 max-w-[200px] mx-auto leading-relaxed">
+                    Confirm your 4-digit PIN to approve this access request.
+                  </p>
+                </div>
+                <PinUnlock onSuccess={handleConfirm} />
+                {isSubmitting && <p className="mt-4 text-xs text-[#5B8DEF] animate-pulse uppercase tracking-widest font-black">Generating Secure Token...</p>}
               </div>
             )}
           </motion.div>

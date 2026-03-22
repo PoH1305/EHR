@@ -6,10 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
-import { registerDevice, isBiometricAvailable } from '@/lib/webauthn'
-import { Fingerprint } from 'lucide-react'
 
-type Step = 'CREDENTIALS' | 'OTP' | 'PIN' | 'BIOMETRICS' | 'DONE'
+type Step = 'CREDENTIALS' | 'OTP' | 'PIN' | 'DONE'
 
 export default function DoctorAuthPage() {
   const router = useRouter()
@@ -97,45 +95,16 @@ export default function DoctorAuthPage() {
 
         setPatient(doctorProfile)
         
-        const available = await isBiometricAvailable()
-        if (available) {
-          setIsProcessing(false)
-          setStep('BIOMETRICS')
-        } else {
           setSessionState('AUTHENTICATED')
           updateLastActive()
           setIsProcessing(false)
           setStep('DONE')
           setTimeout(() => router.replace('/dashboard'), 2000)
-        }
       }
       void finalize()
     }
   }, [pin, step, router, setPatient, setSessionState, updateLastActive, license, phone])
 
-  const handleBiometricEnroll = async () => {
-    const { patient, updatePatient } = useUserStore.getState()
-    if (!patient) return
-    
-    setIsProcessing(true)
-    const success = await registerDevice(patient.id)
-    if (success) {
-      updatePatient({ biometricsActive: true })
-    }
-    
-    setSessionState('AUTHENTICATED')
-    updateLastActive()
-    setIsProcessing(false)
-    setStep('DONE')
-    setTimeout(() => router.replace('/dashboard'), 2000)
-  }
-
-  const handleBiometricSkip = () => {
-    setSessionState('AUTHENTICATED')
-    updateLastActive()
-    setStep('DONE')
-    setTimeout(() => router.replace('/dashboard'), 2000)
-  }
 
   return (
     <div className="flex-1 flex flex-col pt-12 pb-6 px-6 sm:px-12 max-w-md mx-auto w-full">
@@ -221,34 +190,6 @@ export default function DoctorAuthPage() {
           </motion.div>
         )}
 
-        {step === 'BIOMETRICS' && (
-          <motion.div key="biometrics" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center mb-8 relative">
-              <Fingerprint className="w-10 h-10 text-blue-400" />
-              <div className="absolute inset-0 rounded-full border border-blue-500/20 animate-ping opacity-20" />
-            </div>
-            <h1 className="text-2xl font-medium text-white mb-3">Professional Security.</h1>
-            <p className="text-sm text-foreground/50 max-w-[240px] leading-relaxed">
-              Enable biometric access to quickly unlock your medical station.
-            </p>
-            
-            <div className="w-full mt-12 space-y-4">
-              <button 
-                onClick={handleBiometricEnroll}
-                disabled={isProcessing}
-                className="w-full py-4 rounded-2xl bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-colors"
-              >
-                {isProcessing ? 'Enrolling...' : 'Enroll Biometrics'}
-              </button>
-              <button 
-                onClick={handleBiometricSkip}
-                className="w-full py-4 rounded-2xl bg-white/5 text-white/40 font-medium text-sm hover:bg-white/10 transition-colors"
-              >
-                Skip for now
-              </button>
-            </div>
-          </motion.div>
-        )}
 
         {step === 'DONE' && (
           <motion.div key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center">

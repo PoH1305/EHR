@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { AppProviders } from '@/components/AppProviders'
 import { AppShell } from '@/components/AppShell'
+import { AppGate } from '@/components/AppGate'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const inter = Inter({
@@ -26,9 +27,11 @@ export default function RootLayout({
       <body className="min-h-screen bg-[var(--color-bg)] antialiased">
         <ErrorBoundary>
           <AppProviders>
-            <AppShell>
-              {children}
-            </AppShell>
+            <AppGate>
+              <AppShell>
+                {children}
+              </AppShell>
+            </AppGate>
           </AppProviders>
         </ErrorBoundary>
       </body>

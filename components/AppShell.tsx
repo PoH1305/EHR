@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils'
 import { CommandPalette } from './CommandPalette'
 import { EmergencyBanner } from './EmergencyBanner'
 import { SecurityAlertModal } from './SecurityAlertModal'
-import { AppLockScreen } from './AppLockScreen'
 import AddPatientModal from './doctor/AddPatientModal'
 import RequestNotification from './RequestNotification'
 import { useUserStore } from '@/store/useUserStore'
@@ -159,7 +158,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       "min-h-screen transition-colors duration-700",
       isEmergencyMode ? "bg-[#0a0202]" : isDoctor ? "bg-[#0d1117]" : "bg-background"
     )}>
-      <AppLockScreen />
       
       {/* Header */}
       <header className={cn(

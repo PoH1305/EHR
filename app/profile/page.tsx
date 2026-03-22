@@ -9,7 +9,7 @@ import { formatHealthId, calculateAge } from '@/lib/utils'
 import { SENSITIVE_FIELD_CATEGORIES } from '@/lib/aiFilter'
 import { SUPPORTED_EHR_SYSTEMS } from '@/lib/smartFhir'
 import { GlassCard } from '@/components/GlassCard'
-import { BiometricUnlock } from '@/components/BiometricUnlock'
+import { Key } from 'lucide-react'
 
 export default function ProfilePage() {
   const { 
@@ -180,13 +180,13 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-foreground/70">Biometric Authentication</p>
-              <p className="text-[10px] text-foreground/30 mt-0.5">Fingerprint or face recognition</p>
+              <p className="text-sm text-foreground/70 tracking-wide">Security Mode</p>
+              <p className="text-[10px] text-foreground/30 mt-0.5">Protected by 4-digit PIN</p>
             </div>
-            <BiometricUnlock
-              compact
-              onSuccess={() => {}}
-            />
+            <span className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest border border-primary/20 flex items-center gap-1.5">
+              <Key className="w-3 h-3" />
+              PIN Active
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <div>

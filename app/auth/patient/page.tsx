@@ -6,9 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
-import { registerDevice, isBiometricAvailable } from '@/lib/webauthn'
 import { generateUUID } from '@/lib/utils'
-import { Fingerprint } from 'lucide-react'
 import { sha256 } from '@/lib/crypto'
 
 type Step = 'PHONE' | 'OTP' | 'PIN' | 'DONE'
@@ -113,29 +111,6 @@ export default function PatientAuthPage() {
     }
   }, [pin, step, router, setPatient, setSessionState, updateLastActive, ehiId, phone])
 
-const handleBiometricEnroll = async () => {
-  const { patient, updatePatient } = useUserStore.getState()
-  if (!patient) return
-
-  setIsProcessing(true)
-  const success = await registerDevice(patient.id)
-  if (success) {
-    updatePatient({ biometricsActive: true })
-  }
-
-  setSessionState('AUTHENTICATED')
-  updateLastActive()
-  setIsProcessing(false)
-  setStep('DONE')
-  setTimeout(() => router.replace('/dashboard'), 2000)
-}
-
-const handleBiometricSkip = () => {
-  setSessionState('AUTHENTICATED')
-  updateLastActive()
-  setStep('DONE')
-  setTimeout(() => router.replace('/dashboard'), 2000)
-}
 
 return (
   <div className="flex-1 flex flex-col pt-12 pb-6 px-6 sm:px-12 max-w-md mx-auto w-full">

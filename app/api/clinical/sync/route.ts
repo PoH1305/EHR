@@ -14,7 +14,6 @@ const SyncSchema = z.object({
 })
 
 export async function GET() {
-  headers() // Force dynamic runtime even harder
   return NextResponse.json({ status: 'Sync endpoint active' })
 }
 

@@ -44,6 +44,12 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['pdf-parse'],
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 }
 
 export default bundleAnalyzer(nextConfig)

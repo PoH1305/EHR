@@ -30,13 +30,18 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     if (!hydrated) return
     if (isAuthRoute) return
 
+    // Use profile from store hook
     if (sessionState === 'UNAUTHENTICATED') {
-      router.replace('/auth')
+      if (patient) {
+        setSessionState('LOCKED')
+      } else {
+        router.replace('/auth')
+      }
       return
     }
 
     // Redirect to onboarding if patient profile is missing
-    const { patient, role } = useUserStore.getState()
+    const { role } = useUserStore.getState()
     if (sessionState === 'AUTHENTICATED' && role === 'patient' && !patient && pathname !== '/onboarding') {
       router.replace('/onboarding')
       return

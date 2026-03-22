@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { registerDevice, isBiometricAvailable } from '@/lib/webauthn'
 import { generateUUID } from '@/lib/utils'
 import { Fingerprint } from 'lucide-react'
+import { sha256 } from '@/lib/crypto'
 
 type Step = 'PHONE' | 'OTP' | 'PIN' | 'BIOMETRICS' | 'DONE'
 
@@ -83,6 +84,8 @@ export default function PatientAuthPage() {
         setIsProcessing(true)
         
         const newId = generateUUID()
+        const pinHash = await sha256(pin)
+        
         const patientData = {
           id: newId,
           healthId: ehiId || `EHI-${phone.slice(-4)}-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -94,7 +97,8 @@ export default function PatientAuthPage() {
           lastAccessAt: new Date().toISOString(),
           photoUrl: null,
           emergencyContact: { name: 'Emergency Contact', phone: '', relationship: 'Other' },
-          biometricsActive: false
+          biometricsActive: false,
+          pinHash
         }
 
         setPatient(patientData)

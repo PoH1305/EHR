@@ -143,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Bypass shell or show blank until hydrated
   if (!mounted) return null
 
-  if (pathname?.startsWith('/auth')) {
+  if (pathname?.startsWith('/auth') || pathname === '/onboarding') {
     return <>{children}</>
   }
 

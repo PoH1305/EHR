@@ -32,6 +32,12 @@ export interface PatientProfile {
   createdAt: string
   lastAccessAt: string
   biometricsActive?: boolean
+  address?: string | undefined
+  city?: string | undefined
+  pincode?: string | undefined
+  pastSurgeries?: string | undefined
+  organDonor?: 'Yes' | 'No' | 'Unspecified' | undefined
+  insuranceId?: string | undefined
 }
 
 export interface EmergencyContact {
@@ -353,6 +359,12 @@ export const PatientProfileSchema = z.object({
   createdAt: z.string(),
   lastAccessAt: z.string(),
   biometricsActive: z.boolean().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  pincode: z.string().optional(),
+  pastSurgeries: z.string().optional(),
+  organDonor: z.enum(['Yes', 'No', 'Unspecified']).optional(),
+  insuranceId: z.string().optional(),
 })
 
 export const ConsentTokenRequestSchema = z.object({

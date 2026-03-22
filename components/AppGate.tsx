@@ -31,6 +31,13 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // Redirect to onboarding if patient profile is missing
+    const { patient, role } = useUserStore.getState()
+    if (sessionState === 'AUTHENTICATED' && role === 'patient' && !patient && pathname !== '/onboarding') {
+      router.replace('/onboarding')
+      return
+    }
+
     checkBackgroundLock()
 
     const verify = async () => {

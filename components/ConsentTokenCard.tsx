@@ -1,0 +1,155 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { Clock, ShieldOff, Eye, Tag, ShieldCheck } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { getTimeRemaining } from '@/lib/consentTokens'
+import type { ConsentToken } from '@/lib/types'
+import { GlassCard } from './GlassCard'
+
+interface ConsentTokenCardProps {
+  token: ConsentToken
+  onRevoke: (tokenId: string, reason: string) => void
+}
+
+const SPECIALTY_COLORS: Record<string, string> = {
+  Cardiologist: 'bg-red-500/15 text-red-400',
+  Dermatologist: 'bg-amber-500/15 text-amber-400',
+  Psychiatrist: 'bg-purple-500/15 text-purple-400',
+  Oncologist: 'bg-pink-500/15 text-pink-400',
+  Neurologist: 'bg-indigo-500/15 text-indigo-400',
+  'General Practitioner': 'bg-blue-500/15 text-blue-400',
+  Emergency: 'bg-red-600/20 text-red-500',
+  Gynecologist: 'bg-fuchsia-500/15 text-fuchsia-400',
+  Endocrinologist: 'bg-teal-500/15 text-teal-400',
+}
+
+export function ConsentTokenCard({ token, onRevoke }: ConsentTokenCardProps) {
+  const [timeInfo, setTimeInfo] = useState(getTimeRemaining(token.expiresAt))
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
+  const [revokeReason, setRevokeReason] = useState('')
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeInfo(getTimeRemaining(token.expiresAt))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [token.expiresAt])
+
+  const progressDegrees = (timeInfo.percent / 100) * 360
+
+  return (
+    <GlassCard
+      className={cn(
+        'relative transition-all duration-300',
+        timeInfo.urgent && 'animate-pulse border-red-500/50 border'
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground truncate">{token.recipientName}</h3>
+          <span className={cn(
+            'inline-block px-2 py-0.5 rounded-full text-[10px] font-medium mt-1',
+            SPECIALTY_COLORS[token.specialty] ?? 'bg-foreground/[0.05] text-foreground/40'
+          )}>
+            {token.specialty}
+          </span>
+        </div>
+
+        {/* Countdown arc */}
+        <div className="relative w-14 h-14 flex-shrink-0">
+          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+            <circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" strokeWidth="3" className="text-foreground/[0.05]" />
+            <circle
+              cx="28" cy="28" r="24"
+              fill="none"
+              stroke={timeInfo.urgent ? '#ef4444' : '#3b82f6'}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${(progressDegrees / 360) * 150.8} 150.8`}
+              className="transition-all duration-1000"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Clock className={cn('w-4 h-4', timeInfo.urgent ? 'text-red-500' : 'text-foreground/30')} />
+          </div>
+        </div>
+      </div>
+
+      {/* Time remaining */}
+      <div className="flex items-center gap-1.5 mt-3">
+        <span className={cn(
+          'text-sm font-mono font-semibold',
+          timeInfo.urgent ? 'text-red-500' : 'text-foreground/70'
+        )}>
+          {timeInfo.formatted}
+        </span>
+        <span className="text-[10px] text-foreground/30">remaining</span>
+      </div>
+
+      {/* Access count */}
+      <div className="flex items-center gap-1.5 mt-2">
+        <Eye className="w-3 h-3 text-foreground/30" />
+        <span className="text-[10px] text-foreground/40">
+          Accessed {token.accessCount} time{token.accessCount !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* Privacy Badge */}
+      <div className="flex items-center gap-2 mt-4 px-3 py-2 rounded-2xl bg-blue-500/5 border border-blue-500/10">
+        <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Client-Side AI Minimization Active</span>
+      </div>
+
+      {/* Allowed categories */}
+      {token.allowedCategories.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-3">
+          {token.allowedCategories.map((cat) => (
+            <span key={cat} className="flex items-center gap-1 px-2 py-1 rounded-full bg-foreground/[0.05] text-[9px] text-foreground/50 border border-foreground/5">
+              <Tag className="w-2.5 h-2.5" />
+              {cat.replace(/_/g, ' ')}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Revoke button */}
+      {!showRevokeConfirm ? (
+        <button
+          onClick={() => setShowRevokeConfirm(true)}
+          className="flex items-center gap-1.5 mt-3 text-xs text-red-400/60 hover:text-red-400 transition-colors"
+        >
+          <ShieldOff className="w-3.5 h-3.5" />
+          Revoke Access
+        </button>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <input
+            type="text"
+            placeholder="Reason for revocation..."
+            value={revokeReason}
+            onChange={(e) => setRevokeReason(e.target.value)}
+            className="w-full bg-foreground/[0.05] border border-foreground/10 rounded-xl px-3 py-1.5 text-xs text-foreground placeholder-foreground/30 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                onRevoke(token.id, revokeReason || 'No reason specified')
+                setShowRevokeConfirm(false)
+              }}
+              className="flex-1 bg-red-500/20 text-red-500 text-xs py-1.5 rounded-xl hover:bg-red-500/30 transition-colors font-medium"
+            >
+              Confirm Revoke
+            </button>
+            <button
+              onClick={() => setShowRevokeConfirm(false)}
+              className="px-3 text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  )
+}

@@ -2,26 +2,180 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ────────────────────────────────────────────────────────────── */
+/* Design Tokens                                                  */
+/* ────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-primary: #3b82f6;
+  --color-secondary: #60a5fa;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #06b6d4;
+  --color-muted: #475569;
+  --color-foreground: #020617;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(59, 130, 246, 0.2);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --radius: 24px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --color-bg: #0a0e1a;
+  --color-surface: #111827;
+  --color-primary: #3b82f6;
+  --color-secondary: #8b5cf6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #06b6d4;
+  --color-muted: #6b7280;
+  --color-foreground: #f1f5f9;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ────────────────────────────────────────────────────────────── */
+/* Base                                                           */
+/* ────────────────────────────────────────────────────────────── */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
 }
 
+/* ────────────────────────────────────────────────────────────── */
+/* Glass Morphism                                                 */
+/* ────────────────────────────────────────────────────────────── */
+
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-card-danger {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
+/* ────────────────────────────────────────────────────────────── */
+/* Custom Scrollbar                                               */
+/* ────────────────────────────────────────────────────────────── */
+
+.scrollbar-hide,
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-foreground);
+  opacity: 0.2;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  opacity: 0.3;
+}
+
+/* ────────────────────────────────────────────────────────────── */
+/* Tailwind Utility Colors                                        */
+/* ────────────────────────────────────────────────────────────── */
+
+.bg-primary { background-color: var(--color-primary); }
+.text-primary { color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.text-secondary { color: var(--color-secondary); }
+.text-muted-foreground { color: var(--color-muted); }
+
+/* ────────────────────────────────────────────────────────────── */
+/* Animations                                                     */
+/* ────────────────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); opacity: 0; }
+  20% { opacity: 0.5; }
+  80% { opacity: 0.5; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-scan {
+  animation: scan 4s linear infinite;
+}
+
+/* ────────────────────────────────────────────────────────────── */
+/* Nav                                                            */
+/* ────────────────────────────────────────────────────────────── */
+
+.nav-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 10px;
+  color: var(--color-foreground);
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+.nav-link:hover,
+.nav-link.active {
+  opacity: 0.9;
+}
+.nav-link.active .nav-icon {
+  color: var(--color-primary);
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 0.75rem;
+}
+.nav-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+/* ────────────────────────────────────────────────────────────── */
+/* Mobile Safe Areas                                              */
+/* ────────────────────────────────────────────────────────────── */
+
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
   }
 }

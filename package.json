@@ -9,18 +9,48 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "1.0.6",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@tanstack/react-query": "^5.56.2",
+    "@tanstack/react-virtual": "^3.10.7",
+    "ai": "^3.4.33",
+    "axios": "^1.13.6",
+    "build": "^0.1.4",
+    "clsx": "^2.1.1",
+    "dexie": "^4.3.0",
+    "framer-motion": "^11.11.7",
+    "html5-qrcode": "^2.3.8",
+    "idb-keyval": "^6.2.1",
+    "immer": "^10.1.1",
+    "lucide-react": "^0.462.0",
+    "next": "14.2.15",
+    "next-themes": "^0.4.6",
+    "pdf-parse": "^1.1.1",
+    "qrcode.react": "^3.1.0",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.15"
+    "react-markdown": "^10.1.0",
+    "recharts": "^2.12.7",
+    "tailwind-merge": "^2.5.3",
+    "twilio": "^5.13.0",
+    "zod": "^3.25.76",
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@next/bundle-analyzer": "^14.2.15",
+    "@playwright/test": "^1.48.0",
+    "@prisma/client": "^7.5.0",
+    "@types/fhir": "^0.0.38",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.4",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "@types/twilio": "^3.19.2",
     "eslint": "^8",
-    "eslint-config-next": "14.2.15"
+    "eslint-config-next": "14.2.15",
+    "postcss": "^8",
+    "prisma": "^7.5.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
   }
 }

@@ -31,7 +31,6 @@ export interface PatientProfile {
   photoUrl: string | null
   createdAt: string
   lastAccessAt: string
-  biometricsActive?: boolean
   address?: string | undefined
   city?: string | undefined
   pincode?: string | undefined
@@ -359,7 +358,6 @@ export const PatientProfileSchema = z.object({
   photoUrl: z.string().nullable(),
   createdAt: z.string(),
   lastAccessAt: z.string(),
-  biometricsActive: z.boolean().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   pincode: z.string().optional(),

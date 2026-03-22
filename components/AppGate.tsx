@@ -11,25 +11,19 @@ import { cn } from '@/lib/utils'
 export function AppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { sessionState, setSessionState, checkBackgroundLock, updateLastActive, patient, signOut } = useUserStore()
+  const { sessionState, setSessionState, checkBackgroundLock, updateLastActive, patient, signOut, _hasHydrated, role } = useUserStore()
   const [isVerifying, setIsVerifying] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [error, setError] = useState<string | null>(null)
-
-  // Wait for Zustand to hydrate so we don't flash the wrong state
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
 
   // Check if current route is an auth route
   const isAuthRoute = pathname.startsWith('/auth')
 
   useEffect(() => {
-    if (!hydrated) return
+    if (!_hasHydrated) return
     if (isAuthRoute) return
 
-    // Use profile from store hook
+    // 1. Basic Auth Enforcement
     if (sessionState === 'UNAUTHENTICATED') {
       if (patient) {
         setSessionState('LOCKED')
@@ -39,15 +33,20 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Redirect to onboarding if patient profile is missing
-    const { role } = useUserStore.getState()
+    // 2. New Patient Onboarding Redirection
     if (sessionState === 'AUTHENTICATED' && role === 'patient' && !patient && pathname !== '/onboarding') {
       router.replace('/onboarding')
       return
     }
 
+    // 3. Prevent Onboarding Access if Profile Exists
+    if (pathname === '/onboarding' && patient) {
+      router.replace('/dashboard')
+      return
+    }
+
     checkBackgroundLock()
-  }, [hydrated, isAuthRoute, pathname, router, sessionState, checkBackgroundLock, setSessionState, updateLastActive])
+  }, [_hasHydrated, isAuthRoute, pathname, router, sessionState, patient, role, checkBackgroundLock, setSessionState, updateLastActive])
 
 
   const handlePinInput = async (num: string) => {
@@ -98,9 +97,9 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       window.removeEventListener('keydown', handleActivity)
       window.removeEventListener('touchstart', handleActivity)
     }
-  }, [sessionState, pathname, isAuthRoute, router, checkBackgroundLock, setSessionState, updateLastActive, hydrated, isVerifying])
+  }, [sessionState, pathname, isAuthRoute, router, checkBackgroundLock, setSessionState, updateLastActive, _hasHydrated, isVerifying])
 
-  if (!hydrated) return null
+  if (!_hasHydrated) return null
 
   if (isAuthRoute) {
     return <>{children}</>

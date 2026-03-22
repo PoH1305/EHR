@@ -92,15 +92,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [mounted, checkBackgroundLock, updateLastActive])
 
-  // Security redirect
+  // Redirection is now handled by the parent AppGate component
+  // this avoids duplicate router.replace calls and inconsistent state
   useEffect(() => {
     if (!mounted) return
-    if (pathname?.startsWith('/auth')) return
-
-    if (sessionState === 'UNAUTHENTICATED') {
-      router.replace('/auth')
-    }
-  }, [mounted, pathname, sessionState, router])
+  }, [mounted])
 
   // Keyboard shortcut for command palette
   useEffect(() => {

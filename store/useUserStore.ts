@@ -25,6 +25,7 @@ interface UserState {
   isLoading: boolean
   lastSyncAt: string | null
   healthId: string | null
+  _hasHydrated: boolean
 }
 
 interface UserActions {
@@ -39,6 +40,7 @@ interface UserActions {
   checkBackgroundLock: () => void
   updatePatient: (profile: Partial<PatientProfile>) => void
   loadPatient: (id: string) => Promise<void>
+  setHasHydrated: (val: boolean) => void
 }
 
 import { db } from '@/lib/db'
@@ -59,6 +61,7 @@ export const useUserStore = create<UserState & UserActions>()(
       isLoading: false,
       lastSyncAt: null,
       healthId: null,
+      _hasHydrated: false,
 
       // Actions
       setRole: (role: UserRole) => {
@@ -175,9 +178,17 @@ export const useUserStore = create<UserState & UserActions>()(
           }
         })
       },
+      setHasHydrated: (val) => {
+        set((state) => {
+          state._hasHydrated = val
+        })
+      },
     })),
     { 
       name: 'ehi-user-storage',
+      onRehydrateStorage: (state) => {
+        return () => state.setHasHydrated(true)
+      },
       partialize: (state) => ({ 
         role: state.role, 
         patient: state.patient, 

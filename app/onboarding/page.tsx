@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   User, 
@@ -58,6 +58,13 @@ export default function OnboardingPage() {
     insuranceId: ''
   })
 
+  useEffect(() => {
+    if (!formData.healthId) {
+      const generated = `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1 + Math.random() * 9)}`
+      setFormData(prev => ({ ...prev, healthId: generated }))
+    }
+  }, [formData.healthId])
+
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(curr => curr + 1)
@@ -74,7 +81,7 @@ export default function OnboardingPage() {
 
   const completeOnboarding = async () => {
     const patientId = `pat-${Date.now()}`
-    const healthId = `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString().substring(2, 6)}-${Math.random().toString().substring(2, 3)}`
+    const healthId = formData.healthId || `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString().substring(2, 6)}-${Math.random().toString().substring(2, 3)}`
     
     const profile: PatientProfile = {
       id: patientId,
@@ -148,7 +155,7 @@ export default function OnboardingPage() {
           ))}
         </div>
         <span className="text-[10px] font-bold text-[#0D7377] uppercase tracking-widest leading-none">
-          {STEPS[currentStep].title}
+          {STEPS[currentStep]?.title || 'Unknown'}
         </span>
       </div>
 
@@ -289,14 +296,10 @@ export default function OnboardingPage() {
                         <label className="text-[9px] uppercase tracking-widest text-[#354A5A] mb-1 block">Contact Name</label>
                         <input 
                           type="text" 
-                          value={formData.emergencyContact?.name}
+                          value={formData.emergencyContact?.name || ''}
                           onChange={e => setFormData(prev => ({ 
                             ...prev, 
-                            emergencyContact: { 
-                              name: e.target.value,
-                              relationship: prev.emergencyContact?.relationship || '',
-                              phone: prev.emergencyContact?.phone || ''
-                            }
+                            emergencyContact: { ...(prev.emergencyContact || { relationship: 'Other', phone: '' }), name: e.target.value } 
                           }))}
                           placeholder="Full name..."
                           className="w-full bg-transparent border-b border-white/10 py-1.5 text-sm focus:outline-none focus:border-[#0D7377] transition-colors placeholder:text-white/5"
@@ -453,7 +456,7 @@ export default function OnboardingPage() {
 
                 <DigitalHealthCard 
                   name={formData.name || 'New Patient'}
-                  healthId="EHI-EHI0-0004-681"
+                  healthId={formData.healthId || 'EHI-EHI0-0004-681'}
                   bloodGroup={formData.bloodGroup || 'B+'}
                   birthDate={formData.birthDate || '1990-01-01'}
                   emergencyPhone={formData.emergencyContact?.phone || '+91 98765 43210'}

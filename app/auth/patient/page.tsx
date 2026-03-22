@@ -14,7 +14,14 @@ type Step = 'PHONE' | 'OTP' | 'PIN' | 'DONE'
 export default function PatientAuthPage() {
   const router = useRouter()
   const [step, setStep] = useState<Step>('PHONE')
-  const { setSessionState, setPatient, updateLastActive } = useUserStore()
+  const { setSessionState, setPatient, updateLastActive, patient, _hasHydrated } = useUserStore()
+
+  // 1. Fast Login: If profiling already exists in local storage, bypass to PIN
+  useEffect(() => {
+    if (_hasHydrated && patient && step === 'PHONE') {
+      setStep('PIN')
+    }
+  }, [_hasHydrated, patient, step])
 
   // Form State
   const [phone, setPhone] = useState('')
@@ -81,35 +88,39 @@ export default function PatientAuthPage() {
       const finalize = async () => {
         setIsProcessing(true)
         
-        const newId = generateUUID()
-        const pinHash = await sha256(pin)
-        
-        const patientData = {
-          id: newId,
-          healthId: ehiId || `EHI-${phone.slice(-4)}-${Math.floor(1000 + Math.random() * 9000)}`,
-          name: 'New Patient',
-          birthDate: '1990-01-01',
-          gender: 'unknown' as const,
-          bloodGroup: 'B+',
-          createdAt: new Date().toISOString(),
-          lastAccessAt: new Date().toISOString(),
-          photoUrl: null,
-          emergencyContact: { name: 'Emergency Contact', phone: '', relationship: 'Other' },
-          biometricsActive: false,
-          pinHash
+        // If returning user, verify PIN
+        if (patient?.pinHash) {
+          const hash = await sha256(pin)
+          if (hash === patient.pinHash) {
+            setSessionState('AUTHENTICATED')
+            updateLastActive()
+            setIsProcessing(false)
+            setStep('DONE')
+            setTimeout(() => router.replace('/dashboard'), 1500)
+          } else {
+            alert('Incorrect PIN')
+            setPin('')
+            setIsProcessing(false)
+          }
+          return
         }
 
-        setPatient(patientData)
-        
+        // If new user, just set session state
+        // AppGate will detect patient is null and redirect to /onboarding
         setSessionState('AUTHENTICATED')
+        useUserStore.getState().setRole('patient')
         updateLastActive()
         setIsProcessing(false)
         setStep('DONE')
-        setTimeout(() => router.replace('/dashboard'), 2000)
+        
+        // Brief delay for the completion animation
+        setTimeout(() => {
+          router.replace('/onboarding')
+        }, 1500)
       }
       void finalize()
     }
-  }, [pin, step, router, setPatient, setSessionState, updateLastActive, ehiId, phone])
+  }, [pin, step, router, patient, setSessionState, updateLastActive])
 
 
 return (

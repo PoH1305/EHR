@@ -51,7 +51,7 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
   // Effect to re-run filtering on state change
   useEffect(() => {
     if (specialty) {
-      const filtered = filterPatientDataBySpecialty(fullBundle as any, specialty, allowedCategories)
+      const filtered = filterPatientDataBySpecialty(fullBundle as FHIRBundle, specialty, allowedCategories)
       setFilteredBundle(filtered)
     }
   }, [specialty, allowedCategories, fullBundle])

@@ -21,7 +21,14 @@ export async function POST(request: Request): Promise<Response> {
       expiresAt, 
       specialty, 
       encryptedBundle 
-    } = parsed.data as any
+    } = parsed.data as {
+      tokenHash: string
+      patientId: string
+      recipientId: string
+      expiresAt: string
+      specialty: string
+      encryptedBundle?: string
+    }
 
     // In development, just acknowledge
     if (process.env.NODE_ENV === 'development') {

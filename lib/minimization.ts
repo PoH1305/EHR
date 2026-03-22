@@ -142,11 +142,13 @@ export function filterPatientDataBySpecialty(
 
   return {
     resourceType: 'Bundle',
-    entry: filteredEntries as any,
+    entry: filteredEntries as FilteredFHIRBundle['entry'],
     meta: {
       specialty,
       filteredAt: new Date().toISOString(),
-      fieldsRedacted: filteredEntries.filter(e => (e.resource as any).redacted).map(e => (e.resource as any).category),
+      fieldsRedacted: filteredEntries
+        .filter(e => (e.resource as Record<string, unknown>).redacted === true)
+        .map(e => (e.resource as Record<string, unknown>).category as string),
       consentId: 'temp_meta_id',
       emergencyAccess: specialty === DoctorSpecialty.EMERGENCY
     }

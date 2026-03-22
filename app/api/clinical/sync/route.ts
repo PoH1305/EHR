@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { headers } from 'next/headers'
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,11 @@ const SyncSchema = z.object({
   medications: z.array(z.any()).optional(),
   clinicalNotes: z.array(z.any()).optional(),
 })
+
+export async function GET() {
+  headers() // Force dynamic runtime even harder
+  return NextResponse.json({ status: 'Sync endpoint active' })
+}
 
 export async function POST(request: Request) {
   try {

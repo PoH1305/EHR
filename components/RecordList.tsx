@@ -15,6 +15,7 @@ export interface RecordItem {
   status?: string | undefined
   sensitive?: boolean | undefined
   verified?: boolean
+  fileUrl?: string
 }
 
 interface RecordListProps {
@@ -74,8 +75,8 @@ export function RecordList({ records, onRecordClick }: RecordListProps) {
                     {RESOURCE_ICONS[record.resourceType] ?? <FileText className="w-4 h-4 text-foreground/30" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-medium text-foreground truncate">{record.title}</h4>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h4 className="text-sm font-medium text-foreground truncate flex-1 min-w-0">{record.title}</h4>
                       {record.sensitive && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-[9px] text-amber-400 flex-shrink-0">
                           Sensitive

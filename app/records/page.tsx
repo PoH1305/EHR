@@ -13,12 +13,18 @@ import { useClinicalStore } from '@/store/useClinicalStore'
 const FILTER_TABS = ['All', 'Conditions', 'Medications', 'Allergies', 'Labs', 'Procedures']
 
 function RecordsPageContent() {
-  const { conditions, medications, allergies, loadClinicalData } = useClinicalStore()
+  const { 
+    conditions, 
+    medications, 
+    allergies, 
+    attachments,
+    loadClinicalData, 
+    addAttachment 
+  } = useClinicalStore()
   const { patient } = useUserStore()
   const [activeFilter, setActiveFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
-  const [uploadedRecords, setUploadedRecords] = useState<RecordItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mounted, setMounted] = useState(false)
@@ -37,26 +43,36 @@ function RecordsPageContent() {
     }
   }, [searchParams, patient?.id, loadClinicalData])
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !patient?.id) return
 
     setIsUploading(true)
     
-    // Simulate upload delay
-    setTimeout(() => {
-      const newRecord: RecordItem = {
+    try {
+      // Create a local blob URL for temporary viewing
+      // Note: In a real app, you'd store the actual file in IndexedDB
+      const fileUrl = URL.createObjectURL(file)
+      
+      const newAttachment = {
         id: `upload-${Date.now()}`,
-        resourceType: 'DiagnosticReport',
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        subtitle: 'Patient Uploaded Document',
-        date: new Date().toISOString(),
-        verified: false,
+        patientId: patient.id,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        fileUrl: fileUrl,
+        uploadedAt: new Date().toISOString(),
+        category: 'LAB_REPORT' as const,
+        description: 'Patient Uploaded Document'
       }
-      setUploadedRecords(prev => [newRecord, ...prev])
+
+      await addAttachment(newAttachment)
+    } catch (error) {
+      console.error('File upload failed:', error)
+    } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
-    }, 1500)
+    }
   }
 
   const allRecords: RecordItem[] = useMemo(() => {
@@ -100,8 +116,20 @@ function RecordsPageContent() {
       })
     }
 
+    for (const attachment of attachments) {
+      records.push({
+        id: attachment.id,
+        resourceType: 'DiagnosticReport',
+        title: attachment.fileName.replace(/\.[^/.]+$/, ''),
+        subtitle: attachment.description || 'Uploaded Document',
+        date: attachment.uploadedAt,
+        verified: false,
+        fileUrl: attachment.fileUrl,
+      })
+    }
+
     return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [uploadedRecords, conditions, medications, allergies])
+  }, [attachments, conditions, medications, allergies])
 
   const filteredRecords = useMemo(() => {
     let records = allRecords

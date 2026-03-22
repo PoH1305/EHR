@@ -9,7 +9,8 @@ import type {
   AuditEvent, 
   ClinicalNote, 
   MedicalImage, 
-  RiskAnalysis 
+  RiskAnalysis,
+  PatientAttachment
 } from '@/lib/types'
 import type { Condition, MedicationRequest, AllergyIntolerance } from 'fhir/r4'
 
@@ -25,6 +26,7 @@ interface ClinicalState {
   clinicalNotes: ClinicalNote[]
   medicalImages: MedicalImage[]
   riskAnalyses: RiskAnalysis[]
+  attachments: PatientAttachment[]
   auditEvents: AuditEvent[]
   isLoading: boolean
   isEmergencyMode: boolean
@@ -46,6 +48,7 @@ interface ClinicalActions {
   addClinicalNote: (note: ClinicalNote) => Promise<void>
   addMedicalImage: (image: MedicalImage) => Promise<void>
   addRiskAnalysis: (analysis: RiskAnalysis) => Promise<void>
+  addAttachment: (attachment: PatientAttachment) => Promise<void>
   addAuditEvent: (event: AuditEvent) => Promise<void>
   activateEmergencyMode: (patientId: string) => void
   clearEmergencyMode: () => void
@@ -68,6 +71,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       clinicalNotes: [],
       medicalImages: [],
       riskAnalyses: [],
+      attachments: [],
       auditEvents: [],
       isLoading: false,
       isEmergencyMode: false,
@@ -96,14 +100,15 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => { state.isLoading = true })
         
         try {
-          const [vitals, conditions, medications, allergies, clinicalNotes, medicalImages, riskAnalyses] = await Promise.all([
+          const [vitals, conditions, medications, allergies, clinicalNotes, medicalImages, riskAnalyses, attachments] = await Promise.all([
             db.vitals.where('patientId').equals(patientId).toArray(),
             db.conditions.where('patientId').equals(patientId).toArray(),
             db.medications.where('patientId').equals(patientId).toArray(),
             db.allergies.where('patientId').equals(patientId).toArray(),
             db.clinical_notes.where('patientId').equals(patientId).toArray(),
             db.medical_images.where('patientId').equals(patientId).toArray(),
-            db.risk_analysis.where('patientId').equals(patientId).toArray()
+            db.risk_analysis.where('patientId').equals(patientId).toArray(),
+            db.patient_attachments.where('patientId').equals(patientId).toArray()
           ])
 
           const isMinimization = get().isMinimizationActive
@@ -118,6 +123,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             state.clinicalNotes = isMinimization ? clinicalNotes.slice(-2) : clinicalNotes
             state.medicalImages = isMinimization ? [] : medicalImages
             state.riskAnalyses = riskAnalyses
+            state.attachments = (attachments as any[]) || []
             state.isLoading = false
             state.lastUpdated = new Date().toISOString()
           })
@@ -210,6 +216,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         await db.risk_analysis.add(analysis)
         set((state) => {
           state.riskAnalyses.unshift(analysis)
+        })
+      },
+
+      addAttachment: async (attachment: PatientAttachment) => {
+        if (!db) return
+        await db.patient_attachments.add(attachment)
+        set((state) => {
+          state.attachments.unshift(attachment)
         })
       },
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, FileText, Pill, AlertCircle, Activity, Heart, ShieldAlert, BadgeCheck, ShieldCheck } from 'lucide-react'
+import { X, FileText, Pill, AlertCircle, Activity, Heart, ShieldAlert, BadgeCheck, ShieldCheck, ExternalLink } from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import type { RecordItem } from './RecordList'
 
@@ -68,8 +68,8 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                 <div className="w-12 h-12 rounded-2xl bg-foreground/[0.05] flex items-center justify-center flex-shrink-0 border border-foreground/10">
                   {RESOURCE_ICONS[record.resourceType] || <FileText className="w-5 h-5 text-foreground/50" />}
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground leading-tight">{record.title}</h2>
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold text-foreground leading-tight truncate break-all">{record.title}</h2>
                   <p className="text-sm text-foreground/50">{RESOURCE_LABELS[record.resourceType] || record.resourceType}</p>
                 </div>
               </div>
@@ -169,6 +169,24 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                   </div>
                 </div>
               </div>
+
+              {/* View Document Button */}
+              {record.fileUrl && (
+                <div className="pt-2">
+                  <a
+                    href={record.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-semibold hover:bg-primary/20 transition-all group"
+                  >
+                    <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    View Full Report / Image
+                  </a>
+                  <p className="text-[10px] text-center text-foreground/30 mt-2 italic">
+                    Note: Files are stored locally in your browser&apos;s encrypted vault.
+                  </p>
+                </div>
+              )}
             </div>
           </motion.div>
         </React.Fragment>

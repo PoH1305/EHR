@@ -40,6 +40,17 @@ export interface PatientProfile {
   pinHash?: string
 }
 
+export interface DoctorProfile {
+  id: string // Firebase UID
+  name: string
+  email: string
+  licenseNumber: string
+  specialty: DoctorSpecialty
+  isVerified: boolean
+  createdAt: string
+  lastActiveAt: string
+}
+
 export interface EmergencyContact {
   name: string
   relationship: string

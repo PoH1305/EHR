@@ -80,7 +80,8 @@ export default function OnboardingPage() {
   }
 
   const completeOnboarding = async () => {
-    const patientId = `pat-${Date.now()}`
+    const { firebaseUid } = useUserStore.getState()
+    const patientId = firebaseUid || `pat-${Date.now()}`
     const healthId = formData.healthId || `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString().substring(2, 6)}-${Math.random().toString().substring(2, 3)}`
     
     const profile: PatientProfile = {

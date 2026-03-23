@@ -11,7 +11,8 @@ import {
   signInWithPopup 
 } from 'firebase/auth'
 import { useAuthState } from 'react-firebase-hooks/auth'
-import { Check, Mail, Lock, LogIn, Loader2, Shield, AlertTriangle } from 'lucide-react'
+import { Check, Mail, Lock, LogIn, Loader2, Shield, AlertTriangle, Stethoscope } from 'lucide-react'
+import { DoctorSpecialty } from '@/lib/types'
 
 function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
   return (
@@ -49,6 +50,7 @@ function DoctorAuthContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [license, setLicense] = useState('')
+  const [specialty, setSpecialty] = useState('General Practitioner')
   const [isSignUp, setIsSignUp] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -56,7 +58,6 @@ function DoctorAuthContent() {
   const { 
     setSessionState, 
     updateLastActive, 
-    patient, 
     _hasHydrated,
     setFirebaseUser,
     setRole
@@ -75,7 +76,6 @@ function DoctorAuthContent() {
   // Navigation Logic
   useEffect(() => {
     if (_hasHydrated && user && !loading) {
-      // For doctors, we might not have a "patient" profile but we check role
       setTimeout(() => router.replace('/dashboard'), 1500)
     }
   }, [_hasHydrated, user, loading, router])
@@ -90,8 +90,24 @@ function DoctorAuthContent() {
         if (license.length < 5) {
           throw new Error('Please enter a valid medical license number')
         }
-        await createUserWithEmailAndPassword(auth!, email, password)
-        // Note: License would ideally be saved to a 'doctors' collection in Firestore/DB
+        const { user: newUser } = await createUserWithEmailAndPassword(auth!, email, password)
+        
+        // Save Doctor Profile to Firestore
+        const { db_firestore } = await import('@/lib/firebase')
+        const { doc, setDoc } = await import('firebase/firestore')
+        
+        if (db_firestore) {
+          await setDoc(doc(db_firestore, 'doctors', newUser.uid), {
+            id: newUser.uid,
+            name: email.split('@')[0], // Primitive name fallback
+            email: newUser.email,
+            licenseNumber: license,
+            specialty: specialty,
+            isVerified: false,
+            createdAt: new Date().toISOString(),
+            lastActiveAt: new Date().toISOString()
+          })
+        }
       } else {
         await signInWithEmailAndPassword(auth!, email, password)
       }
@@ -106,7 +122,29 @@ function DoctorAuthContent() {
     setIsProcessing(true)
     setAuthError(null)
     try {
-      await signInWithPopup(auth!, googleProvider!)
+      const { user: gUser } = await signInWithPopup(auth!, googleProvider!)
+      
+      // Check if profile exists, if not create a stub
+      const { db_firestore } = await import('@/lib/firebase')
+      const { doc, getDoc, setDoc } = await import('firebase/firestore')
+      
+      if (db_firestore) {
+        const docRef = doc(db_firestore, 'doctors', gUser.uid)
+        const docSnap = await getDoc(docRef)
+        
+        if (!docSnap.exists()) {
+          await setDoc(docRef, {
+            id: gUser.uid,
+            name: gUser.displayName || gUser.email?.split('@')[0],
+            email: gUser.email,
+            licenseNumber: 'PENDING',
+            specialty: 'General Practitioner',
+            isVerified: false,
+            createdAt: new Date().toISOString(),
+            lastActiveAt: new Date().toISOString()
+          })
+        }
+      }
     } catch (err: any) {
       setAuthError(err.message || 'Google sign-in failed')
     } finally {
@@ -146,9 +184,28 @@ function DoctorAuthContent() {
                   value={license} 
                   onChange={e => setLicense(e.target.value.toUpperCase())} 
                   required
-                  className="bg-transparent border-none outline-none text-base text-[#E2EAF0] flex-1" 
+                  className="bg-transparent border-none outline-none text-base text-[#E2EAF0] flex-1 font-mono" 
                   placeholder="MCI-2019-XXXX" 
                 />
+              </div>
+            </div>
+          )}
+
+          {isSignUp && (
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-[#354A5A] font-semibold">Specialization</label>
+              <div className="flex items-center gap-3 border-b border-white/[0.08] pb-2 mt-2">
+                <Stethoscope className="w-4 h-4 text-[#4A6075]" />
+                <select 
+                  value={specialty} 
+                  onChange={e => setSpecialty(e.target.value)} 
+                  required
+                  className="bg-transparent border-none outline-none text-base text-[#E2EAF0] flex-1 appearance-none cursor-pointer"
+                >
+                  {Object.values(DoctorSpecialty).map(s => (
+                    <option key={s} value={s} className="bg-[#080D16]">{s}</option>
+                  ))}
+                </select>
               </div>
             </div>
           )}

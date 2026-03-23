@@ -16,6 +16,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
+            value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://*.firebaseapp.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",

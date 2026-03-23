@@ -5,29 +5,28 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
-import { cn } from '@/lib/utils'
-import { generateUUID } from '@/lib/utils'
-import { sha256 } from '@/lib/crypto'
 
-type Step = 'PHONE' | 'OTP' | 'PIN' | 'DONE'
+type Step = 'PHONE' | 'OTP' | 'DONE'
 
 export default function PatientAuthPage() {
   const router = useRouter()
   const [step, setStep] = useState<Step>('PHONE')
-  const { setSessionState, setPatient, updateLastActive, patient, _hasHydrated } = useUserStore()
+  const { setSessionState, updateLastActive, patient, _hasHydrated } = useUserStore()
 
-  // 1. Fast Login: If profiling already exists in local storage, bypass to PIN
+  // Fast Login: If profile already exists, skip to authenticated
   useEffect(() => {
     if (_hasHydrated && patient && step === 'PHONE') {
-      setStep('PIN')
+      setSessionState('AUTHENTICATED')
+      updateLastActive()
+      setStep('DONE')
+      setTimeout(() => router.replace('/dashboard'), 1500)
     }
-  }, [_hasHydrated, patient, step])
+  }, [_hasHydrated, patient, step, setSessionState, updateLastActive, router])
 
   // Form State
   const [phone, setPhone] = useState('')
   const [ehiId, setEhiId] = useState('')
   const [otp, setOtp] = useState('')
-  const [pin, setPin] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
@@ -67,7 +66,15 @@ export default function PatientAuthPage() {
       const data = await res.json()
       if (!res.ok || !data.success) throw new Error(data.error || 'Invalid OTP')
 
-      setStep('PIN')
+      // OTP verified — authenticate immediately
+      setSessionState('AUTHENTICATED')
+      useUserStore.getState().setRole('patient')
+      updateLastActive()
+      setStep('DONE')
+
+      // If new user → onboarding, returning user → dashboard
+      const destination = patient ? '/dashboard' : '/onboarding'
+      setTimeout(() => router.replace(destination), 1500)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid OTP'
       alert(`Verification Error: ${message}`)
@@ -75,53 +82,6 @@ export default function PatientAuthPage() {
       setIsProcessing(false)
     }
   }
-
-  const handlePinInput = (num: string) => {
-    if (pin.length < 4) setPin(prev => prev + num)
-  }
-  const handlePinDelete = () => {
-    setPin(prev => prev.slice(0, -1))
-  }
-
-  useEffect(() => {
-    if (pin.length === 4 && step === 'PIN') {
-      const finalize = async () => {
-        setIsProcessing(true)
-        
-        // If returning user, verify PIN
-        if (patient?.pinHash) {
-          const hash = await sha256(pin)
-          if (hash === patient.pinHash) {
-            setSessionState('AUTHENTICATED')
-            updateLastActive()
-            setIsProcessing(false)
-            setStep('DONE')
-            setTimeout(() => router.replace('/dashboard'), 1500)
-          } else {
-            alert('Incorrect PIN')
-            setPin('')
-            setIsProcessing(false)
-          }
-          return
-        }
-
-        // If new user, just set session state
-        // AppGate will detect patient is null and redirect to /onboarding
-        setSessionState('AUTHENTICATED')
-        useUserStore.getState().setRole('patient')
-        updateLastActive()
-        setIsProcessing(false)
-        setStep('DONE')
-        
-        // Brief delay for the completion animation
-        setTimeout(() => {
-          router.replace('/onboarding')
-        }, 1500)
-      }
-      void finalize()
-    }
-  }, [pin, step, router, patient, setSessionState, updateLastActive])
-
 
 return (
   <div className="flex-1 flex flex-col pt-12 pb-6 px-6 sm:px-12 max-w-md mx-auto w-full">
@@ -154,7 +114,7 @@ return (
               {isProcessing ? 'Sending...' : 'Send OTP'}
             </button>
             <div className="flex justify-center gap-1.5 mt-5">
-              <div className="w-3.5 h-1.5 rounded-full bg-[#0D7377]" /><div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" /><div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" />
+              <div className="w-3.5 h-1.5 rounded-full bg-[#0D7377]" /><div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" />
             </div>
           </form>
         </motion.div>
@@ -172,41 +132,11 @@ return (
               {isProcessing ? 'Verifying...' : 'Verify'}
             </button>
             <div className="flex justify-center gap-1.5 mt-5">
-              <div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" /><div className="w-3.5 h-1.5 rounded-full bg-[#0D7377]" /><div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" />
+              <div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" /><div className="w-3.5 h-1.5 rounded-full bg-[#0D7377]" />
             </div>
           </form>
         </motion.div>
       )}
-
-      {step === 'PIN' && (
-        <motion.div key="pin" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-          <h1 className="text-3xl font-medium text-[#E2EAF0] leading-tight">Almost<br />there.</h1>
-          <p className="text-xs text-[#4A6075] mt-2">{isProcessing ? 'Registering Biometrics...' : 'Enter your 4-digit PIN'}</p>
-
-          <div className="flex justify-center gap-4 mt-12 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className={cn("w-3 h-3 rounded-full transition-colors", i < pin.length ? "bg-[#0D7377]" : "bg-white/[0.07]")} />
-            ))}
-          </div>
-
-          <div className="flex-1" />
-
-          <div className="grid grid-cols-3 gap-3 mt-4 opacity-90">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-              <button key={n} onClick={() => handlePinInput(n.toString())} className="bg-[#111820] py-4 rounded-xl text-xl text-white font-medium hover:bg-white/5 active:bg-white/10 transition-colors">
-                {n}
-              </button>
-            ))}
-            <div />
-            <button onClick={() => handlePinInput('0')} className="bg-[#111820] py-4 rounded-xl text-xl text-white font-medium hover:bg-white/5 active:bg-white/10 transition-colors">0</button>
-            <button onClick={handlePinDelete} className="bg-[#111820] py-4 rounded-xl text-sm text-[#4A6075] hover:bg-white/5 active:bg-white/10 transition-colors">⌫</button>
-          </div>
-          <div className="flex justify-center gap-1.5 mt-8 mb-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" /><div className="w-1.5 h-1.5 rounded-full bg-white/[0.08]" /><div className="w-3.5 h-1.5 rounded-full bg-[#0D7377]" />
-          </div>
-        </motion.div>
-      )}
-
 
       {step === 'DONE' && (
         <motion.div key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center">

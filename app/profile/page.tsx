@@ -10,7 +10,6 @@ import { formatHealthId, calculateAge } from '@/lib/utils'
 import { SENSITIVE_FIELD_CATEGORIES } from '@/lib/aiFilter'
 import { SUPPORTED_EHR_SYSTEMS } from '@/lib/smartFhir'
 import { GlassCard } from '@/components/GlassCard'
-import { Key } from 'lucide-react'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -209,12 +208,12 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-foreground/70 tracking-wide">Security Mode</p>
-              <p className="text-[10px] text-foreground/30 mt-0.5">Protected by 4-digit PIN</p>
+              <p className="text-sm text-foreground/70 tracking-wide">Authentication</p>
+              <p className="text-[10px] text-foreground/30 mt-0.5">Verified via OTP</p>
             </div>
-            <span className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest border border-primary/20 flex items-center gap-1.5">
-              <Key className="w-3 h-3" />
-              PIN Active
+            <span className="px-3 py-1.5 rounded-xl bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest border border-green-500/20 flex items-center gap-1.5">
+              <Shield className="w-3 h-3" />
+              Verified
             </span>
           </div>
           <div className="flex items-center justify-between">

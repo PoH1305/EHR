@@ -17,10 +17,16 @@ export function PatientRequestInbox() {
     if (effectiveId) {
       console.log(`[PatientRequestInbox] Fetching requests for healthId: ${effectiveId}`)
       loadAccessRequests(effectiveId, false)
-    } else {
-      console.log('[PatientRequestInbox] No healthId found in store yet')
     }
   }, [healthId, patient?.healthId, loadAccessRequests])
+
+  // Healing effect: Sync store healthId if it differs from profile
+  useEffect(() => {
+    if (patient?.healthId && patient.healthId !== healthId) {
+       console.log(`[PatientRequestInbox] Healing store ID: ${healthId} -> ${patient.healthId}`)
+       useUserStore.setState({ healthId: patient.healthId })
+    }
+  }, [patient?.healthId, healthId])
 
   const pendingRequests = accessRequests.filter(r => r.status === 'PENDING')
 
@@ -76,7 +82,9 @@ export function PatientRequestInbox() {
                   
                   <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
                      <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Access: Clinical Vitals & Summary</span>
-                     <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Requested: {new Date(req.requestedAt).toLocaleDateString()}</span>
+                     <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">
+                       Requested: {req.requestedAt ? new Date(req.requestedAt).toLocaleDateString() : 'Recent'}
+                     </span>
                   </div>
                 </GlassCard>
               </motion.div>

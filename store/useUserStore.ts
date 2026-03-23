@@ -40,6 +40,7 @@ interface UserActions {
   checkBackgroundLock: () => void
   updatePatient: (profile: Partial<PatientProfile>) => void
   loadPatient: (id: string) => Promise<void>
+  deleteAccount: () => Promise<void>
   setHasHydrated: (val: boolean) => void
 }
 
@@ -112,6 +113,45 @@ export const useUserStore = create<UserState & UserActions>()(
             state.patient = profile
             state.healthId = profile.healthId
           })
+        }
+      },
+
+      deleteAccount: async () => {
+        const { db } = await import('@/lib/db')
+        if (!db) return
+
+        try {
+          // Clear all tables
+          await Promise.all([
+            db.patient_profiles.clear(),
+            db.vitals.clear(),
+            db.conditions.clear(),
+            db.medications.clear(),
+            db.allergies.clear(),
+            db.observations.clear(),
+            db.diagnostic_reports.clear(),
+            db.immunizations.clear(),
+            db.procedures.clear(),
+            db.clinical_notes.clear(),
+            db.medical_images.clear(),
+            db.patient_attachments.clear(),
+            db.risk_analysis.clear(),
+            db.consent_tokens.clear(),
+            db.audit_log.clear(),
+            db.access_requests.clear(),
+            db.temporary_records.clear()
+          ])
+
+          // Reset local state
+          set({
+            patient: null,
+            sessionState: 'LOCKED',
+            role: 'patient',
+            lastActiveAt: Date.now()
+          })
+        } catch (error) {
+          console.error('Failed to delete account:', error)
+          throw error
         }
       },
 

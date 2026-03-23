@@ -187,6 +187,29 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                   </p>
                 </div>
               )}
+
+              {/* Always-visible View Record action */}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    const recordData = JSON.stringify(record, null, 2)
+                    const blob = new Blob([recordData], { type: 'application/json' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `${record.title.replace(/\s+/g, '_')}_${record.id.slice(-6)}.json`
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                    URL.revokeObjectURL(url)
+                  }}
+                  className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-foreground/[0.05] border border-foreground/10 text-foreground/70 font-semibold hover:bg-foreground/10 hover:text-foreground transition-all group"
+                >
+                  <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  View Record (Download JSON)
+                </button>
+              </div>
+
             </div>
           </motion.div>
         </React.Fragment>

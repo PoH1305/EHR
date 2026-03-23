@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
-import { User, Shield, Lock, Link2, Download, Trash2, Save, LayoutDashboard, Monitor, Sun, Moon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { User, Shield, Lock, Link2, Download, Trash2, Save, LayoutDashboard, Monitor, Sun, Moon, AlertTriangle } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
@@ -12,9 +13,11 @@ import { GlassCard } from '@/components/GlassCard'
 import { Key } from 'lucide-react'
 
 export default function ProfilePage() {
+  const router = useRouter()
   const { 
     patient, 
     updatePatient,
+    deleteAccount,
   } = useUserStore()
   const { theme, setTheme } = useTheme()
   const profile = patient
@@ -32,6 +35,32 @@ export default function ProfilePage() {
     social_history: false,
     substance_use_history: false,
   })
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleExportData = () => {
+    const data = JSON.stringify(profile, null, 2)
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `EHI_${profile?.healthId || 'export'}_${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true)
+    try {
+      await deleteAccount()
+      router.replace('/auth/role')
+    } catch {
+      alert('Failed to delete account. Please try again.')
+      setIsDeleting(false)
+    }
+  }
 
   if (!profile) {
     return (
@@ -306,15 +335,49 @@ export default function ProfilePage() {
       <GlassCard className="border-red-500/10">
         <h3 className="text-sm font-semibold text-red-400/60 mb-4">Danger Zone</h3>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground/5 text-sm text-foreground/50 hover:text-foreground/70 transition-colors">
+          <button 
+            onClick={handleExportData}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground/5 text-sm text-foreground/50 hover:text-foreground/70 transition-colors"
+          >
             <Download className="w-4 h-4" />
             Export All Data
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 text-sm text-red-400/60 hover:text-red-400 transition-colors">
+          <button 
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 text-sm text-red-400/60 hover:text-red-400 transition-colors"
+          >
             <Trash2 className="w-4 h-4" />
             Delete Account
           </button>
         </div>
+
+        {/* Delete Confirmation */}
+        {showDeleteConfirm && (
+          <div className="mt-4 p-4 rounded-2xl bg-red-500/5 border border-red-500/20 space-y-3">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-sm font-bold">This action is irreversible</span>
+            </div>
+            <p className="text-xs text-foreground/50">
+              All your medical records, profile data, encryption keys, and health identity will be permanently erased from this device.
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-xl bg-foreground/5 text-sm text-foreground/60 hover:bg-foreground/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl bg-red-600 text-sm text-white font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Yes, Delete Everything'}
+              </button>
+            </div>
+          </div>
+        )}
       </GlassCard>
     </div>
   )

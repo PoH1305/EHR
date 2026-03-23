@@ -24,9 +24,9 @@ export default function ProfilePage() {
   
   const [name, setName] = useState(profile?.name || '')
   const [bloodGroup, setBloodGroup] = useState(profile?.bloodGroup || '')
-  const [emergencyName, setEmergencyName] = useState(profile?.emergencyContact.name || '')
-  const [emergencyPhone, setEmergencyPhone] = useState(profile?.emergencyContact.phone || '')
-  const [emergencyRelation, setEmergencyRelation] = useState(profile?.emergencyContact.relationship || 'Guardian')
+  const [emergencyName, setEmergencyName] = useState(profile?.emergencyContact?.name || '')
+  const [emergencyPhone, setEmergencyPhone] = useState(profile?.emergencyContact?.phone || '')
+  const [emergencyRelation, setEmergencyRelation] = useState(profile?.emergencyContact?.relationship || 'Guardian')
   const [success, setSuccess] = useState<string | null>(null)
   const [privacySettings, setPrivacySettings] = useState<Record<string, boolean>>({
     psychiatric_records: false,

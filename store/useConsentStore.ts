@@ -22,7 +22,7 @@ export interface AccessRequest {
   patientId: string // EHI ID
   requestedAt: string
   status: 'PENDING' | 'APPROVED' | 'DENIED'
-  patientName?: string | undefined
+  patientName?: string | null
 }
 
 interface ConsentState {
@@ -42,7 +42,7 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string, patientName?: string) => Promise<void>
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
@@ -201,7 +201,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           patientId,
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
-          patientName
+          patientName: patientName || null
         }
         
         // 1. Local Save

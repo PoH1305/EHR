@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useUserStore } from '@/store/useUserStore'
-import { auth } from '@/lib/firebase'
+import { auth, isFirebaseInitialized } from '@/lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { Loader2 } from 'lucide-react'
 
@@ -17,6 +17,11 @@ export function AppGate({ children }: { children: React.ReactNode }) {
 
   // Listen to Firebase Auth state
   useEffect(() => {
+    if (!isFirebaseInitialized || !auth) {
+      setIsAuthChecking(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setFirebaseUser(user.uid, user.email)

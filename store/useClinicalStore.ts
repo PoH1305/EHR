@@ -53,7 +53,8 @@ interface ClinicalActions {
   activateEmergencyMode: (patientId: string) => void
   clearEmergencyMode: () => void
   clearClinicalState: () => void
-  syncToCloud: (patientId: string) => Promise<void>
+  syncToFirestore: (patientId: string) => Promise<void>
+  loadSharedClinicalData: (tokenHash: string, handshakeKey: string) => Promise<void>
 }
 
 export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
@@ -251,24 +252,63 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      syncToCloud: async (patientId: string) => {
+      syncToFirestore: async (patientId: string) => {
+        const { db_firestore } = await import('@/lib/firebase')
+        if (!db_firestore) return
+
         const state = get()
         try {
-          const response = await fetch('/api/clinical/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              patientId,
-              vitals: state.vitals,
-              conditions: state.conditions,
-              clinicalNotes: state.clinicalNotes,
-            })
-          })
+          const { doc, setDoc } = await import('firebase/firestore')
           
-          if (!response.ok) throw new Error('Sync failed')
-          console.log('Successfully synced to PostgreSQL')
+          await setDoc(doc(db_firestore, 'patients', patientId), {
+            vitals: state.vitals,
+            conditions: state.conditions,
+            clinicalNotes: state.clinicalNotes,
+            lastSyncedAt: new Date().toISOString()
+          }, { merge: true })
+          
+          set((state) => {
+            state.lastUpdated = new Date().toISOString()
+          })
+          console.log('Successfully synced to Firestore')
         } catch (error) {
-          console.error('Cloud Sync Error:', error)
+          console.error('Firestore Sync Error:', error)
+          throw error
+        }
+      },
+
+      loadSharedClinicalData: async (tokenHash: string, handshakeKey: string) => {
+        const { db_firestore } = await import('@/lib/firebase')
+        if (!db_firestore) return
+
+        set((state) => { state.isLoading = true })
+        try {
+          const { doc, getDoc } = await import('firebase/firestore')
+          const docRef = doc(db_firestore, 'shared_secrets', tokenHash)
+          const docSnap = await getDoc(docRef)
+
+          if (docSnap.exists()) {
+            const data = docSnap.data()
+            const encryptedBundle = data.bundle
+            
+            // Decrypt the bundle using the handshakeKey
+            const { decryptBundle } = await import('@/lib/crypto')
+            const bundle = await decryptBundle(encryptedBundle, handshakeKey)
+
+            set((state) => {
+              state.vitals = bundle.vitals || []
+              state.conditions = bundle.conditions || []
+              state.clinicalNotes = bundle.clinicalNotes || []
+              state.isLoading = false
+            })
+            console.log('Successfully loaded and decrypted shared records from Firestore')
+          } else {
+            throw new Error('Shared record not found or expired')
+          }
+        } catch (error) {
+          console.error('Failed to load shared clinical data:', error)
+          set((state) => { state.isLoading = false })
+          throw error
         }
       }
     })),

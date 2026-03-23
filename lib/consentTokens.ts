@@ -55,6 +55,7 @@ export async function generateConsentToken(
     accessCount: 0,
     lastAccessedAt: null,
     tokenHash,
+    patientName: request.patientName,
     encryptedBundle,
     tokenKey
   }

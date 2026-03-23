@@ -151,6 +151,7 @@ export interface ConsentToken {
   accessCount: number
   lastAccessedAt: string | null
   tokenHash: string
+  patientName?: string | undefined
   encryptedBundle?: string | undefined
   tokenKey?: string | undefined
 }
@@ -163,6 +164,9 @@ export interface ConsentTokenRequest {
   ttlSeconds: number
   allowedCategories?: string[]
   emergencyAccess?: boolean
+  patientName: string
+  encryptedBundle?: string | undefined
+  tokenKey?: string | undefined
 }
 
 export interface ConsentTokenValidation {

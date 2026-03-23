@@ -1,6 +1,8 @@
-export const runtime = 'edge'
-
+import { google } from '@ai-sdk/google'
+import { generateText } from 'ai'
 import { AnomalyRequestSchema, type AnomalyResult } from '@/lib/types'
+
+export const runtime = 'edge'
 
 export async function POST(request: Request): Promise<Response> {
   try {
@@ -16,37 +18,32 @@ export async function POST(request: Request): Promise<Response> {
 
     const { vitals } = parsed.data
 
-    // In development, perform basic statistical anomaly detection
-    if (process.env.NODE_ENV === 'development') {
-      const anomalies: AnomalyResult[] = []
-
-      for (const series of vitals) {
-        const values = series.readings.map((r) => r.value)
-        const mean = values.reduce((a, b) => a + b, 0) / values.length
-        const stdDev = Math.sqrt(
-          values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length
-        )
-
-        for (const reading of series.readings) {
-          const zScore = Math.abs((reading.value - mean) / (stdDev || 1))
-
-          if (zScore > 2.5) {
-            anomalies.push({
-              vitalType: series.type,
-              severity: zScore > 3.5 ? 'HIGH' : zScore > 3 ? 'MEDIUM' : 'LOW',
-              description: `${series.type} reading of ${reading.value} ${series.unit} deviates significantly from average (${mean.toFixed(1)} ± ${stdDev.toFixed(1)})`,
-              recommendation: `Consult your healthcare provider about the ${series.type} reading on ${new Date(reading.timestamp).toLocaleDateString()}`,
-            })
-          }
-        }
-      }
-
-      return Response.json({ anomalies })
+    // If no vitals, return empty
+    if (!vitals || vitals.length === 0) {
+      return Response.json({ anomalies: [] })
     }
 
-    // Production: use AI for anomaly detection
-    return Response.json({ anomalies: [] })
+    // Call Gemini for context-aware anomaly detection
+    const { text } = await generateText({
+      model: google('gemini-1.5-flash'),
+      system: 'You are a clinical anomaly detection AI. Analyze the provided vitals and identify any concerning patterns or significant deviations. Return only a JSON array of AnomalyResult objects. Each object should have: vitalType, severity (LOW, MEDIUM, HIGH), description, and recommendation.',
+      prompt: `Analyze these vitals for anomalies:\n\n${JSON.stringify(vitals, null, 2)}`,
+    })
+
+    // Clean up response if AI included markdown blocks
+    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim()
+    
+    try {
+      const anomalies = JSON.parse(cleanedText) as AnomalyResult[]
+      return Response.json({ anomalies })
+    } catch (parseError) {
+      console.error('AI Anomaly Parse Error:', parseError, 'Raw Text:', text)
+      // Fallback to empty instead of crashing if AI misformats
+      return Response.json({ anomalies: [] })
+    }
+    
   } catch (error) {
+    console.error('AI Anomaly Error:', error)
     return Response.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }

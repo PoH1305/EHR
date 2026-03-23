@@ -23,7 +23,10 @@ export default function PatientDetail({ onBack, patientId = 'pat-001' }: Patient
   const [, setRefreshAttachments] = useState(0)
 
   useEffect(() => {
-    void loadClinicalData(patientId)
+    // Only load from local DB if it's a real machine ID, not a shared name
+    if (patientId && !patientId.includes(' ')) {
+      void loadClinicalData(patientId)
+    }
   }, [patientId, loadClinicalData])
 
   if (isLoading) {

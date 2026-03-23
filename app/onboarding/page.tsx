@@ -121,6 +121,10 @@ export default function OnboardingPage() {
       }
     }
 
+    // Final Cloud Sync
+    const { syncToFirestore } = useClinicalStore.getState()
+    await syncToFirestore(patientId)
+
     router.push('/dashboard')
   }
 

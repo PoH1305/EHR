@@ -77,6 +77,8 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
     if (!specialty || !filteredBundle) return
     setIsSubmitting(true)
     
+    const { patient } = (await import('@/store/useUserStore')).useUserStore.getState()
+    
     try {
       // Step B: Encryption (Decentralized Handshake)
       const tokenKey = Math.random().toString(36).substring(2, 15)
@@ -85,6 +87,7 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
       
       await onConfirm({
         patientId,
+        patientName: patient?.name || 'Authorized Patient',
         recipientName,
         recipientId: recipientId || `doc-${Date.now()}`,
         specialty,
@@ -93,7 +96,7 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
         emergencyAccess: specialty === DoctorSpecialty.EMERGENCY,
         encryptedBundle,
         tokenKey
-      } as any)
+      })
       
       handleClose()
     } catch (err) {

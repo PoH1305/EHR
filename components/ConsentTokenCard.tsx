@@ -101,6 +101,22 @@ export function ConsentTokenCard({ token, onRevoke }: ConsentTokenCardProps) {
         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Client-Side AI Minimization Active</span>
       </div>
 
+      {/* Sharing controls */}
+      <div className="flex items-center gap-3 mt-4">
+        <button
+          onClick={() => {
+            const shareUrl = `${window.location.origin}/patients?token=${token.tokenHash}&key=${token.tokenKey}&name=${encodeURIComponent(token.patientName || 'Authorized Patient')}`
+            navigator.clipboard.writeText(shareUrl)
+            // Assuming useToast is available in the parent or via context
+            alert('Share link copied to clipboard!')
+          }}
+          className="flex-1 px-4 py-2.5 rounded-xl bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          Copy Share Link
+        </button>
+      </div>
+
       {/* Allowed categories */}
       {token.allowedCategories.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">

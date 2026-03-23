@@ -1,5 +1,7 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app'
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth'
+import { getAnalytics, Analytics, isSupported } from 'firebase/analytics'
+import { getFirestore, Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -7,29 +9,36 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || ""
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || ""
 }
 
-// Global variables for auth and app
-let auth: Auth
-let googleProvider: GoogleAuthProvider
+// Global variables
+let auth: Auth | undefined
+let googleProvider: GoogleAuthProvider | undefined
+let analytics: Analytics | undefined
+let db_firestore: Firestore | undefined
+let isFirebaseInitialized = false
 
-// Only initialize if we have an API key, otherwise we provide a proxy/shell to avoid build-time crashes
+// Only initialize if we have a window (client-side) or a valid API key
 if (typeof window !== 'undefined' || (process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== "")) {
   try {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
     auth = getAuth(app)
+    db_firestore = getFirestore(app)
     googleProvider = new GoogleAuthProvider()
+    isFirebaseInitialized = true
+    
+    // Initialize Analytics safely
+    if (typeof window !== 'undefined') {
+      isSupported().then(yes => {
+        if (yes) analytics = getAnalytics(app)
+      })
+    }
   } catch (error) {
     console.warn("Firebase initialization failed:", error)
-    // Fallback for build process
-    auth = {} as Auth
-    googleProvider = {} as GoogleAuthProvider
+    isFirebaseInitialized = false
   }
-} else {
-  // Fallback for build process
-  auth = {} as Auth
-  googleProvider = {} as GoogleAuthProvider
 }
 
-export { auth, googleProvider }
+export { auth, googleProvider, analytics, db_firestore, isFirebaseInitialized }

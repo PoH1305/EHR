@@ -104,20 +104,23 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         try {
           const newToken = await generateConsentToken(request)
 
-          // Step C: Push encrypted bundle to relay if present
+          // Step C: Push encrypted bundle to Firestore relay
           if ((request as any).encryptedBundle) {
             try {
-              await fetch('/api/consent/relay', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  tokenHash: newToken.id,
-                  bundle: (request as any).encryptedBundle
+              const { db_firestore } = await import('@/lib/firebase')
+              const { doc, setDoc } = await import('firebase/firestore')
+              
+              if (db_firestore) {
+                await setDoc(doc(db_firestore, 'shared_secrets', newToken.id), {
+                  bundle: (request as any).encryptedBundle,
+                  expiresAt: newToken.expiresAt,
+                  patientName: patient.name,
+                  createdAt: new Date().toISOString()
                 })
-              })
-              console.log('Encrypted bundle pushed to relay:', newToken.id)
+                console.log('Encrypted bundle pushed to Firestore relay:', newToken.id)
+              }
             } catch (err) {
-              console.error('Relay push failed:', err)
+              console.error('Firestore relay push failed:', err)
             }
           }
 

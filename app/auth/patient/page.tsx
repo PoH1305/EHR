@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Mail, Lock, LogIn, Loader2 } from 'lucide-react'
+import { Check, Mail, Lock, LogIn, Loader2, AlertTriangle } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
-import { auth, googleProvider } from '@/lib/firebase'
+import { auth, googleProvider, isFirebaseInitialized } from '@/lib/firebase'
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -13,9 +13,39 @@ import {
 } from 'firebase/auth'
 import { useAuthState } from 'react-firebase-hooks/auth'
 
+function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#080D16]">
+      <div className="w-16 h-16 rounded-3xl bg-orange-500/10 flex items-center justify-center mb-6">
+        <AlertTriangle className="w-8 h-8 text-orange-500" />
+      </div>
+      <h2 className="text-xl font-bold text-white mb-2">Configuration Required</h2>
+      <p className="text-sm text-white/40 max-w-xs mb-8 leading-relaxed">
+        Firebase is not initialized. Please add your Firebase project keys to <code>.env.local</code> to access the {type} portal.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-semibold transition-all"
+      >
+        Check Again
+      </button>
+    </div>
+  )
+}
+
 export default function PatientAuthPage() {
   const router = useRouter()
-  const [user, loading, error] = useAuthState(auth)
+
+  if (!isFirebaseInitialized) {
+    return <ConfigError type="patient" />
+  }
+
+  return <PatientAuthContent />
+}
+
+function PatientAuthContent() {
+  const router = useRouter()
+  const [user, loading, error] = useAuthState(auth!)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
@@ -54,9 +84,9 @@ export default function PatientAuthPage() {
 
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password)
+        await createUserWithEmailAndPassword(auth!, email, password)
       } else {
-        await signInWithEmailAndPassword(auth, email, password)
+        await signInWithEmailAndPassword(auth!, email, password)
       }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed')
@@ -69,7 +99,7 @@ export default function PatientAuthPage() {
     setIsProcessing(true)
     setAuthError(null)
     try {
-      await signInWithPopup(auth, googleProvider)
+      await signInWithPopup(auth!, googleProvider!)
     } catch (err: any) {
       setAuthError(err.message || 'Google sign-in failed')
     } finally {

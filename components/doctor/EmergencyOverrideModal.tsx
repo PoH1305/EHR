@@ -10,16 +10,23 @@ import { useToast } from '@/store/useToast'
 interface EmergencyOverrideModalProps {
   isOpen: boolean
   onClose: () => void
-  patientId: string
-  onActivated: (justification: string) => void
+  patientId?: string
+  onActivated?: (justification: string, patientId: string) => void
 }
 
 export default function EmergencyOverrideModal({ isOpen, onClose, patientId, onActivated }: EmergencyOverrideModalProps) {
   const { toast } = useToast()
   const [justification, setJustification] = useState('')
+  const [manualId, setManualId] = useState('')
   const [isActivating, setIsActivating] = useState(false)
+  
+  const currentId = patientId || manualId
 
   const handleActivate = async () => {
+    if (!currentId) {
+      toast("Please provide a Patient Health ID", "error")
+      return
+    }
     if (justification.length < 10) {
       toast("Please provide a valid clinical justification", "error")
       return
@@ -31,18 +38,18 @@ export default function EmergencyOverrideModal({ isOpen, onClose, patientId, onA
       if (db) {
         await db.audit_log.add({
           id: Math.random().toString(36).substring(2, 15),
-          type: 'EMERGENCY_ACCESS_ACTIVATED',
+          type: 'EMERGENCY_ACCESS_TRIGGERED',
           timestamp: new Date().toISOString(),
           userId: 'EMERGENCY_RESPONDER_001',
-          description: `Emergency Override activated for Patient ${patientId}`,
-          metadata: { patientId, justification, severity: 'CRITICAL' },
-          hash: '0x...',
-          previousHash: '0x...'
+          description: `Emergency Override activated for Patient ${currentId}`,
+          metadata: { patientId: currentId, justification, severity: 'CRITICAL' },
+          hash: Math.random().toString(36).substring(7),
+          previousHash: '0x00000000'
         })
       }
 
       toast("EMERGENCY OVERRIDE ACTIVATED", "info")
-      onActivated(justification)
+      if (onActivated) onActivated(justification, currentId)
       onClose()
     } catch {
       toast("Failed to activate override", "error")
@@ -89,6 +96,19 @@ export default function EmergencyOverrideModal({ isOpen, onClose, patientId, onA
           </div>
 
           <div className="space-y-4">
+             {!patientId && (
+               <div className="space-y-2">
+                 <label className="text-[10px] font-black text-red-500/40 uppercase tracking-widest ml-1 block">Patient Health ID (EHI)</label>
+                 <input
+                   type="text"
+                   value={manualId}
+                   onChange={(e) => setManualId(e.target.value.toUpperCase())}
+                   placeholder="EHI-XXXX-XXXX-X"
+                   className="w-full bg-white/5 border border-red-500/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/10 focus:outline-none focus:border-red-500/40 transition-colors uppercase font-mono tracking-widest"
+                 />
+               </div>
+             )}
+
              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
                 <div className="flex items-center gap-2 text-[10px] font-black text-white/20 uppercase tracking-widest">
                    <Info className="w-3 h-3" />

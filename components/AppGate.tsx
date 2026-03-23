@@ -41,7 +41,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     if (isAuthRoute) return
 
     // 1. Not authenticated → redirect to auth
-    if (sessionState !== 'AUTHENTICATED') {
+    if (sessionState === 'UNAUTHENTICATED') {
       router.replace('/auth')
       return
     }

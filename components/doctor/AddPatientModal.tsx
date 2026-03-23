@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, QrCode, Clipboard, CheckCircle2, Loader2, Search, User } from 'lucide-react'
 import { useConsentStore, type AccessRequest } from '@/store/useConsentStore'
+import { useUserStore } from '@/store/useUserStore'
 import { cn, autoFormatEHI } from '@/lib/utils'
 import { createPortal } from 'react-dom'
 import QRScanner from '@/components/QRScanner'
@@ -23,6 +24,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
   const [foundPatient, setFoundPatient] = useState<PatientProfile | null>(null)
   const [recentRequests, setRecentRequests] = useState<AccessRequest[]>([])
   const { createAccessRequest, parseEHILink } = useConsentStore()
+  const { firebaseEmail, firebaseUid } = useUserStore()
   
   useEffect(() => {
     setMounted(true)
@@ -76,11 +78,12 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     // Simulate API delay
     await new Promise(r => setTimeout(r, 1500))
     
-    createAccessRequest(
+    await createAccessRequest(
       patientId, 
-      'doc-001', 
-      'Dr. Arjun Mehta', 
-      'St. Jude Medical Center'
+      firebaseUid || 'doc-unknown', 
+      firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
+      'Clinical Health Network',
+      foundPatient?.name || undefined
     )
     
     setIsSubmitting(false)

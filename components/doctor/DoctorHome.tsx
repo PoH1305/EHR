@@ -9,20 +9,17 @@ import { useAgentStore } from '@/store/useAgentStore'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/store/useToast'
 import { useClinicalStore } from '@/store/useClinicalStore'
-import EmergencyOverrideModal from './EmergencyOverrideModal'
 import { useRouter } from 'next/navigation'
-import { ShieldAlert } from 'lucide-react'
+import { ShieldAlert, UserCheck, Clock, XCircle as XCircleIcon } from 'lucide-react'
+import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
 
 export default function DoctorHome() {
   const { priorityQueue, runClinicalTriage, isSuspicious, lastAnomaly, checkSecurityPulse } = useAgentStore()
-  const { activateEmergencyMode } = useClinicalStore()
-  const { firebaseEmail, setIsAddPatientOpen } = useUserStore()
+  const { firebaseEmail, firebaseUid, setIsAddPatientOpen } = useUserStore()
+  const { accessRequests, loadAccessRequests } = useConsentStore()
   const [isPrivacyMode] = useState(false)
-  const { toast } = useToast()
   const router = useRouter()
-  
-  const [isOverrideOpen, setIsOverrideOpen] = useState(false)
   const [stats, setStats] = useState({
     todayPatients: 12,
     pendingReview: 3,
@@ -32,17 +29,18 @@ export default function DoctorHome() {
 
   useEffect(() => {
     async function fetchStats() {
-      if (!db) return
+      if (!db || !firebaseUid) return
       try {
         await runClinicalTriage()
+        await loadAccessRequests(firebaseUid, true)
+        
         const patientCount = await db.patient_profiles.count()
-        const requestCount = await db.access_requests.where('status').equals('pending').count()
+        // We'll update stats once requests are loaded from Firestore via the store
         setStats({
           todayPatients: patientCount,
           criticalCases: priorityQueue.length, 
-          pendingReview: requestCount
+          pendingReview: accessRequests.filter(r => r.status === 'PENDING').length
         })
-        toast("Clinical Node Synchronized", "success")
       } catch (error) {
         console.error('Failed to fetch stats:', error)
       } finally {
@@ -50,7 +48,14 @@ export default function DoctorHome() {
       }
     }
     fetchStats()
-  }, [runClinicalTriage, priorityQueue.length, toast])
+  }, [firebaseUid, runClinicalTriage, priorityQueue.length, loadAccessRequests])
+
+  useEffect(() => {
+    setStats(s => ({
+      ...s,
+      pendingReview: accessRequests.filter(r => r.status === 'PENDING').length
+    }))
+  }, [accessRequests])
 
   if (isLoading) {
     return (
@@ -149,39 +154,67 @@ export default function DoctorHome() {
         </div>
       </div>
 
-      {/* Emergency Quick Action */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative group cursor-pointer pt-6"
-        onClick={() => setIsOverrideOpen(true)}
-      >
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-orange-600 rounded-[40px] blur opacity-10 group-hover:opacity-20 transition duration-500" />
-        <div className="relative bg-[#0a0202] border border-red-500/10 p-8 rounded-[32px] flex flex-col md:flex-row items-center gap-8 overflow-hidden shadow-2xl">
-           <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
-              <ShieldAlert className="w-8 h-8 text-red-500 animate-pulse" />
-           </div>
-           <div className="flex-1 text-center md:text-left">
-              <h2 className="text-xl font-black text-white tracking-tight">Emergency Break-Glass Override</h2>
-              <p className="text-sm text-red-500/40 mt-1 max-w-xl italic">
-                 Unauthorized access protocol for life-critical scenarios.
-              </p>
-           </div>
-           <div className="shrink-0 bg-red-600 text-white px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-red-500/20 active:scale-95 transition-all">
-              Activate Protocol
-           </div>
+      {/* Connection Activity */}
+      <div className="space-y-6 pt-4">
+        <div className="flex items-center justify-between px-1">
+           <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Connection Activity</h2>
+           {accessRequests.length > 0 && (
+             <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Real-time Sync Active</span>
+           )}
         </div>
-      </motion.div>
-
-      <EmergencyOverrideModal 
-        isOpen={isOverrideOpen}
-        onClose={() => setIsOverrideOpen(false)}
-        patientId="pat-001" 
-        onActivated={() => {
-          activateEmergencyMode("pat-001")
-          router.push('/patients/pat-001')
-        }}
-      />
+        
+        {accessRequests.length > 0 ? (
+          <div className="space-y-3">
+            {accessRequests.slice(0, 5).map((req, i) => (
+              <motion.div
+                key={req.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="bg-[#111827]/30 border border-white/[0.03] p-5 rounded-[32px] flex items-center justify-between group hover:bg-[#111827]/50 transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-10 h-10 rounded-2xl flex items-center justify-center border",
+                    req.status === 'APPROVED' ? "bg-green-500/10 border-green-500/20 text-green-500" :
+                    req.status === 'DENIED' ? "bg-red-500/10 border-red-500/20 text-red-500" :
+                    "bg-amber-500/10 border-amber-500/20 text-amber-500"
+                  )}>
+                    {req.status === 'APPROVED' ? <UserCheck className="w-5 h-5" /> : 
+                     req.status === 'DENIED' ? <XCircleIcon className="w-5 h-5" /> : 
+                     <Clock className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-white">{req.patientName || req.patientId}</p>
+                    <p className="text-[10px] text-white/20 font-medium uppercase tracking-wider">
+                       {req.status === 'PENDING' ? 'Waiting for approval' : 
+                        req.status === 'APPROVED' ? 'Access Granted' : 'Access Denied'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                   <div className={cn(
+                     "text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest border",
+                     req.status === 'APPROVED' ? "bg-green-500/10 border-green-500/20 text-green-500" :
+                     req.status === 'DENIED' ? "bg-red-500/10 border-red-500/20 text-red-500" :
+                     "bg-amber-500/10 border-amber-500/20 text-amber-500"
+                   )}>
+                     {req.status}
+                   </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-12 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center text-center px-8">
+             <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-4">
+                <Clock className="w-6 h-6 text-white/10" />
+             </div>
+             <p className="text-sm font-bold text-white/30 tracking-tight">No connection activity yet</p>
+             <p className="text-[10px] text-white/10 mt-1 uppercase tracking-widest">Connect patients via EHI ID to start tracking</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

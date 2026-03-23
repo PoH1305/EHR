@@ -13,6 +13,7 @@ import { AISummaryModal } from '@/components/AISummaryModal'
 import { ShareRecordsModal } from '@/components/ShareRecordsModal'
 import type { ConsentTokenRequest, ConsentToken } from '@/lib/types'
 import { EmergencyAccessNotification } from '@/components/patient/EmergencyAccessNotification'
+import { PatientRequestInbox } from '@/components/patient/PatientRequestInbox'
 
 import dynamic from 'next/dynamic'
 
@@ -80,6 +81,8 @@ export default function DashboardPage() {
         />
       )}
 
+
+      <PatientRequestInbox />
 
       {/* Health Identity Card */}
       <section>

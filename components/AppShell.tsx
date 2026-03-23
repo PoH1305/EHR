@@ -24,6 +24,7 @@ import { CommandPalette } from './CommandPalette'
 import { EmergencyBanner } from './EmergencyBanner'
 import { SecurityAlertModal } from './SecurityAlertModal'
 import AddPatientModal from './doctor/AddPatientModal'
+import EmergencyOverrideModal from './doctor/EmergencyOverrideModal'
 import RequestNotification from './RequestNotification'
 import { useUserStore } from '@/store/useUserStore'
 import { useAgentStore } from '@/store/useAgentStore'
@@ -60,9 +61,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     isAddPatientOpen,
     setIsAddPatientOpen
   } = useUserStore()
+  const [isEmergencyOpen, setIsEmergencyOpen] = useState(false)
   const [isPrivacyMode] = useState(false)
   const { isSuspicious, lastAnomaly, checkSecurityPulse } = useAgentStore()
-  const { isEmergencyMode, clearEmergencyMode } = useClinicalStore()
+  const { isEmergencyMode, clearEmergencyMode, activateEmergencyMode } = useClinicalStore()
   const { toasts, removeToast } = useToast()
   
   const navItems = role === 'doctor' ? DOCTOR_NAV : PATIENT_NAV
@@ -203,11 +205,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
 
           {isDoctor && !isEmergencyMode && (
-            <Link href="/doctor/profile">
-              <div className="w-10 h-10 rounded-full bg-[#1A3A8F] flex items-center justify-center border border-white/10 text-white font-black text-xs shadow-lg hover:scale-105 transition-all">
-                D
-              </div>
-            </Link>
+            <button
+              onClick={() => setIsEmergencyOpen(true)}
+              className="px-4 h-10 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-red-500/5"
+            >
+              <AlertTriangle className="w-3 h-3 group-hover:animate-pulse" />
+              <span className="hidden sm:inline">Emergency Protocol</span>
+              <span className="sm:hidden">Protocol</span>
+            </button>
+          )}
+
+          {isDoctor && !isEmergencyMode && (
+            <div className="w-4" /> 
           )}
         </div>
       </header>
@@ -316,7 +325,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {isDoctor ? (
-        <AddPatientModal isOpen={isAddPatientOpen} onClose={() => setIsAddPatientOpen(false)} />
+        <>
+          <AddPatientModal isOpen={isAddPatientOpen} onClose={() => setIsAddPatientOpen(false)} />
+          <EmergencyOverrideModal 
+            isOpen={isEmergencyOpen} 
+            onClose={() => setIsEmergencyOpen(false)} 
+            onActivated={(justification, pid) => {
+              activateEmergencyMode(pid)
+              setIsEmergencyOpen(false)
+            }}
+          />
+        </>
       ) : (
         <RequestNotification />
       )}

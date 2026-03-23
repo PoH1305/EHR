@@ -19,9 +19,10 @@ export interface AccessRequest {
   doctorId: string
   doctorName: string
   organization: string
-  patientId: string
+  patientId: string // EHI ID
   requestedAt: string
   status: 'PENDING' | 'APPROVED' | 'DENIED'
+  patientName?: string | undefined
 }
 
 interface ConsentState {
@@ -40,8 +41,9 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string) => void
-  respondToAccessRequest: (requestId: string, approved: boolean) => void
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string, patientName?: string) => Promise<void>
+  loadAccessRequests: (uid: string, isDoctor: boolean) => Promise<void>
+  respondToAccessRequest: (requestId: string, approved: boolean) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
 }
 
@@ -188,7 +190,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: (patientId, doctorId, doctorName, organization) => {
+      createAccessRequest: async (patientId, doctorId, doctorName, organization, patientName) => {
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
@@ -196,28 +198,80 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           organization,
           patientId,
           requestedAt: new Date().toISOString(),
-          status: 'PENDING'
+          status: 'PENDING',
+          patientName
         }
         
+        // 1. Local Save
         set((state) => {
           state.accessRequests.unshift(newReq)
         })
-        
-        void db.access_requests.add(newReq)
+        if (typeof window !== 'undefined' && db) {
+          void db.access_requests.add(newReq)
+        }
+
+        // 2. Firestore Sync
+        try {
+          const { db_firestore } = await import('@/lib/firebase')
+          const { doc, setDoc } = await import('firebase/firestore')
+          if (db_firestore) {
+            await setDoc(doc(db_firestore, 'access_requests', newReq.id), newReq)
+            console.log('Access request synced to Firestore:', newReq.id)
+          }
+        } catch (err) {
+          console.error('Firestore request sync failed:', err)
+        }
       },
 
-      respondToAccessRequest: (requestId, approved) => {
+      loadAccessRequests: async (uid: string, isDoctor: boolean) => {
+        try {
+          const { db_firestore } = await import('@/lib/firebase')
+          const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore')
+          
+          if (!db_firestore) return
+
+          const field = isDoctor ? 'doctorId' : 'patientId'
+          // For patients, we might need to match their EHI ID, not just UID
+          // But usually we send requests to the EHI ID
+          const q = query(
+            collection(db_firestore, 'access_requests'),
+            where(field, '==', uid),
+            orderBy('requestedAt', 'desc')
+          )
+
+          const snapshot = await getDocs(q)
+          const requests = snapshot.docs.map(doc => doc.data() as AccessRequest)
+
+          set((state) => {
+            state.accessRequests = requests
+          })
+        } catch (err) {
+          console.error('Failed to load access requests from Firestore:', err)
+        }
+      },
+
+      respondToAccessRequest: async (requestId, approved) => {
+        const status = approved ? 'APPROVED' : 'DENIED'
+        
         set((state) => {
           const req = state.accessRequests.find(r => r.id === requestId)
-          if (req) {
-            req.status = approved ? 'APPROVED' : 'DENIED'
-          }
+          if (req) req.status = status
         })
         
+        // 1. Local Update
         if (typeof window !== 'undefined' && db) {
-          void db.access_requests.update(requestId, { 
-            status: approved ? 'APPROVED' : 'DENIED' 
-          })
+          void db.access_requests.update(requestId, { status })
+        }
+
+        // 2. Firestore Update
+        try {
+          const { db_firestore } = await import('@/lib/firebase')
+          const { doc, updateDoc } = await import('firebase/firestore')
+          if (db_firestore) {
+            await updateDoc(doc(db_firestore, 'access_requests', requestId), { status })
+          }
+        } catch (err) {
+          console.error('Firestore response sync failed:', err)
         }
       },
 

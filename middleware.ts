@@ -25,12 +25,8 @@ export function middleware(request: NextRequest) {
     console.log(`[Middleware] Protected route accessed: ${pathname}`)
   }
 
-  // 3. Security Headers for Production
+  // 3. Security Headers for Production (Moved to next.config.mjs for global coverage)
   const response = NextResponse.next()
-  response.headers.set('X-Frame-Options', 'DENY')
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleusercontent.com https://*.gstatic.com; frame-src 'self' https://*.firebaseapp.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.google.com https://*.firebaseapp.com;")
   
   return response
 }

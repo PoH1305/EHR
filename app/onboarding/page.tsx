@@ -60,7 +60,8 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!formData.healthId) {
-      const generated = `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1 + Math.random() * 9)}`
+      const g = () => Math.random().toString(36).substring(2, 6).toUpperCase()
+      const generated = `EHI-${g()}-${g()}-${g()}`
       setFormData(prev => ({ ...prev, healthId: generated }))
     }
   }, [formData.healthId])
@@ -82,7 +83,7 @@ export default function OnboardingPage() {
   const completeOnboarding = async () => {
     const { firebaseUid } = useUserStore.getState()
     const patientId = firebaseUid || `pat-${Date.now()}`
-    const healthId = formData.healthId || `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString().substring(2, 6)}-${Math.random().toString().substring(2, 3)}`
+    const healthId = formData.healthId || `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
     
     const profile: PatientProfile = {
       id: patientId,

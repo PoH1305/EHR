@@ -247,6 +247,11 @@ export const useUserStore = create<UserState & UserActions>()(
       setHasHydrated: (val) => {
         set((state) => {
           state._hasHydrated = val
+          // Self-heal: If profile identity differs from stored healthId, prioritize verified profile
+          if (state.patient && state.patient.healthId && state.patient.healthId !== state.healthId) {
+            console.log(`[UserStore] Hydration Heal: Correcting stale ID ${state.healthId} -> ${state.patient.healthId}`)
+            state.healthId = state.patient.healthId
+          }
         })
       },
     })),

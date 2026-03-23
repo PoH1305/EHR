@@ -27,35 +27,31 @@ export default function DoctorHome() {
   })
   const [isLoading, setIsLoading] = useState(true)
 
+  // Combined metadata and triage effect
   useEffect(() => {
-    async function fetchStats() {
-      if (!db || !firebaseUid) return
-      try {
-        await runClinicalTriage()
-        await loadAccessRequests(firebaseUid, true)
-        
-        const patientCount = await db.patient_profiles.count()
-        // We'll update stats once requests are loaded from Firestore via the store
-        setStats({
-          todayPatients: patientCount,
-          criticalCases: priorityQueue.length, 
-          pendingReview: accessRequests.filter(r => r.status === 'PENDING').length
-        })
-      } catch (error) {
-        console.error('Failed to fetch stats:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchStats()
-  }, [firebaseUid, runClinicalTriage, priorityQueue.length, loadAccessRequests])
+    if (!firebaseUid) return
+    
+    // 1. Initial metadata fetch (fast)
+    db.patient_profiles.count().then(count => {
+       setStats(s => ({ ...s, todayPatients: count }))
+       setIsLoading(false)
+    })
 
+    // 2. Setup real-time listeners (async, non-blocking)
+    loadAccessRequests(firebaseUid, true)
+    
+    // 3. Heavy triage (once on change of user)
+    runClinicalTriage()
+  }, [firebaseUid]) // Only re-run when user changes
+
+  // Derived stats from store (reactive)
   useEffect(() => {
     setStats(s => ({
       ...s,
+      criticalCases: priorityQueue.length,
       pendingReview: accessRequests.filter(r => r.status === 'PENDING').length
     }))
-  }, [accessRequests])
+  }, [priorityQueue.length, accessRequests])
 
   if (isLoading) {
     return (

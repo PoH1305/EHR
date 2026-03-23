@@ -34,6 +34,7 @@ interface ConsentState {
   isRevoking: boolean
   isLoading: boolean
   pendingRevocationId: string | null
+  isListening: boolean
 }
 
 interface ConsentActions {
@@ -42,7 +43,7 @@ interface ConsentActions {
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
   createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string, patientName?: string) => Promise<void>
-  loadAccessRequests: (uid: string, isDoctor: boolean) => Promise<void>
+  loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
 }
@@ -58,6 +59,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       isGenerating: false,
       isRevoking: false,
       isLoading: false,
+      isListening: false,
       pendingRevocationId: null,
 
       // Actions
@@ -223,31 +225,49 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      loadAccessRequests: async (uid: string, isDoctor: boolean) => {
+      loadAccessRequests: (uid: string, isDoctor: boolean) => {
+        if (get().isListening) return // Prevent duplicate listeners
+        
         try {
-          const { db_firestore } = await import('@/lib/firebase')
-          const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore')
-          
-          if (!db_firestore) return
-
           const field = isDoctor ? 'doctorId' : 'patientId'
-          // For patients, we might need to match their EHI ID, not just UID
-          // But usually we send requests to the EHI ID
-          const q = query(
-            collection(db_firestore, 'access_requests'),
-            where(field, '==', uid)
-          )
+          console.log(`[ConsentStore] Initializing real-time sync for ${field}:`, uid)
 
-          const snapshot = await getDocs(q)
-          const requests = snapshot.docs
-            .map(doc => doc.data() as AccessRequest)
-            .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
+          set({ isListening: true })
 
-          set((state) => {
-            state.accessRequests = requests
+          // Use import() inside since this might be called frequently
+          import('@/lib/firebase').then(({ db_firestore }) => {
+            if (!db_firestore) {
+              set({ isListening: false })
+              return
+            }
+            
+            import('firebase/firestore').then(({ collection, query, where, onSnapshot }) => {
+              const q = query(
+                collection(db_firestore, 'access_requests'),
+                where(field, '==', uid)
+              )
+
+              const unsubscribe = onSnapshot(q, (snapshot) => {
+                const requests = snapshot.docs
+                  .map(doc => doc.data() as AccessRequest)
+                  .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
+                
+                console.log(`[ConsentStore] Received ${requests.length} requests for ${uid}`)
+                set((state) => {
+                  state.accessRequests = requests
+                  state.isLoading = false
+                })
+              }, (err) => {
+                console.error('[ConsentStore] Firestore snapshot error:', err)
+                set({ isListening: false })
+              })
+
+              // Cleanup on session reset would be better, but for now we persist
+            })
           })
         } catch (err) {
-          console.error('Failed to load access requests from Firestore:', err)
+          console.error('Failed to initialize access request sync:', err)
+          set({ isListening: false })
         }
       },
 

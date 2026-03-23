@@ -82,14 +82,12 @@ export default function DashboardPage() {
       )}
 
 
-      <PatientRequestInbox />
 
       {/* Health Identity Card */}
       <section>
         <HealthIdentityCard patient={patient} />
       </section>
 
-      {/* Action buttons */}
       {/* Action buttons */}
       <section className="flex gap-4 px-1">
         <button
@@ -107,6 +105,8 @@ export default function DashboardPage() {
           <span className="text-base font-bold text-white tracking-tight">Share Records</span>
         </button>
       </section>
+
+      <PatientRequestInbox />
 
       {/* Active Consent Tokens */}
       {activeTokens.length > 0 && (

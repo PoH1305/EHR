@@ -10,16 +10,17 @@ import { GlassCard } from '@/components/GlassCard'
 
 export function PatientRequestInbox() {
   const { accessRequests, loadAccessRequests, respondToAccessRequest, isLoading } = useConsentStore()
-  const { healthId } = useUserStore()
+  const { healthId, patient } = useUserStore()
 
   useEffect(() => {
-    if (healthId) {
-      console.log(`[PatientRequestInbox] Fetching requests for healthId: ${healthId}`)
-      loadAccessRequests(healthId, false)
+    const effectiveId = patient?.healthId || healthId
+    if (effectiveId) {
+      console.log(`[PatientRequestInbox] Fetching requests for healthId: ${effectiveId}`)
+      loadAccessRequests(effectiveId, false)
     } else {
       console.log('[PatientRequestInbox] No healthId found in store yet')
     }
-  }, [healthId, loadAccessRequests])
+  }, [healthId, patient?.healthId, loadAccessRequests])
 
   const pendingRequests = accessRequests.filter(r => r.status === 'PENDING')
 
@@ -85,7 +86,7 @@ export function PatientRequestInbox() {
       ) : (
         <div className="py-6 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center text-center px-8 bg-white/[0.01]">
            <p className="text-sm font-bold text-white/20 tracking-tight">No pending requests</p>
-           <p className="text-[9px] text-white/10 mt-1 uppercase tracking-widest">Sync active for {healthId}</p>
+           <p className="text-[9px] text-white/10 mt-1 uppercase tracking-widest">Sync active for {patient?.healthId || healthId}</p>
         </div>
       )}
     </section>

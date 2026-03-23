@@ -25,6 +25,8 @@ interface UserState {
   isLoading: boolean
   lastSyncAt: string | null
   healthId: string | null
+  firebaseUid: string | null
+  firebaseEmail: string | null
   _hasHydrated: boolean
 }
 
@@ -32,6 +34,7 @@ interface UserActions {
   setRole: (role: UserRole) => void
   initializeKeys: () => Promise<void>
   setPatient: (profile: PatientProfile) => void
+  setFirebaseUser: (uid: string | null, email: string | null) => void
   signOut: () => void
   setSessionState: (state: SessionState) => void
   recordFailedAttempt: () => void
@@ -62,6 +65,8 @@ export const useUserStore = create<UserState & UserActions>()(
       isLoading: false,
       lastSyncAt: null,
       healthId: null,
+      firebaseUid: null,
+      firebaseEmail: null,
       _hasHydrated: false,
 
       // Actions
@@ -143,11 +148,14 @@ export const useUserStore = create<UserState & UserActions>()(
           ])
 
           // Reset local state
-          set({
-            patient: null,
-            sessionState: 'LOCKED',
-            role: 'patient',
-            lastActiveAt: Date.now()
+          set((state) => {
+            state.patient = null
+            state.sessionState = 'UNAUTHENTICATED' // Changed from LOCKED for fresh start
+            state.role = 'patient'
+            state.lastActiveAt = Date.now()
+            state.firebaseUid = null
+            state.firebaseEmail = null
+            state.healthId = null
           })
         } catch (error) {
           console.error('Failed to delete account:', error)
@@ -163,9 +171,18 @@ export const useUserStore = create<UserState & UserActions>()(
           state.publicKey = null
           state.privateKey = null
           state.sessionState = 'UNAUTHENTICATED'
+          state.firebaseUid = null
+          state.firebaseEmail = null
           state.healthId = null
           state.failedAttempts = 0
           state.lastActiveAt = null
+        })
+      },
+
+      setFirebaseUser: (uid, email) => {
+        set((state) => {
+          state.firebaseUid = uid
+          state.firebaseEmail = email
         })
       },
 
@@ -233,6 +250,8 @@ export const useUserStore = create<UserState & UserActions>()(
         role: state.role, 
         patient: state.patient, 
         healthId: state.healthId,
+        firebaseUid: state.firebaseUid,
+        firebaseEmail: state.firebaseEmail,
         sessionState: state.sessionState === 'AUTHENTICATED' ? 'LOCKED' : state.sessionState,
         lastActiveAt: state.lastActiveAt,
       }) 

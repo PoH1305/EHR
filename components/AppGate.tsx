@@ -1,18 +1,38 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useUserStore } from '@/store/useUserStore'
+import { auth } from '@/lib/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
+import { Loader2 } from 'lucide-react'
 
 export function AppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { sessionState, setSessionState, updateLastActive, patient, _hasHydrated, role } = useUserStore()
+  const [isAuthChecking, setIsAuthChecking] = useState(true)
+  const { sessionState, setSessionState, updateLastActive, patient, _hasHydrated, role, setFirebaseUser } = useUserStore()
 
   const isAuthRoute = pathname.startsWith('/auth')
 
+  // Listen to Firebase Auth state
   useEffect(() => {
-    if (!_hasHydrated) return
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setFirebaseUser(user.uid, user.email)
+        setSessionState('AUTHENTICATED')
+      } else {
+        setFirebaseUser(null, null)
+        setSessionState('UNAUTHENTICATED')
+      }
+      setIsAuthChecking(false)
+    })
+
+    return () => unsubscribe()
+  }, [setFirebaseUser, setSessionState])
+
+  useEffect(() => {
+    if (!_hasHydrated || isAuthChecking) return
     if (isAuthRoute) return
 
     // 1. Not authenticated → redirect to auth
@@ -32,7 +52,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       router.replace('/dashboard')
       return
     }
-  }, [_hasHydrated, isAuthRoute, pathname, router, sessionState, patient, role, setSessionState, updateLastActive])
+  }, [_hasHydrated, isAuthChecking, isAuthRoute, pathname, router, sessionState, patient, role, setSessionState, updateLastActive])
 
   // Activity tracking
   useEffect(() => {
@@ -53,7 +73,13 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     }
   }, [updateLastActive])
 
-  if (!_hasHydrated) return null
+  if (!_hasHydrated || isAuthChecking) {
+    return (
+      <div className="fixed inset-0 bg-[#080D16] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#0D7377] animate-spin" />
+      </div>
+    )
+  }
 
   if (isAuthRoute) {
     return <>{children}</>

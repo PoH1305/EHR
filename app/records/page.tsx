@@ -76,7 +76,7 @@ function RecordsPageContent() {
   }
 
   const allRecords: RecordItem[] = useMemo(() => {
-    const records: RecordItem[] = [...uploadedRecords]
+    const records: RecordItem[] = []
 
     for (const cond of conditions) {
       records.push({

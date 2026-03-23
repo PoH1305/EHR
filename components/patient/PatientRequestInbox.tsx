@@ -84,9 +84,22 @@ export function PatientRequestInbox() {
           </AnimatePresence>
         </div>
       ) : (
-        <div className="py-6 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center text-center px-8 bg-white/[0.01]">
+        <div className="py-8 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center text-center px-8 bg-white/[0.01]">
+           <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-3">
+              <Shield className="w-6 h-6 text-white/10" />
+           </div>
            <p className="text-sm font-bold text-white/20 tracking-tight">No pending requests</p>
-           <p className="text-[9px] text-white/10 mt-1 uppercase tracking-widest">Sync active for {patient?.healthId || healthId}</p>
+           <p className="text-[9px] text-white/10 mt-1 uppercase tracking-widest mb-4">Sync active for {patient?.healthId || healthId}</p>
+           
+           <button 
+             onClick={() => {
+                const id = patient?.healthId || healthId
+                if (id) loadAccessRequests(id, false)
+             }}
+             className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/40 hover:bg-white/10 transition-all uppercase tracking-widest"
+           >
+             Force Sync Identity
+           </button>
         </div>
       )}
     </section>

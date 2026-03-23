@@ -18,10 +18,36 @@ export default function PatientList({ onSelect }: PatientListProps) {
 
   useEffect(() => {
     async function fetchPatients() {
-      if (!db) return
+      setIsLoading(true)
       try {
-        const data = await db.patient_profiles.toArray()
-        setPatients(data)
+        // 1. Load from local Dexie
+        let allPatients: PatientProfile[] = []
+        if (db) {
+          allPatients = await db.patient_profiles.toArray()
+        }
+
+        // 2. Sync from Firestore (if online/doctor)
+        const { db_firestore } = await import('@/lib/firebase')
+        const { collection, getDocs } = await import('firebase/firestore')
+        
+        if (db_firestore) {
+          const querySnapshot = await getDocs(collection(db_firestore, 'patients'))
+          const firestorePatients = querySnapshot.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+          })) as PatientProfile[]
+          
+          // Merge unique patients (Firestore takes priority)
+          const merged = [...firestorePatients]
+          allPatients.forEach(p => {
+            if (!merged.find(mp => mp.id === p.id)) {
+              merged.push(p)
+            }
+          })
+          allPatients = merged
+        }
+
+        setPatients(allPatients)
       } catch (error) {
         console.error('Failed to fetch patients:', error)
       } finally {
@@ -79,7 +105,7 @@ export default function PatientList({ onSelect }: PatientListProps) {
               "w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold border border-white/5",
               "bg-[#1A3A8F]/20 text-[#5B8DEF]"
             )}>
-              {p.name.split(' ').map(n => n[0]).join('')}
+              {p.name?.[0].toUpperCase() || 'P'}
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
@@ -92,7 +118,9 @@ export default function PatientList({ onSelect }: PatientListProps) {
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] text-white/20 font-bold uppercase tracking-wider">{p.gender[0]}{p.gender.slice(1)} • {p.bloodGroup || 'B+'}</span>
+                <span className="text-[10px] text-white/20 font-bold uppercase tracking-wider">
+                  {p.age || '??'}{p.gender?.[0]?.toUpperCase() || ''} • {p.bloodGroup || 'UNK'}
+                </span>
                 <span className="text-white/10 text-[8px]">•</span>
                 <span className="text-[10px] text-white/20 font-mono">{p.healthId}</span>
               </div>

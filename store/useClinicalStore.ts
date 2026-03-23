@@ -32,11 +32,13 @@ interface ClinicalState {
   isEmergencyMode: boolean
   isMinimizationActive: boolean
   emergencyPatientId: string | null
+  selectedPatientProfile: any | null
   lastUpdated: string | null
 }
 
 interface ClinicalActions {
   loadClinicalData: (patientId: string) => Promise<void>
+  loadPatientMetadata: (patientId: string) => Promise<void>
   loadAuditLog: (userId: string) => Promise<void>
   addVital: (patientId: string, vital: VitalSeries) => Promise<void>
   addCondition: (patientId: string, condition: Condition) => Promise<void>
@@ -78,6 +80,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       isEmergencyMode: false,
       isMinimizationActive: true, // Default to true for Phase 10 demo
       emergencyPatientId: null,
+      selectedPatientProfile: null,
       lastUpdated: null,
 
       // Actions
@@ -95,7 +98,32 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      // Actions
+      loadPatientMetadata: async (patientId: string) => {
+        if (!db) return
+        try {
+          // Check local Dexie first
+          let profile = await db.patient_profiles.get(patientId)
+          
+          if (!profile) {
+            // Check Firestore
+            const { db_firestore } = await import('@/lib/firebase')
+            const { doc, getDoc } = await import('firebase/firestore')
+            if (db_firestore) {
+              const docSnap = await getDoc(doc(db_firestore, 'patients', patientId))
+              if (docSnap.exists()) {
+                profile = docSnap.data() as any
+              }
+            }
+          }
+
+          set((state) => {
+            state.selectedPatientProfile = profile || null
+          })
+        } catch (error) {
+          console.error('Failed to load patient metadata:', error)
+        }
+      },
+
       loadClinicalData: async (patientId: string) => {
         if (typeof window === 'undefined' || !db) return
         set((state) => { state.isLoading = true })

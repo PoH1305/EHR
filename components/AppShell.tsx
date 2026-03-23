@@ -42,6 +42,7 @@ const DOCTOR_NAV = [
   { href: '/dashboard', label: 'HOME', icon: LayoutGrid },
   { href: '/patients', label: 'PATIENTS', icon: Users },
   { href: '/ai-insights', label: 'AI', icon: Sparkles },
+  { href: '/doctor/profile', label: 'PROFILE', icon: User },
 ]
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -51,9 +52,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [emergencyExpiresAt, setEmergencyExpiresAt] = useState<string | null>(null)
   const [securityAlert] = useState(false)
-  const [isAddPatientOpen, setIsAddPatientOpen] = useState(false)
+  const { 
+    sessionState, 
+    role, 
+    checkBackgroundLock, 
+    updateLastActive,
+    isAddPatientOpen,
+    setIsAddPatientOpen
+  } = useUserStore()
   const [isPrivacyMode] = useState(false)
-  const { sessionState, role, checkBackgroundLock, updateLastActive } = useUserStore()
   const { isSuspicious, lastAnomaly, checkSecurityPulse } = useAgentStore()
   const { isEmergencyMode, clearEmergencyMode } = useClinicalStore()
   const { toasts, removeToast } = useToast()
@@ -194,6 +201,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Search className="w-4 h-4" />
           </button>
+
+          {isDoctor && !isEmergencyMode && (
+            <Link href="/doctor/profile">
+              <div className="w-10 h-10 rounded-full bg-[#1A3A8F] flex items-center justify-center border border-white/10 text-white font-black text-xs shadow-lg hover:scale-105 transition-all">
+                D
+              </div>
+            </Link>
+          )}
         </div>
       </header>
 

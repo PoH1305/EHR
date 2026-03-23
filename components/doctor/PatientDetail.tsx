@@ -11,11 +11,19 @@ import { ClinicalCoPilot } from './ClinicalCoPilot'
 
 interface PatientDetailProps {
   onBack: () => void
-  patientId?: string
+  patientId: string
 }
 
-export default function PatientDetail({ onBack, patientId = 'pat-001' }: PatientDetailProps) {
-  const { vitals, loadClinicalData, isLoading, isEmergencyMode } = useClinicalStore()
+export default function PatientDetail({ onBack, patientId }: PatientDetailProps) {
+  const { 
+    vitals, 
+    conditions,
+    loadClinicalData, 
+    loadPatientMetadata,
+    selectedPatientProfile,
+    isLoading, 
+    isEmergencyMode 
+  } = useClinicalStore()
   const [activeTab, setActiveTab] = useState<'RECORDS' | 'COPILOT'>('RECORDS')
   const [showPrescribe, setShowPrescribe] = useState(false)
   const [showNote, setShowNote] = useState(false)
@@ -23,11 +31,11 @@ export default function PatientDetail({ onBack, patientId = 'pat-001' }: Patient
   const [, setRefreshAttachments] = useState(0)
 
   useEffect(() => {
-    // Only load from local DB if it's a real machine ID, not a shared name
-    if (patientId && !patientId.includes(' ')) {
+    if (patientId) {
       void loadClinicalData(patientId)
+      void loadPatientMetadata(patientId)
     }
-  }, [patientId, loadClinicalData])
+  }, [patientId, loadClinicalData, loadPatientMetadata])
 
   if (isLoading) {
     return (
@@ -64,12 +72,14 @@ export default function PatientDetail({ onBack, patientId = 'pat-001' }: Patient
         {/* Critical Patient Info */}
         <div className="bg-red-950/10 border border-red-500/20 p-8 rounded-[40px] flex items-center gap-8 relative overflow-hidden">
            <div className="w-24 h-24 rounded-[32px] bg-red-600 flex items-center justify-center text-3xl font-black text-white shadow-2xl">
-              PN
+              {selectedPatientProfile?.name?.[0] || 'P'}
            </div>
            <div>
-              <h2 className="text-4xl font-black text-white tracking-tighter" data-privacy="true">Priya Nair</h2>
+              <h2 className="text-4xl font-black text-white tracking-tighter" data-privacy="true">{selectedPatientProfile?.name || 'Patient'}</h2>
               <div className="flex items-center gap-4 mt-2">
-                 <span className="text-xs font-bold text-red-500 uppercase tracking-widest">34F • B+ • Bangalore</span>
+                 <span className="text-xs font-bold text-red-500 uppercase tracking-widest">
+                   {selectedPatientProfile?.age || '??'}{selectedPatientProfile?.gender?.[0]?.toUpperCase() || ''} • {selectedPatientProfile?.bloodGroup || 'UNK'} • {selectedPatientProfile?.location || 'Emergency'}
+                 </span>
                  <div className="w-1 h-1 rounded-full bg-red-500 opacity-20" />
                  <span className="text-xs font-mono text-red-500/60 uppercase">Protocol 9-Alpha Active</span>
               </div>
@@ -180,18 +190,20 @@ export default function PatientDetail({ onBack, patientId = 'pat-001' }: Patient
           <div className="relative">
              <div className="w-20 h-20 rounded-[32px] bg-gradient-to-br from-[#1A3A8F] to-[#5B8DEF] p-[1px] shadow-2xl shadow-[#5B8DEF]/20">
                <div className="w-full h-full rounded-[31px] bg-[#0d1117] flex items-center justify-center text-2xl font-bold text-white">
-                 PN
-               </div>
+                {selectedPatientProfile?.name?.[0] || 'P'}
+              </div>
              </div>
              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-4 border-[#0d1117] flex items-center justify-center shadow-lg">
                 <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
              </div>
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-white tracking-tight leading-tight">Priya Nair</h1>
+            <h1 className="text-4xl font-bold text-white tracking-tight leading-tight">{selectedPatientProfile?.name || 'Patient'}</h1>
             <div className="flex flex-wrap items-center gap-3 mt-2">
                <span className="text-[10px] text-[#5B8DEF] font-bold font-mono tracking-tighter bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 px-2.5 py-1 rounded-lg">ID: {patientId}</span>
-               <span className="text-xs text-white/30 font-medium tracking-tight bg-white/5 px-2.5 py-1 rounded-lg">34F • B Positive • Bangalore</span>
+               <span className="text-xs text-white/30 font-medium tracking-tight bg-white/5 px-2.5 py-1 rounded-lg">
+                 {selectedPatientProfile?.age || '??'}{selectedPatientProfile?.gender?.[0]?.toUpperCase() || ''} • {selectedPatientProfile?.bloodGroup || 'UNK'} • {selectedPatientProfile?.location || 'Remote'}
+               </span>
             </div>
           </div>
         </div>
@@ -260,7 +272,7 @@ export default function PatientDetail({ onBack, patientId = 'pat-001' }: Patient
                 <Sparkles className="w-4 h-4 text-[#5B8DEF]" />
                 <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Clinical Intelligence Analysis</h2>
              </div>
-             <ClinicalCoPilot patientId={patientId} patientName="Priya Nair" />
+             <ClinicalCoPilot patientId={patientId} patientName={selectedPatientProfile?.name || 'Patient'} />
           </div>
         ) : (
           <div className="max-w-4xl">
@@ -268,21 +280,19 @@ export default function PatientDetail({ onBack, patientId = 'pat-001' }: Patient
              <div className="space-y-6">
                 <div className="flex items-center justify-between ml-1">
                    <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Active Conditions</h2>
-                   <span className="text-[10px] font-bold text-white/10 uppercase tracking-widest">2 Active</span>
+                   <span className="text-[10px] font-bold text-white/10 uppercase tracking-widest">{conditions.length} Active</span>
                 </div>
                 <div className="bg-[#111827]/40 border border-white/[0.05] rounded-3xl p-8 space-y-4 shadow-xl">
-                   {[
-                     { name: "Hypertension", since: "2022", color: "red" },
-                     { name: "Type 2 Diabetes", since: "2023", color: "orange" },
-                   ].map((c) => (
-                     <div key={c.name} className={cn(
-                       "p-6 rounded-2xl border flex items-center justify-between group hover:scale-[1.01] transition-all",
-                       c.color === 'red' ? "bg-red-500/5 border-red-500/10" : "bg-orange-500/5 border-orange-500/10"
-                     )}>
-                        <span className={cn("text-lg font-bold", c.color === 'red' ? "text-red-500/80" : "text-orange-500/80")}>{c.name}</span>
-                        <span className="text-[10px] font-bold text-white/10 uppercase tracking-[0.2em]">Since {c.since}</span>
+                   {conditions.length > 0 ? conditions.map((c) => (
+                     <div key={c.id} className="p-6 rounded-2xl border flex items-center justify-between group hover:scale-[1.01] transition-all bg-white/5 border-white/5 hover:border-[#5B8DEF]/20">
+                        <span className="text-lg font-bold text-white/80">{c.code?.text || 'Unspecified Condition'}</span>
+                        <span className="text-[10px] font-bold text-white/10 uppercase tracking-[0.2em]">Clinical Record</span>
                      </div>
-                   ))}
+                   )) : (
+                     <div className="p-8 text-center border-2 border-dashed border-white/5 rounded-2xl">
+                       <p className="text-xs text-white/20 font-bold uppercase tracking-widest">No Active Conditions Logged</p>
+                     </div>
+                   )}
                 </div>
              </div>
           </div>
@@ -294,13 +304,13 @@ export default function PatientDetail({ onBack, patientId = 'pat-001' }: Patient
         isOpen={showPrescribe}
         onClose={() => setShowPrescribe(false)}
         patientId={patientId}
-        patientName="Priya Nair"
+        patientName={selectedPatientProfile?.name || 'Patient'}
       />
       <AddNoteModal
         isOpen={showNote}
         onClose={() => setShowNote(false)}
         patientId={patientId}
-        patientName="Priya Nair"
+        patientName={selectedPatientProfile?.name || 'Patient'}
       />
       <FileUploadModal 
         isOpen={showUpload}

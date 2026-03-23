@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { QrCode } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/db'
@@ -12,10 +12,13 @@ import { useClinicalStore } from '@/store/useClinicalStore'
 import EmergencyOverrideModal from './EmergencyOverrideModal'
 import { useRouter } from 'next/navigation'
 import { ShieldAlert } from 'lucide-react'
+import { useUserStore } from '@/store/useUserStore'
 
 export default function DoctorHome() {
-  const { priorityQueue, runClinicalTriage } = useAgentStore()
+  const { priorityQueue, runClinicalTriage, isSuspicious, lastAnomaly, checkSecurityPulse } = useAgentStore()
   const { activateEmergencyMode } = useClinicalStore()
+  const { firebaseEmail, setIsAddPatientOpen } = useUserStore()
+  const [isPrivacyMode] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
   
@@ -78,18 +81,15 @@ export default function DoctorHome() {
       <div className="flex items-center justify-between">
         <div>
            <h1 className="text-4xl font-black text-white tracking-tight">Good morning.</h1>
-           <p className="text-sm text-white/30 font-medium mt-1">Dr. Arjun Mehta</p>
+           <p className="text-sm text-white/30 font-medium mt-1">{firebaseEmail?.split('@')[0] || 'Dr. Practitioner'}</p>
         </div>
         <div className="flex items-center gap-4">
-           <div className="w-12 h-12 rounded-2xl bg-[#111827]/60 border border-white/5 flex items-center justify-center text-white/40 hover:text-white/60 transition-colors cursor-pointer">
-              <QrCode className="w-6 h-6" />
-           </div>
-           <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-[#1A3A8F] flex items-center justify-center border-2 border-white/10 text-white font-black text-sm shadow-xl">
-                 AM
-              </div>
-              <div className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-red-600 border-2 border-[#0d1117]" />
-           </div>
+           <button 
+             onClick={() => setIsAddPatientOpen(true)}
+             className="w-12 h-12 rounded-2xl bg-[#5B8DEF] border border-white/5 flex items-center justify-center text-white hover:bg-[#5B8DEF]/90 transition-all cursor-pointer shadow-lg shadow-[#5B8DEF]/20"
+           >
+              <Plus className="w-6 h-6" />
+           </button>
         </div>
       </div>
 
@@ -118,10 +118,8 @@ export default function DoctorHome() {
         <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20 ml-1">Today&apos;s Rounds</h2>
         <div className="space-y-3">
            {[
-             { time: "09:30", name: "Priya Nair", reason: "Follow-up Cardiology", status: "NOW", theme: "bg-[#1A3A8F] text-white" },
-             { time: "10:00", name: "Rajan Iyer", reason: "New Patient - Hypertension", status: "NEXT", theme: "bg-green-600/10 text-green-500 border border-green-500/20" },
-             { time: "08:00", name: "Meena Das", reason: "Post-op Discharge", status: "DONE", theme: "bg-white/5 text-white/20" },
-             { time: "11:30", name: "Kiran Rao", reason: "Consult - Chest pain", status: "URGENT", theme: "bg-red-600/10 text-red-500 border border-red-500/20" },
+             { time: "09:30", name: "Scheduled Consultation", reason: "Follow-up", status: "PENDING", theme: "bg-[#1A3A8F] text-white" },
+             { time: "11:30", name: "Urgent Review", reason: "AI Flagged Anomaly", status: "URGENT", theme: "bg-red-600/10 text-red-500 border border-red-500/20" },
            ].map((round, j) => (
               <motion.div
                 key={round.name}
@@ -129,7 +127,7 @@ export default function DoctorHome() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * j }}
                 className="bg-[#111827]/30 border border-white/[0.03] p-5 rounded-[32px] flex items-center justify-between group hover:bg-[#111827]/50 transition-all cursor-pointer"
-                onClick={() => router.push('/patients/pat-001')}
+                onClick={() => router.push('/patients')}
               >
                   <div className="flex items-center gap-6">
                      <span className="text-sm font-black text-[#5B8DEF] tracking-tight">{round.time}</span>
@@ -138,12 +136,14 @@ export default function DoctorHome() {
                         <p className="text-[10px] text-white/20 font-medium mt-0.5">{round.reason}</p>
                      </div>
                   </div>
-                  <div className={cn(
-                    "px-4 py-1.5 rounded-full text-[8px] font-black tracking-widest uppercase",
-                    round.theme
-                  )}>
+                  <main 
+                    data-privacy-mode={isPrivacyMode}
+                    className={cn(
+                                "px-4 py-1.5 rounded-full text-[8px] font-black tracking-widest uppercase",
+                                round.theme
+                              )}>
                      {round.status}
-                  </div>
+                  </main>
               </motion.div>
            ))}
         </div>

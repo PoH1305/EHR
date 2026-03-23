@@ -38,6 +38,8 @@ export interface PatientProfile {
   organDonor?: 'Yes' | 'No' | 'Unspecified' | undefined
   insuranceId?: string | undefined
   pinHash?: string
+  age?: number | string | undefined
+  location?: string | undefined
 }
 
 export interface DoctorProfile {
@@ -380,6 +382,8 @@ export const PatientProfileSchema = z.object({
   organDonor: z.enum(['Yes', 'No', 'Unspecified']).optional(),
   insuranceId: z.string().optional(),
   pinHash: z.string().optional(),
+  age: z.union([z.number(), z.string()]).optional(),
+  location: z.string().optional(),
 })
 
 export const ConsentTokenRequestSchema = z.object({

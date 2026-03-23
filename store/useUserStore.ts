@@ -27,6 +27,7 @@ interface UserState {
   healthId: string | null
   firebaseUid: string | null
   firebaseEmail: string | null
+  isAddPatientOpen: boolean
   _hasHydrated: boolean
 }
 
@@ -35,6 +36,7 @@ interface UserActions {
   initializeKeys: () => Promise<void>
   setPatient: (profile: PatientProfile) => void
   setFirebaseUser: (uid: string | null, email: string | null) => void
+  setIsAddPatientOpen: (val: boolean) => void
   signOut: () => void
   setSessionState: (state: SessionState) => void
   recordFailedAttempt: () => void
@@ -67,6 +69,7 @@ export const useUserStore = create<UserState & UserActions>()(
       healthId: null,
       firebaseUid: null,
       firebaseEmail: null,
+      isAddPatientOpen: false,
       _hasHydrated: false,
 
       // Actions
@@ -183,6 +186,12 @@ export const useUserStore = create<UserState & UserActions>()(
         set((state) => {
           state.firebaseUid = uid
           state.firebaseEmail = email
+        })
+      },
+
+      setIsAddPatientOpen: (val) => {
+        set((state) => {
+          state.isAddPatientOpen = val
         })
       },
 

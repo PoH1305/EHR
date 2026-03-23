@@ -6,14 +6,27 @@ import { cn } from '@/lib/utils'
 import { Loader2, FileText, Pill, Calendar, User } from 'lucide-react'
 import { useClinicalStore } from '@/store/useClinicalStore'
 
-export default function DoctorRecords() {
+interface DoctorRecordsProps {
+  patientId?: string | null
+}
+
+export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
   const [activeTab, setActiveTab] = useState('Prescriptions')
-  const { medications, clinicalNotes, isLoading, loadClinicalData } = useClinicalStore()
+  const { 
+    medications, 
+    clinicalNotes, 
+    isLoading, 
+    loadClinicalData,
+    loadPatientMetadata,
+    selectedPatientProfile 
+  } = useClinicalStore()
 
   useEffect(() => {
-    // Defaulting to pat-001 for demonstration in this view
-    void loadClinicalData('pat-001')
-  }, [loadClinicalData])
+    if (patientId) {
+      void loadClinicalData(patientId)
+      void loadPatientMetadata(patientId)
+    }
+  }, [patientId, loadClinicalData, loadPatientMetadata])
 
   const prescriptions = medications.map(m => ({
     id: m.id,
@@ -28,11 +41,11 @@ export default function DoctorRecords() {
       <div className="flex items-center justify-between">
          <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-[#5B8DEF]/10 flex items-center justify-center text-lg font-bold text-[#5B8DEF]">
-               PN
+               {selectedPatientProfile?.name?.[0] || 'P'}
             </div>
             <div>
-               <h1 className="text-xl font-bold text-white tracking-tight">Priya Nair</h1>
-               <div className="text-[10px] text-white/20 tracking-[0.2em] font-bold uppercase mt-0.5">Clinical History • Karnataka</div>
+               <h1 className="text-xl font-bold text-white tracking-tight">{selectedPatientProfile?.name || 'Patient'}</h1>
+               <div className="text-[10px] text-white/20 tracking-[0.2em] font-bold uppercase mt-0.5">Clinical History • {selectedPatientProfile?.location || 'Remote'}</div>
             </div>
          </div>
       </div>

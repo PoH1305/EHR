@@ -14,7 +14,10 @@ export function PatientRequestInbox() {
 
   useEffect(() => {
     if (healthId) {
-      void loadAccessRequests(healthId, false)
+      console.log(`[PatientRequestInbox] Fetching requests for healthId: ${healthId}`)
+      loadAccessRequests(healthId, false)
+    } else {
+      console.log('[PatientRequestInbox] No healthId found in store yet')
     }
   }, [healthId, loadAccessRequests])
 

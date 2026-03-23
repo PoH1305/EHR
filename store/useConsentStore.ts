@@ -34,7 +34,7 @@ interface ConsentState {
   isRevoking: boolean
   isLoading: boolean
   pendingRevocationId: string | null
-  isListening: boolean
+  activeListenerId: string | null
 }
 
 interface ConsentActions {
@@ -59,7 +59,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       isGenerating: false,
       isRevoking: false,
       isLoading: false,
-      isListening: false,
+      activeListenerId: null,
       pendingRevocationId: null,
 
       // Actions
@@ -226,18 +226,19 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       },
 
       loadAccessRequests: (uid: string, isDoctor: boolean) => {
-        if (get().isListening) return // Prevent duplicate listeners
+        // Prevent duplicate listeners for the same identity
+        if (get().activeListenerId === uid) return
         
         try {
           const field = isDoctor ? 'doctorId' : 'patientId'
           console.log(`[ConsentStore] Initializing real-time sync for ${field}:`, uid)
 
-          set({ isListening: true })
+          set({ activeListenerId: uid, isLoading: true })
 
           // Use import() inside since this might be called frequently
           import('@/lib/firebase').then(({ db_firestore }) => {
             if (!db_firestore) {
-              set({ isListening: false })
+              set({ activeListenerId: null, isLoading: false })
               return
             }
             
@@ -259,7 +260,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 })
               }, (err) => {
                 console.error('[ConsentStore] Firestore snapshot error:', err)
-                set({ isListening: false })
+                set({ activeListenerId: null, isLoading: false })
               })
 
               // Cleanup on session reset would be better, but for now we persist
@@ -267,7 +268,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           })
         } catch (err) {
           console.error('Failed to initialize access request sync:', err)
-          set({ isListening: false })
+          set({ activeListenerId: null, isLoading: false })
         }
       },
 

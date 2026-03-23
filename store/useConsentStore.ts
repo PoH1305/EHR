@@ -235,12 +235,13 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           // But usually we send requests to the EHI ID
           const q = query(
             collection(db_firestore, 'access_requests'),
-            where(field, '==', uid),
-            orderBy('requestedAt', 'desc')
+            where(field, '==', uid)
           )
 
           const snapshot = await getDocs(q)
-          const requests = snapshot.docs.map(doc => doc.data() as AccessRequest)
+          const requests = snapshot.docs
+            .map(doc => doc.data() as AccessRequest)
+            .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
 
           set((state) => {
             state.accessRequests = requests

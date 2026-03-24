@@ -225,8 +225,14 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
             if (syncError) throw syncError
             console.log('Access request synced to Supabase:', newReq.id)
           }
-        } catch (err) {
-          console.error('Supabase request sync failed:', err)
+        } catch (err: any) {
+          console.error('[ConsentStore] Supabase request sync failed!', {
+            error: err,
+            message: err?.message,
+            details: err?.details,
+            hint: err?.hint,
+            code: err?.code
+          })
         }
       },
 

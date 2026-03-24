@@ -42,6 +42,11 @@ export function PatientRequestInbox() {
   }
 
   const pendingRequests = accessRequests.filter(r => r.status === 'PENDING')
+  console.log('[PatientRequestInbox] Rendering pendingRequests:', {
+    total: accessRequests.length,
+    pending: pendingRequests.length,
+    raw: accessRequests.map(r => ({ id: r.id, status: r.status }))
+  })
 
   return (
     <section className="space-y-4">

@@ -184,13 +184,13 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               if (data && data.data) {
                 const cloudData = data.data
                 set((state) => {
-                  state.vitals = (!sharedCats || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : []
-                  state.conditions = (!sharedCats || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : []
-                  state.medications = (!sharedCats || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
-                  state.allergies = (!sharedCats || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : []
-                  state.clinicalNotes = (!sharedCats || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : []
-                  state.medicalImages = (!sharedCats || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
-                  state.attachments = (!sharedCats || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
+                  state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : []
+                  state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : []
+                  state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.length === 0 || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
+                  state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : []
+                  state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : []
+                  state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
+                  state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
                   state.riskAnalyses = cloudData.riskAnalyses || []
                   state.isLoading = false
                   state.lastUpdated = data.last_synced_at
@@ -201,25 +201,25 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           }
 
           set((state) => {
-            state.vitals = (!sharedCats || sharedCats.includes('vitals')) 
+            state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) 
               ? (isMinimization ? vitals.slice(-4) : vitals) 
               : []
-            state.conditions = (!sharedCats || sharedCats.includes('conditions'))
+            state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions'))
               ? (isMinimization 
                   ? conditions.filter(c => typeof c.clinicalStatus === 'string' ? c.clinicalStatus === 'active' : (c.clinicalStatus as any)?.coding?.[0]?.code === 'active') // eslint-disable-line @typescript-eslint/no-explicit-any
                   : conditions)
               : []
-            state.medications = (!sharedCats || sharedCats.includes('medications'))
+            state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications'))
               ? (isMinimization ? medications.filter(m => m.status === 'active') : medications)
               : []
-            state.allergies = (!sharedCats || sharedCats.includes('allergies')) ? allergies : []
-            state.clinicalNotes = (!sharedCats || sharedCats.includes('clinicalNotes'))
+            state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? allergies : []
+            state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes'))
               ? (isMinimization ? clinicalNotes.slice(-2) : clinicalNotes)
               : []
-            state.medicalImages = (!sharedCats || sharedCats.includes('medicalImages'))
+            state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages'))
               ? (isMinimization ? [] : medicalImages)
               : []
-            state.attachments = (!sharedCats || sharedCats.includes('attachments')) ? (attachments as any[]) : []
+            state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (attachments as any[]) : []
             state.riskAnalyses = riskAnalyses
             state.isLoading = false
             state.lastUpdated = new Date().toISOString()

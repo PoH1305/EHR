@@ -87,7 +87,8 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     // Navigation logic
     if (sessionState === 'UNAUTHENTICATED') {
       router.replace('/auth')
-    } else if (role === 'patient' && !patient && pathname !== '/onboarding') {
+    } else if (!patient && pathname !== '/onboarding' && role !== 'doctor') {
+      // If no profile and not a doctor, always go to onboarding to re-link or create
       router.replace('/onboarding')
     } else if (pathname === '/onboarding' && patient) {
       router.replace('/dashboard')

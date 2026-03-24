@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react'
 import { Search, Filter, ChevronRight, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { db } from '@/lib/db'
 import type { PatientProfile } from '@/lib/types'
+import { useUserStore } from '@/store/useUserStore'
 
 interface PatientListProps {
   onSelect: (id: string) => void
@@ -15,51 +15,53 @@ export default function PatientList({ onSelect }: PatientListProps) {
   const [search, setSearch] = useState('')
   const [patients, setPatients] = useState<PatientProfile[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { firebaseUid } = useUserStore()
 
   useEffect(() => {
-    async function fetchPatients() {
+    async function fetchApprovedPatients() {
+      if (!firebaseUid) return
       setIsLoading(true)
       try {
-        // 1. Load from local Dexie
-        let allPatients: PatientProfile[] = []
-        if (db) {
-          allPatients = await db.patient_profiles.toArray()
-        }
-
-        // 2. Sync from Supabase (formerly Firestore)
         const { supabase } = await import('@/lib/supabase')
-        
-        if (supabase) {
-          const { data, error: sbError } = await supabase
-            .from('profiles')
-            .select('*')
-          
-          if (sbError) throw sbError
 
-          const supabasePatients = (data || []).map(d => ({
-            ...d.data,
-            id: d.id
-          })) as PatientProfile[]
-          
-          // Merge unique patients (Supabase takes priority)
-          const merged = [...supabasePatients]
-          allPatients.forEach(p => {
-            if (!merged.find(mp => mp.id === p.id)) {
-              merged.push(p)
-            }
-          })
-          allPatients = merged
+        // 1. First, get ONLY approved access requests for this doctor
+        const { data: approvedRequests, error: reqError } = await supabase
+          .from('access_requests')
+          .select('patient_id, patient_name')
+          .eq('doctor_id', firebaseUid)
+          .eq('status', 'APPROVED')
+
+        if (reqError) throw reqError
+
+        if (!approvedRequests || approvedRequests.length === 0) {
+          setPatients([])
+          setIsLoading(false)
+          return
         }
 
-        setPatients(allPatients)
+        // 2. Fetch profiles ONLY for approved patients (by EHI ID)
+        const approvedEhiIds = approvedRequests.map(r => r.patient_id)
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('health_id', approvedEhiIds)
+
+        if (profileError) throw profileError
+
+        const approvedPatients = (profileData || []).map(d => ({
+          ...d.data,
+          id: d.id
+        })) as PatientProfile[]
+
+        setPatients(approvedPatients)
       } catch (error) {
-        console.error('Failed to fetch patients:', error)
+        console.error('Failed to fetch approved patients:', error)
       } finally {
         setIsLoading(false)
       }
     }
-    fetchPatients()
-  }, [])
+    fetchApprovedPatients()
+  }, [firebaseUid])
 
   const filteredPatients = patients.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 

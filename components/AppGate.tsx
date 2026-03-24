@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useUserStore } from '@/store/useUserStore'
 import { auth, isFirebaseInitialized } from '@/lib/firebase'
@@ -11,6 +11,9 @@ export function AppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isAuthChecking, setIsAuthChecking] = useState(true)
+  const [mounted, setMounted] = useState(false)
+  const [hasTimedOut, setHasTimedOut] = useState(false)
+
   const { 
     sessionState, 
     setSessionState, 
@@ -23,9 +26,24 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     fetchProfileFromCloud
   } = useUserStore()
 
-  const isAuthRoute = pathname.startsWith('/auth')
+  const isAuthRoute = useMemo(() => pathname.startsWith('/auth'), [pathname])
 
-  // Listen to Firebase Auth state
+  // 1. Initial Mount & Activity Listeners
+  useEffect(() => {
+    setMounted(true)
+    
+    const handleActivity = () => {
+      if (useUserStore.getState().sessionState === 'AUTHENTICATED') {
+        updateLastActive()
+      }
+    }
+
+    const events = ['click', 'keydown', 'touchstart']
+    events.forEach(e => window.addEventListener(e, handleActivity))
+    return () => events.forEach(e => window.removeEventListener(e, handleActivity))
+  }, [updateLastActive])
+
+  // 2. Firebase Auth Listener
   useEffect(() => {
     if (!isFirebaseInitialized || !auth) {
       setIsAuthChecking(false)
@@ -46,66 +64,38 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     return () => unsubscribe()
   }, [setFirebaseUser, setSessionState])
 
-  // Heal state from Cloud if local is empty
-  useEffect(() => {
-    if (_hasHydrated && !isAuthChecking && firebaseUid && !patient) {
-      console.log('[AppGate] Local profile missing, attempting cloud recovery...')
-      fetchProfileFromCloud()
-    }
-  }, [_hasHydrated, isAuthChecking, firebaseUid, patient, fetchProfileFromCloud])
-
-  useEffect(() => {
-    if (!_hasHydrated || isAuthChecking) return
-    if (isAuthRoute) return
-
-    // 1. Not authenticated → redirect to auth
-    if (sessionState === 'UNAUTHENTICATED') {
-      router.replace('/auth')
-      return
-    }
-
-    // 2. New patient → onboarding
-    if (role === 'patient' && !patient && pathname !== '/onboarding') {
-      router.replace('/onboarding')
-      return
-    }
-
-    // 3. Already onboarded → skip onboarding
-    if (pathname === '/onboarding' && patient) {
-      router.replace('/dashboard')
-      return
-    }
-  }, [_hasHydrated, isAuthChecking, isAuthRoute, pathname, router, sessionState, patient, role, setSessionState, updateLastActive])
-
-  // Activity tracking
-  useEffect(() => {
-    const handleActivity = () => {
-      if (useUserStore.getState().sessionState === 'AUTHENTICATED') {
-        updateLastActive()
-      }
-    }
-
-    window.addEventListener('click', handleActivity)
-    window.addEventListener('keydown', handleActivity)
-    window.addEventListener('touchstart', handleActivity)
-
-    return () => {
-      window.removeEventListener('click', handleActivity)
-      window.removeEventListener('keydown', handleActivity)
-      window.removeEventListener('touchstart', handleActivity)
-    }
-  }, [updateLastActive])
-
-  const [hasTimedOut, setHasTimedOut] = useState(false)
-
+  // 3. Timeout Safety
   useEffect(() => {
     if (!_hasHydrated || isAuthChecking) {
-      const timer = setTimeout(() => {
-        setHasTimedOut(true)
-      }, 5000)
+      const timer = setTimeout(() => setHasTimedOut(true), 10000) // 10s grace
       return () => clearTimeout(timer)
     }
   }, [_hasHydrated, isAuthChecking])
+
+  // 4. Cloud Recovery & Routing
+  useEffect(() => {
+    if (!mounted || !_hasHydrated || isAuthChecking) return
+
+    // Cloud recovery if profile lost but auth exists
+    if (firebaseUid && !patient && role === 'patient') {
+      console.log('[AppGate] Profile recovery check...')
+      fetchProfileFromCloud()
+    }
+
+    if (isAuthRoute) return
+
+    // Navigation logic
+    if (sessionState === 'UNAUTHENTICATED') {
+      router.replace('/auth')
+    } else if (role === 'patient' && !patient && pathname !== '/onboarding') {
+      router.replace('/onboarding')
+    } else if (pathname === '/onboarding' && patient) {
+      router.replace('/dashboard')
+    }
+  }, [mounted, _hasHydrated, isAuthChecking, firebaseUid, patient, role, sessionState, isAuthRoute, pathname, router, fetchProfileFromCloud])
+
+  // Render Logic
+  if (!mounted) return null
 
   if (hasTimedOut && (!_hasHydrated || isAuthChecking)) {
     return (
@@ -115,7 +105,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
         </div>
         <h2 className="text-xl font-bold text-white mb-2 tracking-tight">System Sync Timeout</h2>
         <p className="text-sm text-white/40 max-w-xs mb-8 leading-relaxed">
-          The identity synchronization is taking longer than expected. This can happen in private browsing or on restricted networks.
+          Initialization is taking longer than expected. Please check your connection or try reloading.
         </p>
         <button
           onClick={() => window.location.reload()}
@@ -136,13 +126,9 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isAuthRoute) {
-    return <>{children}</>
-  }
-
-  if (sessionState !== 'AUTHENTICATED') {
-    return null // Will be redirected by useEffect
-  }
+  if (isAuthRoute) return <>{children}</>
+  
+  if (sessionState !== 'AUTHENTICATED') return null
 
   return <>{children}</>
 }

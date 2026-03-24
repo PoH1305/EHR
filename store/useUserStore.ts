@@ -6,7 +6,7 @@
  */
 
 import { create } from 'zustand'
-import { devtools, persist } from 'zustand/middleware'
+import { devtools, persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import type { PatientProfile } from '@/lib/types'
 
@@ -250,8 +250,9 @@ export const useUserStore = create<UserState & UserActions>()(
     })),
     { 
       name: 'ehi-user-storage',
-      storage: {
-        getItem: (name) => {
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => {
+          if (typeof window === 'undefined') return null
           try {
             return localStorage.getItem(name)
           } catch (e) {
@@ -259,21 +260,23 @@ export const useUserStore = create<UserState & UserActions>()(
             return null
           }
         },
-        setItem: (name, value) => {
+        setItem: (name: string, value: string) => {
+          if (typeof window === 'undefined') return
           try {
             localStorage.setItem(name, value)
           } catch (e) {
             console.warn('[UserStore] Failed to write to localStorage:', e)
           }
         },
-        removeItem: (name) => {
+        removeItem: (name: string) => {
+          if (typeof window === 'undefined') return
           try {
             localStorage.removeItem(name)
           } catch (e) {
             console.warn('[UserStore] Failed to remove from localStorage:', e)
           }
         },
-      },
+      })),
       onRehydrateStorage: (state) => {
         // Safety: mark as hydrated session-wise even if error occurs
         const timeout = setTimeout(() => {

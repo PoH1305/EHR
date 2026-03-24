@@ -142,6 +142,34 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
           const isMinimization = get().isMinimizationActive
 
+          // Fallback: If local is empty, try Cloud
+          if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
+            console.log('[ClinicalStore] Local storage empty, checking Cloud...')
+            const { db_firestore } = await import('@/lib/firebase')
+            const { doc, getDoc } = await import('firebase/firestore')
+            
+            if (db_firestore) {
+              const snap = await getDoc(doc(db_firestore, 'clinical_data', patientId))
+              if (snap.exists()) {
+                const cloudData = snap.data()
+                set((state) => {
+                  state.vitals = cloudData.vitals || []
+                  state.conditions = cloudData.conditions || []
+                  state.medications = cloudData.medications || []
+                  state.allergies = cloudData.allergies || []
+                  state.clinicalNotes = cloudData.clinicalNotes || []
+                  state.medicalImages = cloudData.medicalImages || []
+                  state.riskAnalyses = cloudData.riskAnalyses || []
+                  state.attachments = cloudData.attachments || []
+                  state.isLoading = false
+                  state.lastUpdated = cloudData.lastSyncedAt
+                })
+                // Optionally back-fill Dexie
+                return
+              }
+            }
+          }
+
           set((state) => {
             state.vitals = isMinimization ? vitals.slice(-4) : vitals
             state.conditions = isMinimization 
@@ -173,94 +201,134 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addVital: async (patientId: string, vital: VitalSeries) => {
         const vitalWithId = { ...vital, patientId }
-        await db.vitals.add(vitalWithId)
+        if (db) await db.vitals.add(vitalWithId)
         set((state) => {
           state.vitals.push(vital)
         })
+        void get().syncToFirestore(patientId)
       },
 
       addCondition: async (patientId: string, condition: Condition) => {
         const condWithId = { ...condition, patientId }
-        await db.conditions.add(condWithId)
+        if (db) await db.conditions.add(condWithId)
         set((state) => {
           state.conditions.push(condition)
         })
+        void get().syncToFirestore(patientId)
       },
 
       addMedication: async (patientId: string, medication: MedicationRequest) => {
         const medWithId = { ...medication, patientId }
-        await db.medications.add(medWithId)
+        if (db) await db.medications.add(medWithId)
         set((state) => {
           state.medications.push(medication)
         })
+        void get().syncToFirestore(patientId)
       },
 
       addObservation: async (patientId: string, observation: any) => {
         const obsWithId = { ...observation, patientId }
-        await db.observations.add(obsWithId)
+        if (db) await db.observations.add(obsWithId)
         set((state) => {
           state.observations.push(observation)
         })
+        void get().syncToFirestore(patientId)
       },
 
       addDiagnosticReport: async (patientId: string, report: any) => {
         const reportWithId = { ...report, patientId }
-        await db.diagnostic_reports.add(reportWithId)
+        if (db) await db.diagnostic_reports.add(reportWithId)
         set((state) => {
           state.diagnosticReports.push(report)
         })
+        void get().syncToFirestore(patientId)
       },
 
       addImmunization: async (patientId: string, immunization: any) => {
         const immWithId = { ...immunization, patientId }
-        await db.immunizations.add(immWithId)
+        if (db) await db.immunizations.add(immWithId)
         set((state) => {
           state.immunizations.push(immunization)
         })
+        void get().syncToFirestore(patientId)
       },
 
       addProcedure: async (patientId: string, procedure: any) => {
         const procWithId = { ...procedure, patientId }
-        await db.procedures.add(procWithId)
+        if (db) await db.procedures.add(procWithId)
         set((state) => {
           state.procedures.push(procedure)
         })
+        void get().syncToFirestore(patientId)
       },
 
       addClinicalNote: async (note: ClinicalNote) => {
-        await db.clinical_notes.add(note)
+        if (db) await db.clinical_notes.add(note)
         set((state) => {
           state.clinicalNotes.unshift(note)
         })
+        void get().syncToFirestore(note.patientId)
       },
 
       addMedicalImage: async (image: MedicalImage) => {
-        await db.medical_images.add(image)
+        let finalImage = { ...image }
+        
+        // Upload to Cloud if it's a local blob
+        if (image.imageUrl.startsWith('blob:') || image.imageUrl.startsWith('data:')) {
+          try {
+            const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
+            const blob = await blobUrlToBlob(image.imageUrl)
+            const cloudUrl = await uploadMedicalFile(image.patientId, image.id, blob)
+            finalImage.imageUrl = cloudUrl
+          } catch (error) {
+            console.error('[ClinicalStore] Failed to upload image to Cloud:', error)
+          }
+        }
+
+        if (db) await db.medical_images.add(finalImage)
         set((state) => {
-          state.medicalImages.unshift(image)
+          state.medicalImages.unshift(finalImage)
         })
+        void get().syncToFirestore(finalImage.patientId)
       },
 
       addRiskAnalysis: async (analysis: RiskAnalysis) => {
-        await db.risk_analysis.add(analysis)
+        if (db) await db.risk_analysis.add(analysis)
         set((state) => {
           state.riskAnalyses.unshift(analysis)
         })
+        void get().syncToFirestore(analysis.patientId)
       },
 
       addAttachment: async (attachment: PatientAttachment) => {
-        if (!db) return
-        await db.patient_attachments.add(attachment)
+        let finalAttachment = { ...attachment }
+
+        // Upload to Cloud if it's a local blob
+        if (attachment.fileUrl.startsWith('blob:') || attachment.fileUrl.startsWith('data:')) {
+          try {
+            const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
+            const blob = await blobUrlToBlob(attachment.fileUrl)
+            const cloudUrl = await uploadMedicalFile(attachment.patientId, attachment.id, blob)
+            finalAttachment.fileUrl = cloudUrl
+          } catch (error) {
+            console.error('[ClinicalStore] Failed to upload attachment to Cloud:', error)
+          }
+        }
+
+        if (db) await db.patient_attachments.add(finalAttachment)
         set((state) => {
-          state.attachments.unshift(attachment)
+          state.attachments.unshift(finalAttachment)
         })
+        void get().syncToFirestore(finalAttachment.patientId)
       },
 
       addAuditEvent: async (event: AuditEvent) => {
-        await db.audit_log.add(event)
+        if (db) await db.audit_log.add(event)
         set((state) => {
           state.auditEvents.unshift(event)
         })
+        // Audit log sync is less critical for the patient profile fallback
+        // but can be added if needed.
       },
 
       clearClinicalState: () => {
@@ -281,26 +349,36 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       syncToFirestore: async (patientId: string) => {
-        const { db_firestore } = await import('@/lib/firebase')
-        if (!db_firestore) return
-
-        const state = get()
         try {
+          const { db_firestore } = await import('@/lib/firebase')
+          if (!db_firestore) return
+
+          const state = get()
           const { doc, setDoc } = await import('firebase/firestore')
           
-          await setDoc(doc(db_firestore, 'patients', patientId), {
+          await setDoc(doc(db_firestore, 'clinical_data', patientId), {
+            patientId,
             vitals: state.vitals,
             conditions: state.conditions,
+            medications: state.medications,
+            allergies: state.allergies,
+            observations: state.observations,
+            diagnosticReports: state.diagnosticReports,
+            immunizations: state.immunizations,
+            procedures: state.procedures,
             clinicalNotes: state.clinicalNotes,
+            medicalImages: state.medicalImages,
+            riskAnalyses: state.riskAnalyses,
+            attachments: state.attachments,
             lastSyncedAt: new Date().toISOString()
           }, { merge: true })
           
           set((state) => {
             state.lastUpdated = new Date().toISOString()
           })
-          console.log('Successfully synced to Firestore')
+          console.log('[ClinicalStore] Successfully synced to Firestore')
         } catch (error) {
-          console.error('Firestore Sync Error:', error)
+          console.error('[ClinicalStore] Firestore Sync Error:', error)
           throw error
         }
       },

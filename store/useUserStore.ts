@@ -47,6 +47,8 @@ interface UserActions {
   loadPatient: (id: string) => Promise<void>
   deleteAccount: () => Promise<void>
   setHasHydrated: (val: boolean) => void
+  syncProfileToCloud: () => Promise<void>
+  fetchProfileFromCloud: () => Promise<void>
 }
 
 import { db } from '@/lib/db'
@@ -111,6 +113,7 @@ export const useUserStore = create<UserState & UserActions>()(
         if (typeof window !== 'undefined' && db) {
           void db.patient_profiles.put(profile)
         }
+        void get().syncProfileToCloud()
       },
 
       loadPatient: async (id: string) => {
@@ -240,12 +243,52 @@ export const useUserStore = create<UserState & UserActions>()(
           if (state.patient) {
             state.patient = { ...state.patient, ...profile }
             state.healthId = state.patient.healthId
-            void db.patient_profiles.update(state.patient.id, profile)
+            if (db) void db.patient_profiles.update(state.patient.id, profile)
           }
         })
+        void get().syncProfileToCloud()
       },
       setHasHydrated: (val) => {
         set({ _hasHydrated: val })
+      },
+      syncProfileToCloud: async () => {
+        const { patient, firebaseUid } = get()
+        if (!patient || !firebaseUid) return
+
+        try {
+          const { db_firestore } = await import('@/lib/firebase')
+          const { doc, setDoc } = await import('firebase/firestore')
+          if (db_firestore) {
+            await setDoc(doc(db_firestore, 'patients', firebaseUid), patient, { merge: true })
+            console.log('[UserStore] Profile synced to Firestore')
+          }
+        } catch (error) {
+          console.error('[UserStore] Failed to sync profile to Cloud:', error)
+        }
+      },
+      fetchProfileFromCloud: async () => {
+        const { firebaseUid, patient } = get()
+        if (!firebaseUid || patient) return
+
+        try {
+          const { db_firestore } = await import('@/lib/firebase')
+          const { doc, getDoc } = await import('firebase/firestore')
+          if (db_firestore) {
+            const snap = await getDoc(doc(db_firestore, 'patients', firebaseUid))
+            if (snap.exists()) {
+              const cloudProfile = snap.data() as PatientProfile
+              set((state) => {
+                state.patient = cloudProfile
+                state.healthId = cloudProfile.healthId
+                state.role = 'patient'
+              })
+              if (db) void db.patient_profiles.put(cloudProfile)
+              console.log('[UserStore] Profile restored from Firestore')
+            }
+          }
+        } catch (error) {
+          console.error('[UserStore] Failed to fetch profile from Cloud:', error)
+        }
       },
     })),
     { 

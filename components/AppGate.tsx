@@ -11,7 +11,17 @@ export function AppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isAuthChecking, setIsAuthChecking] = useState(true)
-  const { sessionState, setSessionState, updateLastActive, patient, _hasHydrated, role, setFirebaseUser } = useUserStore()
+  const { 
+    sessionState, 
+    setSessionState, 
+    updateLastActive, 
+    patient, 
+    _hasHydrated, 
+    role, 
+    setFirebaseUser,
+    firebaseUid,
+    fetchProfileFromCloud
+  } = useUserStore()
 
   const isAuthRoute = pathname.startsWith('/auth')
 
@@ -35,6 +45,14 @@ export function AppGate({ children }: { children: React.ReactNode }) {
 
     return () => unsubscribe()
   }, [setFirebaseUser, setSessionState])
+
+  // Heal state from Cloud if local is empty
+  useEffect(() => {
+    if (_hasHydrated && !isAuthChecking && firebaseUid && !patient) {
+      console.log('[AppGate] Local profile missing, attempting cloud recovery...')
+      fetchProfileFromCloud()
+    }
+  }, [_hasHydrated, isAuthChecking, firebaseUid, patient, fetchProfileFromCloud])
 
   useEffect(() => {
     if (!_hasHydrated || isAuthChecking) return

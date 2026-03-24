@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth'
 import { getAnalytics, Analytics, isSupported } from 'firebase/analytics'
 import { getFirestore, Firestore } from 'firebase/firestore'
+import { getStorage, FirebaseStorage } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -18,6 +19,7 @@ let auth: Auth | undefined
 let googleProvider: GoogleAuthProvider | undefined
 let analytics: Analytics | undefined
 let db_firestore: Firestore | undefined
+let storage_db: FirebaseStorage | undefined
 let isFirebaseInitialized = false
 
 // Only initialize if we have a window (client-side) or a valid API key
@@ -26,6 +28,7 @@ if (typeof window !== 'undefined' || (process.env.NEXT_PUBLIC_FIREBASE_API_KEY &
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
     auth = getAuth(app)
     db_firestore = getFirestore(app)
+    storage_db = getStorage(app)
     googleProvider = new GoogleAuthProvider()
     isFirebaseInitialized = true
     
@@ -41,4 +44,4 @@ if (typeof window !== 'undefined' || (process.env.NEXT_PUBLIC_FIREBASE_API_KEY &
   }
 }
 
-export { auth, googleProvider, analytics, db_firestore, isFirebaseInitialized }
+export { auth, googleProvider, analytics, db_firestore, storage_db, isFirebaseInitialized }

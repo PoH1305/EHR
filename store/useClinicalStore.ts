@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { db } from '@/lib/db'
+import { useUserStore } from './useUserStore'
 import type { 
   VitalSeries, 
   AuditEvent, 
@@ -133,6 +134,27 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => { state.isLoading = true })
         
         try {
+          const { firebaseUid, role } = useUserStore.getState()
+          const { supabase } = await import('@/lib/supabase')
+          
+          let sharedCats: string[] | null = null
+          
+          // 1. If Doctor, find the APPROVED access request to get shared categories
+          if (role === 'doctor' && firebaseUid && supabase) {
+            const { data: accessData } = await supabase
+              .from('access_requests')
+              .select('shared_categories')
+              .eq('doctor_id', firebaseUid)
+              .eq('patient_id', patientId)
+              .eq('status', 'APPROVED')
+              .maybeSingle()
+            
+            if (accessData) {
+              sharedCats = accessData.shared_categories
+              console.log('[ClinicalStore] Filtering records by shared categories:', sharedCats)
+            }
+          }
+
           const [vitals, conditions, medications, allergies, clinicalNotes, medicalImages, riskAnalyses, attachments] = await Promise.all([
             db.vitals.where('patientId').equals(patientId).toArray(),
             db.conditions.where('patientId').equals(patientId).toArray(),
@@ -149,7 +171,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           // Fallback: If local is empty, try Cloud (Supabase)
           if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
             console.log('[ClinicalStore] Local storage empty, checking Cloud (Supabase)...')
-            const { supabase } = await import('@/lib/supabase')
             
             if (supabase) {
               const { data, error } = await supabase
@@ -163,14 +184,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               if (data && data.data) {
                 const cloudData = data.data
                 set((state) => {
-                  state.vitals = cloudData.vitals || []
-                  state.conditions = cloudData.conditions || []
-                  state.medications = cloudData.medications || []
-                  state.allergies = cloudData.allergies || []
-                  state.clinicalNotes = cloudData.clinicalNotes || []
-                  state.medicalImages = cloudData.medicalImages || []
+                  state.vitals = (!sharedCats || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : []
+                  state.conditions = (!sharedCats || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : []
+                  state.medications = (!sharedCats || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
+                  state.allergies = (!sharedCats || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : []
+                  state.clinicalNotes = (!sharedCats || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : []
+                  state.medicalImages = (!sharedCats || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
+                  state.attachments = (!sharedCats || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
                   state.riskAnalyses = cloudData.riskAnalyses || []
-                  state.attachments = cloudData.attachments || []
                   state.isLoading = false
                   state.lastUpdated = data.last_synced_at
                 })
@@ -180,21 +201,31 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           }
 
           set((state) => {
-            state.vitals = isMinimization ? vitals.slice(-4) : vitals
-            state.conditions = isMinimization 
-              ? conditions.filter(c => typeof c.clinicalStatus === 'string' ? c.clinicalStatus === 'active' : (c.clinicalStatus as any)?.coding?.[0]?.code === 'active') // eslint-disable-line @typescript-eslint/no-explicit-any
-              : conditions
-            state.medications = isMinimization ? medications.filter(m => m.status === 'active') : medications
-            state.allergies = allergies
-            state.clinicalNotes = isMinimization ? clinicalNotes.slice(-2) : clinicalNotes
-            state.medicalImages = isMinimization ? [] : medicalImages
+            state.vitals = (!sharedCats || sharedCats.includes('vitals')) 
+              ? (isMinimization ? vitals.slice(-4) : vitals) 
+              : []
+            state.conditions = (!sharedCats || sharedCats.includes('conditions'))
+              ? (isMinimization 
+                  ? conditions.filter(c => typeof c.clinicalStatus === 'string' ? c.clinicalStatus === 'active' : (c.clinicalStatus as any)?.coding?.[0]?.code === 'active') // eslint-disable-line @typescript-eslint/no-explicit-any
+                  : conditions)
+              : []
+            state.medications = (!sharedCats || sharedCats.includes('medications'))
+              ? (isMinimization ? medications.filter(m => m.status === 'active') : medications)
+              : []
+            state.allergies = (!sharedCats || sharedCats.includes('allergies')) ? allergies : []
+            state.clinicalNotes = (!sharedCats || sharedCats.includes('clinicalNotes'))
+              ? (isMinimization ? clinicalNotes.slice(-2) : clinicalNotes)
+              : []
+            state.medicalImages = (!sharedCats || sharedCats.includes('medicalImages'))
+              ? (isMinimization ? [] : medicalImages)
+              : []
+            state.attachments = (!sharedCats || sharedCats.includes('attachments')) ? (attachments as any[]) : []
             state.riskAnalyses = riskAnalyses
-            state.attachments = (attachments as any[]) || []
             state.isLoading = false
             state.lastUpdated = new Date().toISOString()
           })
         } catch (error) {
-          console.error('Failed to load clinical data from Dexie:', error)
+          console.error('Failed to load clinical data:', error)
           set((state) => { state.isLoading = false })
         }
       },

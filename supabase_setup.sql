@@ -29,7 +29,8 @@ CREATE TABLE public.access_requests (
   patient_id TEXT NOT NULL, -- EHI ID
   requested_at TIMESTAMPTZ DEFAULT NOW(),
   status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'DENIED')),
-  patient_name TEXT
+  patient_name TEXT,
+  shared_categories JSONB DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE public.shared_secrets (

@@ -8,22 +8,11 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import type { ConsentToken, ConsentTokenRequest } from '@/lib/types'
+import type { ConsentToken, ConsentTokenRequest, AccessRequest } from '@/lib/types'
 import { generateConsentToken, revokeConsentToken } from '@/lib/consentTokens'
 import { isExpired } from '@/lib/utils'
 import { useUserStore } from './useUserStore'
 import { db } from '@/lib/db'
-
-export interface AccessRequest {
-  id: string
-  doctorId: string
-  doctorName: string
-  organization: string
-  patientId: string // EHI ID
-  requestedAt: string
-  status: 'PENDING' | 'APPROVED' | 'DENIED'
-  patientName?: string | null
-}
 
 interface ConsentState {
   activeTokens: ConsentToken[]
@@ -44,7 +33,7 @@ interface ConsentActions {
   refreshTokenStatuses: () => void
   createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
-  respondToAccessRequest: (requestId: string, approved: boolean) => Promise<void>
+  respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
 }
 
@@ -60,6 +49,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       isRevoking: false,
       isLoading: false,
       activeListenerId: null,
+      sharedCategories: [],
       pendingRevocationId: null,
 
       // Actions
@@ -203,7 +193,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           patientId,
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
-          patientName: patientName || null
+          patientName: patientName || null,
+          sharedCategories: []
         }
         
         // 1. Local Save
@@ -228,7 +219,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 patient_id: newReq.patientId,
                 requested_at: newReq.requestedAt,
                 status: newReq.status,
-                patient_name: newReq.patientName
+                patient_name: newReq.patientName,
+                shared_categories: newReq.sharedCategories
               })
             if (syncError) throw syncError
             console.log('Access request synced to Supabase:', newReq.id)
@@ -260,7 +252,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
 
             if (error) throw error
 
-            const formatted = (data || []).map(d => ({
+            const formatted: AccessRequest[] = (data || []).map(d => ({
               id: d.id,
               doctorId: d.doctor_id,
               doctorName: d.doctor_name,
@@ -268,7 +260,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               patientId: d.patient_id,
               requestedAt: d.requested_at,
               status: d.status as any,
-              patientName: d.patient_name
+              patientName: d.patient_name,
+              sharedCategories: d.shared_categories || []
             }))
 
             set((state) => {
@@ -298,26 +291,35 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         fetchRequests()
       },
 
-      respondToAccessRequest: async (requestId, approved) => {
+      respondToAccessRequest: async (requestId, approved, categories = []) => {
         const status = approved ? 'APPROVED' : 'DENIED'
         
         set((state) => {
           const req = state.accessRequests.find(r => r.id === requestId)
-          if (req) req.status = status
+          if (req) {
+            req.status = status
+            req.sharedCategories = approved ? categories : []
+          }
         })
         
         // 1. Local Update
         if (typeof window !== 'undefined' && db) {
-          void db.access_requests.update(requestId, { status })
+          void db.access_requests.update(requestId, { 
+            status, 
+            sharedCategories: approved ? categories : [] 
+          })
         }
 
-        // 2. Supabase Update (formerly Firestore)
+        // 2. Supabase Update
         try {
           const { supabase } = await import('@/lib/supabase')
           if (supabase) {
             const { error: updateError } = await supabase
               .from('access_requests')
-              .update({ status })
+              .update({ 
+                status, 
+                shared_categories: approved ? categories : [] 
+              })
               .eq('id', requestId)
             if (updateError) throw updateError
           }

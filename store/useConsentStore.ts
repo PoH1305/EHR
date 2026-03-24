@@ -250,7 +250,13 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               .eq(field, uid)
               .order('requested_at', { ascending: false })
 
+            console.log(`[ConsentStore] Supabase Fetch [${field}=${uid}]:`, { count: data?.length, error })
+
             if (error) throw error
+            
+            if (data) {
+              console.log('[ConsentStore] Raw access_requests data:', data)
+            }
 
             const formatted: AccessRequest[] = (data || []).map(d => ({
               id: d.id,

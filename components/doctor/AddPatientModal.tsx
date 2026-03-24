@@ -30,14 +30,35 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     setMounted(true)
   }, [])
 
-  // Live lookup
+  // Live lookup from Supabase
   useEffect(() => {
-    if (patientId.length >= 14 && db) {
-      db.patient_profiles.where('healthId').equals(patientId).first()
-        .then(p => setFoundPatient(p || null))
-    } else {
-      setFoundPatient(null)
+    const lookupPatient = async () => {
+      if (patientId.length >= 14) {
+        try {
+          const { supabase } = await import('@/lib/supabase')
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('health_id', patientId)
+            .maybeSingle()
+            
+          if (error) throw error
+          
+          if (data && data.data) {
+            setFoundPatient(data.data as PatientProfile)
+          } else {
+            setFoundPatient(null)
+          }
+        } catch (err) {
+          console.error('[AddPatientModal] Supabase lookup error:', err)
+          setFoundPatient(null)
+        }
+      } else {
+        setFoundPatient(null)
+      }
     }
+    
+    lookupPatient()
   }, [patientId])
 
   // Recent requests

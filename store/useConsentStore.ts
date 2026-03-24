@@ -108,23 +108,25 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         try {
           const newToken = await generateConsentToken(request)
 
-          // Step C: Push encrypted bundle to Firestore relay
+          // Step C: Push encrypted bundle to Supabase relay (formerly Firestore)
           if ((request as any).encryptedBundle) {
             try {
-              const { db_firestore } = await import('@/lib/firebase')
-              const { doc, setDoc } = await import('firebase/firestore')
-              
-              if (db_firestore) {
-                await setDoc(doc(db_firestore, 'shared_secrets', newToken.id), {
-                  bundle: (request as any).encryptedBundle,
-                  expiresAt: newToken.expiresAt,
-                  patientName: patient.name,
-                  createdAt: new Date().toISOString()
-                })
-                console.log('Encrypted bundle pushed to Firestore relay:', newToken.id)
+              const { supabase } = await import('@/lib/supabase')
+              if (supabase) {
+                const { error: relayError } = await supabase
+                  .from('shared_secrets')
+                  .insert({
+                    id: newToken.id,
+                    bundle: (request as any).encryptedBundle,
+                    expires_at: newToken.expiresAt,
+                    patient_name: patient.name,
+                    created_at: new Date().toISOString()
+                  })
+                if (relayError) throw relayError
+                console.log('Encrypted bundle pushed to Supabase relay:', newToken.id)
               }
             } catch (err) {
-              console.error('Firestore relay push failed:', err)
+              console.error('Supabase relay push failed:', err)
             }
           }
 
@@ -212,64 +214,88 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           void db.access_requests.add(newReq)
         }
 
-        // 2. Firestore Sync
+        // 2. Supabase Sync (formerly Firestore)
         try {
-          const { db_firestore } = await import('@/lib/firebase')
-          const { doc, setDoc } = await import('firebase/firestore')
-          if (db_firestore) {
-            await setDoc(doc(db_firestore, 'access_requests', newReq.id), newReq)
-            console.log('Access request synced to Firestore:', newReq.id)
+          const { supabase } = await import('@/lib/supabase')
+          if (supabase) {
+            const { error: syncError } = await supabase
+              .from('access_requests')
+              .insert({
+                id: newReq.id,
+                doctor_id: newReq.doctorId,
+                doctor_name: newReq.doctorName,
+                organization: newReq.organization,
+                patient_id: newReq.patientId,
+                requested_at: newReq.requestedAt,
+                status: newReq.status,
+                patient_name: newReq.patientName
+              })
+            if (syncError) throw syncError
+            console.log('Access request synced to Supabase:', newReq.id)
           }
         } catch (err) {
-          console.error('Firestore request sync failed:', err)
+          console.error('Supabase request sync failed:', err)
         }
       },
 
       loadAccessRequests: (uid: string, isDoctor: boolean) => {
-        // Prevent duplicate listeners for the same identity
         if (get().activeListenerId === uid) return
         
-        try {
-          const field = isDoctor ? 'doctorId' : 'patientId'
-          console.log(`[ConsentStore] Initializing real-time sync for ${field}:`, uid)
+        const field = isDoctor ? 'doctor_id' : 'patient_id'
+        console.log(`[ConsentStore] Initializing Supabase sync for ${field}:`, uid)
 
-          set({ activeListenerId: uid, isLoading: true })
+        set({ activeListenerId: uid, isLoading: true })
 
-          // Use import() inside since this might be called frequently
-          import('@/lib/firebase').then(({ db_firestore }) => {
-            if (!db_firestore) {
-              set({ activeListenerId: null, isLoading: false })
-              return
-            }
-            
-            import('firebase/firestore').then(({ collection, query, where, onSnapshot }) => {
-              const q = query(
-                collection(db_firestore, 'access_requests'),
-                where(field, '==', uid)
-              )
+        const fetchRequests = async () => {
+          try {
+            const { supabase } = await import('@/lib/supabase')
+            if (!supabase) return
 
-              const unsubscribe = onSnapshot(q, (snapshot) => {
-                const requests = snapshot.docs
-                  .map(doc => doc.data() as AccessRequest)
-                  .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
-                
-                console.log(`[ConsentStore] Received ${requests.length} requests for ${uid}`)
-                set((state) => {
-                  state.accessRequests = requests
-                  state.isLoading = false
-                })
-              }, (err) => {
-                console.error('[ConsentStore] Firestore snapshot error:', err)
-                set({ activeListenerId: null, isLoading: false })
-              })
+            // 1. Initial Fetch
+            const { data, error } = await supabase
+              .from('access_requests')
+              .select('*')
+              .eq(field, uid)
+              .order('requested_at', { ascending: false })
 
-              // Cleanup on session reset would be better, but for now we persist
+            if (error) throw error
+
+            const formatted = (data || []).map(d => ({
+              id: d.id,
+              doctorId: d.doctor_id,
+              doctorName: d.doctor_name,
+              organization: d.organization,
+              patientId: d.patient_id,
+              requestedAt: d.requested_at,
+              status: d.status as any,
+              patientName: d.patient_name
+            }))
+
+            set((state) => {
+              state.accessRequests = formatted
+              state.isLoading = false
             })
-          })
-        } catch (err) {
-          console.error('Failed to initialize access request sync:', err)
-          set({ activeListenerId: null, isLoading: false })
+
+            // 2. Subscribe to changes (Realtime)
+            supabase
+              .channel(`public:access_requests:${field}=${uid}`)
+              .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'access_requests',
+                filter: `${field}=eq.${uid}` 
+              }, () => {
+                fetchRequests() // Re-fetch on any change for simplicity
+              })
+              .subscribe()
+
+          } catch (err) {
+            console.error('[ConsentStore] Supabase sync error:', err)
+            set({ activeListenerId: null, isLoading: false })
+          }
         }
+
+        fetchRequests()
       },
 
       respondToAccessRequest: async (requestId, approved) => {
@@ -285,15 +311,18 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           void db.access_requests.update(requestId, { status })
         }
 
-        // 2. Firestore Update
+        // 2. Supabase Update (formerly Firestore)
         try {
-          const { db_firestore } = await import('@/lib/firebase')
-          const { doc, updateDoc } = await import('firebase/firestore')
-          if (db_firestore) {
-            await updateDoc(doc(db_firestore, 'access_requests', requestId), { status })
+          const { supabase } = await import('@/lib/supabase')
+          if (supabase) {
+            const { error: updateError } = await supabase
+              .from('access_requests')
+              .update({ status })
+              .eq('id', requestId)
+            if (updateError) throw updateError
           }
         } catch (err) {
-          console.error('Firestore response sync failed:', err)
+          console.error('Supabase response sync failed:', err)
         }
       },
 

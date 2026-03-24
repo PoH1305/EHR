@@ -26,19 +26,23 @@ export default function PatientList({ onSelect }: PatientListProps) {
           allPatients = await db.patient_profiles.toArray()
         }
 
-        // 2. Sync from Firestore (if online/doctor)
-        const { db_firestore } = await import('@/lib/firebase')
-        const { collection, getDocs } = await import('firebase/firestore')
+        // 2. Sync from Supabase (formerly Firestore)
+        const { supabase } = await import('@/lib/supabase')
         
-        if (db_firestore) {
-          const querySnapshot = await getDocs(collection(db_firestore, 'patients'))
-          const firestorePatients = querySnapshot.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
+        if (supabase) {
+          const { data, error: sbError } = await supabase
+            .from('profiles')
+            .select('*')
+          
+          if (sbError) throw sbError
+
+          const supabasePatients = (data || []).map(d => ({
+            ...d.data,
+            id: d.id
           })) as PatientProfile[]
           
-          // Merge unique patients (Firestore takes priority)
-          const merged = [...firestorePatients]
+          // Merge unique patients (Supabase takes priority)
+          const merged = [...supabasePatients]
           allPatients.forEach(p => {
             if (!merged.find(mp => mp.id === p.id)) {
               merged.push(p)
@@ -105,11 +109,11 @@ export default function PatientList({ onSelect }: PatientListProps) {
               "w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold border border-white/5",
               "bg-[#1A3A8F]/20 text-[#5B8DEF]"
             )}>
-              {p.name?.[0].toUpperCase() || 'P'}
+              {(p?.name?.[0] || 'P').toUpperCase()}
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-white tracking-tight">{p.name}</span>
+                <span className="text-base font-bold text-white tracking-tight">{p?.name || 'Anonymous Patient'}</span>
                 <span className={cn(
                   "text-[9px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-white/5",
                   "bg-white/5 text-white/40"

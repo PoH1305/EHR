@@ -105,13 +105,17 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           let profile = await db.patient_profiles.get(patientId)
           
           if (!profile) {
-            // Check Firestore
-            const { db_firestore } = await import('@/lib/firebase')
-            const { doc, getDoc } = await import('firebase/firestore')
-            if (db_firestore) {
-              const docSnap = await getDoc(doc(db_firestore, 'patients', patientId))
-              if (docSnap.exists()) {
-                profile = docSnap.data() as any
+            // Check Supabase (formerly Firestore)
+            const { supabase } = await import('@/lib/supabase')
+            if (supabase) {
+              const { data, error } = await supabase
+                .from('profiles')
+                .select('data')
+                .eq('id', patientId)
+                .maybeSingle()
+              
+              if (data && data.data) {
+                profile = data.data as any
               }
             }
           }
@@ -150,7 +154,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             if (supabase) {
               const { data, error } = await supabase
                 .from('clinical_data')
-                .select('data')
+                .select('data, last_synced_at')
                 .eq('patient_id', patientId)
                 .maybeSingle()
                 

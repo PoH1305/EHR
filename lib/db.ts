@@ -56,10 +56,18 @@ export class ClinicalNodeDB extends Dexie {
   }
 }
 
-// Ensure we only initialize Dexie on the client
+// Ensure we only initialize Dexie on the client and handle missing IndexedDB
 const isClient = typeof window !== 'undefined'
 
-export const db = isClient ? new ClinicalNodeDB() : null as unknown as ClinicalNodeDB
+let db: ClinicalNodeDB
+try {
+  db = isClient ? new ClinicalNodeDB() : null as unknown as ClinicalNodeDB
+} catch (error) {
+  console.warn('[DB] Failed to initialize Dexie:', error)
+  db = null as unknown as ClinicalNodeDB
+}
+
+export { db }
 
 export async function seedDatabase() {
   // Database seeding disabled for production readiness.

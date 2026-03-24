@@ -250,8 +250,50 @@ export const useUserStore = create<UserState & UserActions>()(
     })),
     { 
       name: 'ehi-user-storage',
+      storage: {
+        getItem: (name) => {
+          try {
+            return localStorage.getItem(name)
+          } catch (e) {
+            console.warn('[UserStore] Failed to read from localStorage:', e)
+            return null
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, value)
+          } catch (e) {
+            console.warn('[UserStore] Failed to write to localStorage:', e)
+          }
+        },
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name)
+          } catch (e) {
+            console.warn('[UserStore] Failed to remove from localStorage:', e)
+          }
+        },
+      },
       onRehydrateStorage: (state) => {
-        return () => state.setHasHydrated(true)
+        // Safety: mark as hydrated session-wise even if error occurs
+        const timeout = setTimeout(() => {
+          if (state && !state._hasHydrated) {
+            console.warn('[UserStore] Hydration timeout reached, forcing state ready.')
+            state.setHasHydrated(true)
+          }
+        }, 3000)
+
+        return (rehydratedState, error) => {
+          clearTimeout(timeout)
+          if (error) {
+            console.error('[UserStore] Error during rehydration:', error)
+          }
+          if (rehydratedState) {
+            rehydratedState.setHasHydrated(true)
+          } else if (state) {
+            state.setHasHydrated(true)
+          }
+        }
       },
       partialize: (state) => ({ 
         role: state.role, 

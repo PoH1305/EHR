@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useUserStore } from '@/store/useUserStore'
 import { auth, isFirebaseInitialized } from '@/lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RefreshCcw } from 'lucide-react'
 
 export function AppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -77,6 +77,38 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       window.removeEventListener('touchstart', handleActivity)
     }
   }, [updateLastActive])
+
+  const [hasTimedOut, setHasTimedOut] = useState(false)
+
+  useEffect(() => {
+    if (!_hasHydrated || isAuthChecking) {
+      const timer = setTimeout(() => {
+        setHasTimedOut(true)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [_hasHydrated, isAuthChecking])
+
+  if (hasTimedOut && (!_hasHydrated || isAuthChecking)) {
+    return (
+      <div className="fixed inset-0 bg-[#080D16] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-3xl bg-red-500/10 flex items-center justify-center mb-6">
+          <Loader2 className="w-8 h-8 text-red-500" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2 tracking-tight">System Sync Timeout</h2>
+        <p className="text-sm text-white/40 max-w-xs mb-8 leading-relaxed">
+          The identity synchronization is taking longer than expected. This can happen in private browsing or on restricted networks.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-semibold transition-all"
+        >
+          <RefreshCcw className="w-4 h-4" />
+          <span>Reload Interface</span>
+        </button>
+      </div>
+    )
+  }
 
   if (!_hasHydrated || isAuthChecking) {
     return (

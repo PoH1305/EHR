@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Connection Requests (Doctor-Patient)
+    match /access_requests/{requestId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // 2. Shared Secrets (Secure Relay)
+    match /shared_secrets/{secretId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 3. Patient Profiles
+    match /patients/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 4. Clinical Data (Vitals, Lab Reports, etc.)
+    match /clinical_data/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Default: deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

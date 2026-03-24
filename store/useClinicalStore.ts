@@ -55,7 +55,7 @@ interface ClinicalActions {
   activateEmergencyMode: (patientId: string) => void
   clearEmergencyMode: () => void
   clearClinicalState: () => void
-  syncToFirestore: (patientId: string) => Promise<void>
+  syncToCloud: (patientId: string) => Promise<void>
   loadSharedClinicalData: (tokenHash: string, handshakeKey: string) => Promise<void>
 }
 
@@ -142,16 +142,22 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
           const isMinimization = get().isMinimizationActive
 
-          // Fallback: If local is empty, try Cloud
+          // Fallback: If local is empty, try Cloud (Supabase)
           if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
-            console.log('[ClinicalStore] Local storage empty, checking Cloud...')
-            const { db_firestore } = await import('@/lib/firebase')
-            const { doc, getDoc } = await import('firebase/firestore')
+            console.log('[ClinicalStore] Local storage empty, checking Cloud (Supabase)...')
+            const { supabase } = await import('@/lib/supabase')
             
-            if (db_firestore) {
-              const snap = await getDoc(doc(db_firestore, 'clinical_data', patientId))
-              if (snap.exists()) {
-                const cloudData = snap.data()
+            if (supabase) {
+              const { data, error } = await supabase
+                .from('clinical_data')
+                .select('data')
+                .eq('patient_id', patientId)
+                .maybeSingle()
+                
+              if (error) throw error
+
+              if (data && data.data) {
+                const cloudData = data.data
                 set((state) => {
                   state.vitals = cloudData.vitals || []
                   state.conditions = cloudData.conditions || []
@@ -162,9 +168,8 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                   state.riskAnalyses = cloudData.riskAnalyses || []
                   state.attachments = cloudData.attachments || []
                   state.isLoading = false
-                  state.lastUpdated = cloudData.lastSyncedAt
+                  state.lastUpdated = data.last_synced_at
                 })
-                // Optionally back-fill Dexie
                 return
               }
             }
@@ -205,7 +210,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.vitals.push(vital)
         })
-        void get().syncToFirestore(patientId)
+        void get().syncToCloud(patientId)
       },
 
       addCondition: async (patientId: string, condition: Condition) => {
@@ -214,7 +219,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.conditions.push(condition)
         })
-        void get().syncToFirestore(patientId)
+        void get().syncToCloud(patientId)
       },
 
       addMedication: async (patientId: string, medication: MedicationRequest) => {
@@ -223,7 +228,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.medications.push(medication)
         })
-        void get().syncToFirestore(patientId)
+        void get().syncToCloud(patientId)
       },
 
       addObservation: async (patientId: string, observation: any) => {
@@ -232,7 +237,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.observations.push(observation)
         })
-        void get().syncToFirestore(patientId)
+        void get().syncToCloud(patientId)
       },
 
       addDiagnosticReport: async (patientId: string, report: any) => {
@@ -241,7 +246,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.diagnosticReports.push(report)
         })
-        void get().syncToFirestore(patientId)
+        void get().syncToCloud(patientId)
       },
 
       addImmunization: async (patientId: string, immunization: any) => {
@@ -250,7 +255,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.immunizations.push(immunization)
         })
-        void get().syncToFirestore(patientId)
+        void get().syncToCloud(patientId)
       },
 
       addProcedure: async (patientId: string, procedure: any) => {
@@ -259,7 +264,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.procedures.push(procedure)
         })
-        void get().syncToFirestore(patientId)
+        void get().syncToCloud(patientId)
       },
 
       addClinicalNote: async (note: ClinicalNote) => {
@@ -267,7 +272,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.clinicalNotes.unshift(note)
         })
-        void get().syncToFirestore(note.patientId)
+        void get().syncToCloud(note.patientId)
       },
 
       addMedicalImage: async (image: MedicalImage) => {
@@ -289,7 +294,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.medicalImages.unshift(finalImage)
         })
-        void get().syncToFirestore(finalImage.patientId)
+        void get().syncToCloud(finalImage.patientId)
       },
 
       addRiskAnalysis: async (analysis: RiskAnalysis) => {
@@ -297,7 +302,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.riskAnalyses.unshift(analysis)
         })
-        void get().syncToFirestore(analysis.patientId)
+        void get().syncToCloud(analysis.patientId)
       },
 
       addAttachment: async (attachment: PatientAttachment) => {
@@ -319,7 +324,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.attachments.unshift(finalAttachment)
         })
-        void get().syncToFirestore(finalAttachment.patientId)
+        void get().syncToCloud(finalAttachment.patientId)
       },
 
       addAuditEvent: async (event: AuditEvent) => {
@@ -348,53 +353,61 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      syncToFirestore: async (patientId: string) => {
+      syncToCloud: async (patientId: string) => {
         try {
-          const { db_firestore } = await import('@/lib/firebase')
-          if (!db_firestore) return
+          const { supabase } = await import('@/lib/supabase')
+          if (!supabase) return
 
           const state = get()
-          const { doc, setDoc } = await import('firebase/firestore')
-          
-          await setDoc(doc(db_firestore, 'clinical_data', patientId), {
-            patientId,
-            vitals: state.vitals,
-            conditions: state.conditions,
-            medications: state.medications,
-            allergies: state.allergies,
-            observations: state.observations,
-            diagnosticReports: state.diagnosticReports,
-            immunizations: state.immunizations,
-            procedures: state.procedures,
-            clinicalNotes: state.clinicalNotes,
-            medicalImages: state.medicalImages,
-            riskAnalyses: state.riskAnalyses,
-            attachments: state.attachments,
-            lastSyncedAt: new Date().toISOString()
-          }, { merge: true })
+          const { error } = await supabase
+            .from('clinical_data')
+            .upsert({
+              patient_id: patientId,
+              data: {
+                vitals: state.vitals,
+                conditions: state.conditions,
+                medications: state.medications,
+                allergies: state.allergies,
+                observations: state.observations,
+                diagnosticReports: state.diagnosticReports,
+                immunizations: state.immunizations,
+                procedures: state.procedures,
+                clinicalNotes: state.clinicalNotes,
+                medicalImages: state.medicalImages,
+                riskAnalyses: state.riskAnalyses,
+                attachments: state.attachments,
+              },
+              last_synced_at: new Date().toISOString()
+            })
+
+          if (error) throw error
           
           set((state) => {
             state.lastUpdated = new Date().toISOString()
           })
-          console.log('[ClinicalStore] Successfully synced to Firestore')
+          console.log('[ClinicalStore] Successfully synced to Supabase')
         } catch (error) {
-          console.error('[ClinicalStore] Firestore Sync Error:', error)
+          console.error('[ClinicalStore] Supabase Sync Error:', error)
           throw error
         }
       },
 
       loadSharedClinicalData: async (tokenHash: string, handshakeKey: string) => {
-        const { db_firestore } = await import('@/lib/firebase')
-        if (!db_firestore) return
-
-        set((state) => { state.isLoading = true })
         try {
-          const { doc, getDoc } = await import('firebase/firestore')
-          const docRef = doc(db_firestore, 'shared_secrets', tokenHash)
-          const docSnap = await getDoc(docRef)
+          const { supabase } = await import('@/lib/supabase')
+          if (!supabase) return
 
-          if (docSnap.exists()) {
-            const data = docSnap.data()
+          set((state) => { state.isLoading = true })
+          
+          const { data, error } = await supabase
+            .from('shared_secrets')
+            .select('bundle')
+            .eq('id', tokenHash)
+            .single()
+
+          if (error) throw error
+
+          if (data && data.bundle) {
             const encryptedBundle = data.bundle
             
             // Decrypt the bundle using the handshakeKey
@@ -407,7 +420,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               state.clinicalNotes = bundle.clinicalNotes || []
               state.isLoading = false
             })
-            console.log('Successfully loaded and decrypted shared records from Firestore')
+            console.log('[ClinicalStore] Successfully loaded and decrypted shared records from Supabase')
           } else {
             throw new Error('Shared record not found or expired')
           }

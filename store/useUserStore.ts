@@ -49,6 +49,7 @@ interface UserActions {
   setHasHydrated: (val: boolean) => void
   syncProfileToCloud: () => Promise<void>
   fetchProfileFromCloud: () => Promise<void>
+  checkHealthIdUnique: (healthId: string) => Promise<boolean>
 }
 
 import { db } from '@/lib/db'
@@ -256,14 +257,19 @@ export const useUserStore = create<UserState & UserActions>()(
         if (!patient || !firebaseUid) return
 
         try {
-          const { db_firestore } = await import('@/lib/firebase')
-          const { doc, setDoc } = await import('firebase/firestore')
-          if (db_firestore) {
-            await setDoc(doc(db_firestore, 'patients', firebaseUid), patient, { merge: true })
-            console.log('[UserStore] Profile synced to Firestore')
-          }
+          const { supabase } = await import('@/lib/supabase')
+          const { data, error } = await supabase
+            .from('profiles')
+            .upsert({
+              id: firebaseUid,
+              health_id: patient.healthId,
+              data: patient
+            })
+
+          if (error) throw error
+          console.log('[UserStore] Profile synced to Supabase')
         } catch (error) {
-          console.error('[UserStore] Failed to sync profile to Cloud:', error)
+          console.error('[UserStore] Failed to sync profile to Supabase:', error)
         }
       },
       fetchProfileFromCloud: async () => {
@@ -271,24 +277,42 @@ export const useUserStore = create<UserState & UserActions>()(
         if (!firebaseUid || patient) return
 
         try {
-          const { db_firestore } = await import('@/lib/firebase')
-          const { doc, getDoc } = await import('firebase/firestore')
-          if (db_firestore) {
-            const snap = await getDoc(doc(db_firestore, 'patients', firebaseUid))
-            if (snap.exists()) {
-              const cloudProfile = snap.data() as PatientProfile
-              set((state) => {
-                state.patient = cloudProfile
-                state.healthId = cloudProfile.healthId
-                state.role = 'patient'
-              })
-              if (db) void db.patient_profiles.put(cloudProfile)
-              console.log('[UserStore] Profile restored from Firestore')
-            }
+          const { supabase } = await import('@/lib/supabase')
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('data')
+            .eq('id', firebaseUid)
+            .single()
+
+          if (error) {
+            if (error.code === 'PGRST116') return // Not found
+            throw error
+          }
+
+          if (data && data.data) {
+            const cloudProfile = data.data as PatientProfile
+            set((state) => {
+              state.patient = cloudProfile
+              state.healthId = cloudProfile.healthId
+              state.role = 'patient'
+            })
+            if (db) void db.patient_profiles.put(cloudProfile)
+            console.log('[UserStore] Profile restored from Supabase')
           }
         } catch (error) {
-          console.error('[UserStore] Failed to fetch profile from Cloud:', error)
+          console.error('[UserStore] Failed to fetch profile from Supabase:', error)
         }
+      },
+      checkHealthIdUnique: async (healthId: string) => {
+        const { supabase } = await import('@/lib/supabase')
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('health_id')
+          .eq('health_id', healthId)
+          .maybeSingle()
+
+        if (error) throw error
+        return !data
       },
     })),
     { 

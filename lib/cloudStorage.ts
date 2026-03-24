@@ -1,8 +1,7 @@
-import { storage_db } from './firebase'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { supabase } from './supabase'
 
 /**
- * Uploads a file (Blob or File) to Firebase Storage under a patient-specific path.
+ * Uploads a file (Blob or File) to Supabase Storage under a patient-specific path.
  * Returns the public download URL.
  */
 export async function uploadMedicalFile(
@@ -10,13 +9,22 @@ export async function uploadMedicalFile(
   fileId: string,
   file: Blob | File
 ): Promise<string> {
-  if (!storage_db) throw new Error('Firebase Storage not initialized')
-
-  const storageRef = ref(storage_db, `patients/${patientId}/files/${fileId}`)
-  const snapshot = await uploadBytes(storageRef, file)
-  const downloadURL = await getDownloadURL(snapshot.ref)
+  const filePath = `${patientId}/${fileId}`
   
-  return downloadURL
+  const { data, error } = await supabase.storage
+    .from('patient-files')
+    .upload(filePath, file, {
+      upsert: true,
+      contentType: file.type
+    })
+
+  if (error) throw error
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('patient-files')
+    .getPublicUrl(filePath)
+  
+  return publicUrl
 }
 
 /**

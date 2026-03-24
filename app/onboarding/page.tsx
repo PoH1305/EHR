@@ -81,9 +81,22 @@ export default function OnboardingPage() {
   }
 
   const completeOnboarding = async () => {
-    const { firebaseUid } = useUserStore.getState()
+    const { firebaseUid, checkHealthIdUnique } = useUserStore.getState()
     const patientId = firebaseUid || `pat-${Date.now()}`
-    const healthId = formData.healthId || `EHI-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+    
+    // Ensure Health ID is unique
+    let healthId = formData.healthId
+    if (healthId) {
+      const isUnique = await checkHealthIdUnique(healthId)
+      if (!isUnique) {
+        // Regenerate if collision
+        const g = () => Math.random().toString(36).substring(2, 6).toUpperCase()
+        healthId = `EHI-${g()}-${g()}-${g()}`
+      }
+    } else {
+      const g = () => Math.random().toString(36).substring(2, 6).toUpperCase()
+      healthId = `EHI-${g()}-${g()}-${g()}`
+    }
     
     const profile: PatientProfile = {
       id: patientId,
@@ -123,9 +136,9 @@ export default function OnboardingPage() {
       }
     }
 
-    // Final Cloud Sync
-    const { syncToFirestore } = useClinicalStore.getState()
-    await syncToFirestore(patientId)
+    // Final Cloud Sync (Now Supabase)
+    const { syncToCloud } = useClinicalStore.getState()
+    await syncToCloud(patientId)
 
     router.push('/dashboard')
   }

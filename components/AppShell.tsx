@@ -329,9 +329,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             }}
           />
         </>
-      ) : (
-        <RequestNotification />
-      )}
+      ) : null}
 
       {/* Toast Container */}
       <div className="fixed bottom-24 right-4 z-[100] flex flex-col gap-2 items-end pointer-events-none">

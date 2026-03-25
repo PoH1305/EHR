@@ -48,7 +48,7 @@ export function DigitalHealthCard({
               {name || 'New Patient'}
             </h3>
             <p className="text-[11px] font-mono text-foreground/40 mt-1 uppercase tracking-wider">
-              {healthId || 'EHI-EHI0-0004-681'}
+              {healthId || 'EHI-NOT-SET'}
             </p>
           </div>
           

@@ -527,10 +527,10 @@ export default function OnboardingPage() {
 
                 <DigitalHealthCard 
                   name={formData.name || 'New Patient'}
-                  healthId={formData.healthId || 'EHI-EHI0-0004-681'}
-                  bloodGroup={formData.bloodGroup || 'B+'}
-                  birthDate={formData.birthDate || '1990-01-01'}
-                  emergencyPhone={formData.emergencyContact?.phone || '+91 98765 43210'}
+                  healthId={formData.healthId || 'EHI-GENERATING...'}
+                  bloodGroup={formData.bloodGroup || 'Select...'}
+                  birthDate={formData.birthDate || ''}
+                  emergencyPhone={formData.emergencyContact?.phone || 'None'}
                 />
 
                 <div className="w-full p-5 rounded-[26px] bg-white/[0.03] border border-white/5 space-y-4">

@@ -80,7 +80,7 @@ export function HealthIdentityCard({ patient, locked }: HealthIdentityCardProps)
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">DOB</span>
               <span className="text-xl font-bold text-white leading-none">
-                {patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '14 Jul 1990'}
+                {patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not Provided'}
               </span>
             </div>
           </div>
@@ -88,7 +88,7 @@ export function HealthIdentityCard({ patient, locked }: HealthIdentityCardProps)
           <div className="mt-auto flex items-center gap-2.5 text-slate-500/80">
             <Phone className="w-4.5 h-4.5" />
             <span className="text-xs font-medium tracking-tight">
-              {patient.emergencyContact?.name || 'Arjun Nair'} — {patient.emergencyContact?.phone || '+91 98765 43210'}
+              {patient.emergencyContact?.name || 'No Contact'} — {patient.emergencyContact?.phone || 'None'}
             </span>
           </div>
 

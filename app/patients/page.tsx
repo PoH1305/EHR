@@ -37,7 +37,7 @@ function PatientsPageContent() {
   }
 
   return (
-    <div className="p-5 max-w-md mx-auto">
+    <div className="w-full">
       {selectedPatientId ? (
         <PatientDetail 
           onBack={() => setSelectedPatientId(null)} 

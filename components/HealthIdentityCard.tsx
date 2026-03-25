@@ -48,11 +48,11 @@ export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
         >
           <div className="flex justify-between items-start">
             <div className="space-y-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest">
                 DIGITAL HEALTH ID
               </p>
-              <h2 className="text-3xl font-bold tracking-tight text-white mb-1">{patient.name}</h2>
-              <p className="text-sm font-mono text-slate-400 font-medium tracking-wide">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1 truncate max-w-[200px] sm:max-w-none">{patient.name}</h2>
+              <p className="text-xs sm:text-sm font-mono text-slate-400 font-medium tracking-wide">
                 {formatHealthId(patient.healthId)}
               </p>
             </div>

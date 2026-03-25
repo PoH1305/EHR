@@ -46,7 +46,7 @@ export default function DashboardPage() {
 
   if (role === 'doctor') {
     return (
-      <div className="p-5 max-w-md mx-auto">
+      <div className="w-full">
         <DoctorHome />
       </div>
     )
@@ -90,17 +90,17 @@ export default function DashboardPage() {
       </section>
 
       {/* Action buttons */}
-      <section className="flex gap-4 px-1">
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-1">
         <button
           onClick={() => setShowSummary(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-4 rounded-full bg-[#0a0f1a] border border-white/40 hover:bg-slate-900 transition-all shadow-lg"
+          className="flex items-center justify-center gap-2 py-4 rounded-full bg-[#0a0f1a] border border-white/40 hover:bg-slate-900 transition-all shadow-lg w-full"
         >
           <Sparkles className="w-5 h-5 text-[#bf7af0]" />
           <span className="text-base font-bold text-white tracking-tight">AI Summary</span>
         </button>
         <button
           onClick={() => setShowAccessCenter(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-4 rounded-[20px] bg-[#0d2d2d] hover:bg-[#123d3d] transition-all shadow-lg relative"
+          className="flex items-center justify-center gap-2 py-4 rounded-[20px] bg-[#0d2d2d] hover:bg-[#123d3d] transition-all shadow-lg relative w-full"
         >
           <Shield className="w-5 h-5 text-[#2ed3b7]" />
           <span className="text-base font-bold text-white tracking-tight">Access Center</span>

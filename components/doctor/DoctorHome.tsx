@@ -95,7 +95,7 @@ export default function DoctorHome() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "TODAY'S PATIENTS", value: stats.todayPatients, id: 'today' },
           { label: "PENDING REVIEW", value: stats.pendingReview, id: 'pending' },
@@ -127,24 +127,26 @@ export default function DoctorHome() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * j }}
-                className="bg-[#111827]/30 border border-white/[0.03] p-5 rounded-[32px] flex items-center justify-between group hover:bg-[#111827]/50 transition-all cursor-pointer"
+                className="bg-[#111827]/30 border border-white/[0.03] p-5 rounded-[32px] flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-[#111827]/50 transition-all cursor-pointer"
                 onClick={() => router.push('/patients')}
               >
-                  <div className="flex items-center gap-6">
-                     <span className="text-sm font-black text-[#5B8DEF] tracking-tight">{round.time}</span>
-                     <div>
-                        <p className="text-sm font-black text-white" data-privacy="true">{round.name}</p>
-                        <p className="text-[10px] text-white/20 font-medium mt-0.5">{round.reason}</p>
+                  <div className="flex items-center gap-4 sm:gap-6">
+                     <span className="text-sm font-black text-[#5B8DEF] tracking-tight shrink-0">{round.time}</span>
+                     <div className="min-w-0">
+                        <p className="text-sm font-black text-white truncate" data-privacy="true">{round.name}</p>
+                        <p className="text-[10px] text-white/20 font-medium mt-0.5 truncate">{round.reason}</p>
                      </div>
                   </div>
-                  <main 
-                    data-privacy-mode={isPrivacyMode}
-                    className={cn(
-                                "px-4 py-1.5 rounded-full text-[8px] font-black tracking-widest uppercase",
-                                round.theme
-                              )}>
-                     {round.status}
-                  </main>
+                  <div className="flex justify-end sm:block">
+                    <div 
+                      data-privacy-mode={isPrivacyMode}
+                      className={cn(
+                                  "px-4 py-1.5 rounded-full text-[8px] font-black tracking-widest uppercase w-fit whitespace-nowrap",
+                                  round.theme
+                                )}>
+                       {round.status}
+                    </div>
+                  </div>
               </motion.div>
            ))}
         </div>
@@ -167,11 +169,11 @@ export default function DoctorHome() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-[#111827]/30 border border-white/[0.03] p-5 rounded-[32px] flex items-center justify-between group hover:bg-[#111827]/50 transition-all"
+                className="bg-[#111827]/30 border border-white/[0.03] p-5 rounded-[32px] flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-[#111827]/50 transition-all"
               >
                 <div className="flex items-center gap-4">
                   <div className={cn(
-                    "w-10 h-10 rounded-2xl flex items-center justify-center border",
+                    "w-10 h-10 rounded-2xl flex items-center justify-center border shrink-0",
                     req.status === 'APPROVED' ? "bg-green-500/10 border-green-500/20 text-green-500" :
                     req.status === 'DENIED' ? "bg-red-500/10 border-red-500/20 text-red-500" :
                     "bg-amber-500/10 border-amber-500/20 text-amber-500"
@@ -180,17 +182,17 @@ export default function DoctorHome() {
                      req.status === 'DENIED' ? <XCircleIcon className="w-5 h-5" /> : 
                      <Clock className="w-5 h-5" />}
                   </div>
-                  <div>
-                    <p className="text-sm font-black text-white">{req.patientName || req.patientId}</p>
-                    <p className="text-[10px] text-white/20 font-medium uppercase tracking-wider">
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-white truncate">{req.patientName || req.patientId}</p>
+                    <p className="text-[10px] text-white/20 font-medium uppercase tracking-wider truncate">
                        {req.status === 'PENDING' ? 'Waiting for approval' : 
                         req.status === 'APPROVED' ? 'Access Granted' : 'Access Denied'}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="flex justify-end sm:block">
                    <div className={cn(
-                     "text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest border",
+                     "text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest border w-fit whitespace-nowrap",
                      req.status === 'APPROVED' ? "bg-green-500/10 border-green-500/20 text-green-500" :
                      req.status === 'DENIED' ? "bg-red-500/10 border-red-500/20 text-red-500" :
                      "bg-amber-500/10 border-amber-500/20 text-amber-500"

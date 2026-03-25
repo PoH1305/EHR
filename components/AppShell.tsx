@@ -269,7 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2.5 px-6 py-3 rounded-[24px] text-[10px] font-bold transition-all duration-500 uppercase tracking-widest relative group",
+                  "flex items-center gap-2.5 px-4 sm:px-6 py-3 rounded-[24px] text-[10px] font-bold transition-all duration-500 uppercase tracking-widest relative group",
                   isActive ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20" : "text-white/20 hover:text-white/40"
                 )}
               >

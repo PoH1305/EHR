@@ -113,22 +113,22 @@ export default function PatientList({ onSelect }: PatientListProps) {
             )}>
               {(p?.name?.[0] || 'P').toUpperCase()}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-white tracking-tight">{p?.name || 'Anonymous Patient'}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 overflow-hidden">
+                <span className="text-base font-bold text-white tracking-tight truncate">{p?.name || 'Anonymous Patient'}</span>
                 <span className={cn(
-                  "text-[9px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-white/5",
+                  "text-[9px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-white/5 shrink-0",
                   "bg-white/5 text-white/40"
                 )}>
                   Stable
                 </span>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] text-white/20 font-bold uppercase tracking-wider">
+              <div className="flex items-center gap-2 mt-1 overflow-hidden">
+                <span className="text-[10px] text-white/20 font-bold uppercase tracking-wider shrink-0">
                   {p.age || '??'}{p.gender?.[0]?.toUpperCase() || ''} • {p.bloodGroup || 'UNK'}
                 </span>
-                <span className="text-white/10 text-[8px]">•</span>
-                <span className="text-[10px] text-white/20 font-mono">{p.healthId}</span>
+                <span className="text-white/10 text-[8px] shrink-0">•</span>
+                <span className="text-[10px] text-white/20 font-mono truncate">{p.healthId}</span>
               </div>
             </div>
             <div className="w-8 h-8 rounded-full bg-white/0 group-hover:bg-white/5 flex items-center justify-center transition-all">

@@ -263,7 +263,7 @@ export default function RecordsPage() {
 
   if (role === 'doctor') {
     return (
-      <div className="p-5 max-w-md mx-auto">
+      <div className="w-full">
         <DoctorRecords />
       </div>
     )

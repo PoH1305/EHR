@@ -112,7 +112,7 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                 </p>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-foreground/[0.03] border border-foreground/5">
                   <p className="text-xs text-foreground/40 mb-1">Date Recorded</p>
                   <p className="text-sm font-medium text-foreground">{new Date(record.date).toLocaleDateString()}</p>

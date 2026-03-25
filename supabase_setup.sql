@@ -31,7 +31,8 @@ CREATE TABLE public.access_requests (
   status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'DENIED')),
   patient_name TEXT,
   doctor_specialty TEXT,
-  shared_categories TEXT[] DEFAULT '{}'
+  shared_categories TEXT[] DEFAULT '{}',
+  metadata JSONB DEFAULT '{}'
 );
 
 CREATE TABLE public.shared_secrets (
@@ -76,6 +77,28 @@ USING (true)
 WITH CHECK (true);
 
 -- 6. Enable Realtime
--- This is critical for the patient request inbox to receive live updates
 ALTER PUBLICATION supabase_realtime ADD TABLE public.access_requests;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+
+-- 7. Storage Bucket Setup
+-- Note: Run these in the SQL editor, but you also need to ensure the bucket is created in the Storage UI
+-- or via the Supabase Dashboard. The name MUST be 'patient-files'.
+
+-- Create the bucket if it doesn't exist (This requires storage extension)
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('patient-files', 'patient-files', true) ON CONFLICT (id) DO NOTHING;
+
+-- Set up RLS for Storage
+CREATE POLICY "Allow public read of patient files"
+ON storage.objects FOR SELECT
+TO anon
+USING ( bucket_id = 'patient-files' );
+
+CREATE POLICY "Allow authenticated uploads to patient-files"
+ON storage.objects FOR INSERT
+TO anon
+WITH CHECK ( bucket_id = 'patient-files' );
+
+CREATE POLICY "Allow authenticated updates to patient-files"
+ON storage.objects FOR UPDATE
+TO anon
+USING ( bucket_id = 'patient-files' );

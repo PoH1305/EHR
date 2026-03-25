@@ -33,7 +33,7 @@ interface AccessCenterModalProps {
   onClose: () => void
 }
 
-type TabType = 'requests' | 'active' | 'share'
+type TabType = 'requests' | 'active'
 
 export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('requests')
@@ -53,15 +53,6 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
   // State for Request Acceptance (Data Minimization)
   const [selectedCats, setSelectedCats] = useState<Record<string, string[]>>({})
 
-  // State for New Share Flow
-  const [shareStep, setShareStep] = useState(0)
-  const [recipientName, setRecipientName] = useState('')
-  const [recipientId, setRecipientId] = useState('')
-  const [specialty, setSpecialty] = useState<DoctorSpecialty | null>(null)
-  const [ttlSeconds, setTtlSeconds] = useState(3600)
-  const [allowedCategories, setAllowedCategories] = useState<string[]>([])
-  const [specialtySearch, setSpecialtySearch] = useState('')
-  const [filteredBundle, setFilteredBundle] = useState<any>(null)
 
   // Multi-Step Acceptance State
   const [acceptingRequest, setAcceptingRequest] = useState<AccessRequest | null>(null)
@@ -87,66 +78,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
     }
   }, [isOpen, healthId, patient?.healthId, loadAccessRequests])
 
-  // Share Bundle Logic
-  const fullBundle = useMemo(() => ({
-    resourceType: 'Bundle' as const,
-    entry: [
-      ...clinicalData.conditions.map(c => ({ resource: c })),
-      ...clinicalData.observations.map(o => ({ resource: o })),
-      ...clinicalData.medications.map(m => ({ resource: m })),
-      ...clinicalData.allergies.map(a => ({ resource: a })),
-      ...clinicalData.diagnosticReports.map(d => ({ resource: d })),
-      ...clinicalData.immunizations.map(i => ({ resource: i })),
-      ...clinicalData.procedures.map(p => ({ resource: p }))
-    ]
-  }), [clinicalData])
-
-  useEffect(() => {
-    if (specialty) {
-      const filtered = filterPatientDataBySpecialty(fullBundle as FHIRBundle, specialty, allowedCategories)
-      setFilteredBundle(filtered)
-    }
-  }, [specialty, allowedCategories, fullBundle])
-
   const pendingRequests = accessRequests.filter(r => r.status === 'PENDING')
-
-  const toggleCategory = (requestId: string, catId: string) => {
-    setSelectedCats(prev => {
-      const current = prev[requestId] || [] // UNCHECKED BY DEFAULT (Data Minimization)
-      const next = current.includes(catId)
-        ? current.filter(c => c !== catId)
-        : [...current, catId]
-      return { ...prev, [requestId]: next }
-    })
-  }
-
-  const handleShareConfirm = async () => {
-    if (!specialty || !filteredBundle || !patient) return
-    
-    try {
-      const tokenKey = Math.random().toString(36).substring(2, 15)
-      const { encryptBundle } = await import('@/lib/crypto')
-      const encryptedBundle = await encryptBundle(filteredBundle, tokenKey)
-      
-      await generateToken({
-        patientId: patient.id,
-        patientName: patient.name,
-        recipientName,
-        recipientId: recipientId || `doc-${Date.now()}`,
-        specialty,
-        ttlSeconds,
-        allowedCategories,
-        emergencyAccess: specialty === DoctorSpecialty.EMERGENCY,
-        encryptedBundle,
-        tokenKey
-      })
-      
-      setActiveTab('active')
-      setShareStep(0)
-    } catch (err) {
-      console.error(err)
-    }
-  }
 
   if (!isOpen) return null
 
@@ -178,8 +110,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
         <div className="px-8 pb-4 border-b border-white/5 flex gap-8">
           {[
             { id: 'requests', label: 'Requests', icon: UserPlus, count: pendingRequests.length },
-            { id: 'active', label: 'Active', icon: History, count: activeTokens.length },
-            { id: 'share', label: 'Share', icon: Share2 }
+            { id: 'active', label: 'Active', icon: History, count: activeTokens.length }
           ].map(tab => (
             <button
               key={tab.id}
@@ -248,7 +179,9 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                onClick={() => {
                                  setAcceptingRequest(req)
                                  setAcceptStep(0)
-                                 setAcceptCats([]) // Start minimal
+                                 // Auto-apply AI recommendations on start
+                                 const recommended = getRecommendedCategories(req.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
+                                 setAcceptCats(recommended)
                                }}
                                className="px-6 rounded-2xl bg-[#5B8DEF] text-white hover:bg-[#4A7BD9] transition-all font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#5B8DEF]/10"
                              >
@@ -303,12 +236,20 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              This provider will be able to access your records within the scope you define.
                            </p>
                          </div>
-                         <div className="p-6 rounded-[32px] bg-blue-500/5 border border-blue-500/10 flex items-center gap-4">
-                           <ShieldAlert className="w-8 h-8 text-blue-400" />
-                           <p className="text-xs text-blue-400/80 font-medium leading-tight">
-                             This process is decentralized. Only the specific records you approve will be synchronized.
-                           </p>
-                         </div>
+                          <div className="p-6 rounded-[32px] bg-blue-500/5 border border-blue-500/10 flex items-center gap-4">
+                            <ShieldAlert className="w-8 h-8 text-blue-400" />
+                            <div className="flex-1">
+                               {acceptingRequest.metadata?.type === 'FILE_ACCESS' ? (
+                                 <p className="text-xs text-blue-400/80 font-medium leading-tight">
+                                   This doctor is specifically requesting access to <span className="text-white font-bold underline decoration-blue-500/30">{acceptingRequest.metadata.fileName}</span>.
+                                 </p>
+                               ) : (
+                                 <p className="text-xs text-blue-400/80 font-medium leading-tight">
+                                   This process is decentralized. Only the specific records you approve will be synchronized.
+                                 </p>
+                               )}
+                            </div>
+                          </div>
                          <div className="flex flex-col gap-3">
                             <button 
                               onClick={() => setAcceptStep(1)}
@@ -365,21 +306,17 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Select shared records. AI highlights essential scope.</p>
                          </div>
                          
+                         <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-white tracking-tight">AI Data Minimization</h3>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Unnecessary records are blocked by default for your safety.</p>
+                         </div>
+                         
                          <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
                             <Sparkles className="w-5 h-5 text-blue-400" />
                             <div className="flex-1">
-                               <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">AI RECOMMENDATION</p>
-                               <p className="text-[11px] text-white/60 leading-tight">Optimized for {acceptingRequest.doctorSpecialty || 'General Practitioner'} utility</p>
+                               <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">AI Governance Active</p>
+                               <p className="text-[11px] text-white/60 leading-tight">Suggested scope for {acceptingRequest.doctorSpecialty || 'General Practitioner'} utility</p>
                             </div>
-                            <button 
-                               onClick={() => {
-                                 const recommended = getRecommendedCategories(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
-                                 setAcceptCats(recommended)
-                               }}
-                               className="px-4 py-2 bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-                            >
-                               Auto-Select
-                            </button>
                          </div>
 
                          <div className="grid grid-cols-2 gap-2">
@@ -392,18 +329,15 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                  onClick={() => setAcceptCats(prev => isSelected ? prev.filter(c => c !== cat.id) : [...prev, cat.id])}
                                  className={cn(
                                    "p-4 rounded-2xl border transition-all flex flex-col justify-between h-24 text-left relative overflow-hidden",
-                                   isSelected ? "bg-blue-500/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-transparent text-slate-600"
+                                   isSelected ? "bg-blue-500/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-transparent text-slate-700"
                                  )}
                                >
                                  <span className="text-xs font-bold uppercase tracking-widest relative z-10">{cat.label}</span>
-                                 {!isRecommended && !isSelected && (
-                                   <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-white/5 text-slate-700 w-fit">Blocked</span>
+                                 {!isSelected && (
+                                   <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-red-500/10 text-red-500/50 w-fit">Blocked</span>
                                  )}
                                  {isRecommended && isSelected && (
                                    <Sparkles className="w-4 h-4 text-blue-400 absolute bottom-3 right-3 opacity-40" />
-                                 )}
-                                 {isRecommended && !isSelected && (
-                                    <div className="absolute inset-0 border border-blue-500/20 animate-pulse pointer-events-none" />
                                  )}
                                </button>
                              )
@@ -466,6 +400,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                  specialty: acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER,
                                  ttlSeconds: acceptTtl,
                                  allowedCategories: acceptCats,
+                                 allowedFiles: acceptingRequest.metadata?.fileId ? [acceptingRequest.metadata.fileId] : [],
                                  patientName: patient?.name || 'Authorized Patient'
                                })
 
@@ -537,120 +472,6 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
               </motion.div>
             )}
 
-            {activeTab === 'share' && (
-              <motion.div
-                key="share"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-              >
-                {/* Step Content */}
-                <div className="space-y-8">
-                  {shareStep === 0 && (
-                    <div className="space-y-6">
-                      <div className="p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10">
-                        <p className="text-sm text-blue-400/80 leading-relaxed font-medium">
-                          Build a localized, encrypted clinical bundle for a specific recipient. 
-                          The full record never leaves your device.
-                        </p>
-                      </div>
-                      <div className="space-y-4">
-                        <label className="block">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Recipient Name</span>
-                          <input
-                            type="text"
-                            value={recipientName}
-                            onChange={(e) => setRecipientName(e.target.value)}
-                            placeholder="Dr. Smith or Clinical Hub"
-                            className="w-full bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder-slate-700 focus:outline-none focus:border-blue-500 transition-all"
-                          />
-                        </label>
-                        <div className="relative">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Doctor Specialty (For AI Minimization)</span>
-                          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                            {Object.values(DoctorSpecialty).map(s => (
-                              <button
-                                key={s}
-                                onClick={() => setSpecialty(s)}
-                                className={cn(
-                                  "px-4 py-3 rounded-xl text-[10px] font-bold text-left border transition-all",
-                                  specialty === s ? "bg-blue-500 border-blue-500 text-white" : "bg-white/5 border-transparent text-slate-500 hover:bg-white/10"
-                                )}
-                              >
-                                {s}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {shareStep === 1 && (
-                    <div className="space-y-6">
-                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 block">Access Configuration</p>
-                       <div className="grid grid-cols-2 gap-3">
-                         {TTL_OPTIONS.map(opt => (
-                           <button
-                             key={opt.seconds}
-                             onClick={() => setTtlSeconds(opt.seconds)}
-                             className={cn(
-                               "px-6 py-4 rounded-3xl border flex items-center justify-between transition-all",
-                               ttlSeconds === opt.seconds ? "bg-blue-500 border-blue-500 text-white" : "bg-white/5 border-transparent text-slate-500"
-                             )}
-                           >
-                              <span className="text-sm font-bold">{opt.label}</span>
-                              <Clock className="w-4 h-4 opacity-40" />
-                           </button>
-                         ))}
-                       </div>
-
-                       <div className="space-y-3">
-                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Sensitive Categories</span>
-                         <div className="flex flex-wrap gap-2">
-                            {['psychiatric', 'reproductive', 'genetic'].map(cat => (
-                              <button
-                                key={cat}
-                                onClick={() => setAllowedCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])}
-                                className={cn(
-                                  "px-4 py-3 rounded-2xl border flex items-center gap-2 transition-all",
-                                  allowedCategories.includes(cat) ? "bg-amber-500/20 border-amber-500/40 text-amber-500" : "bg-white/5 border-transparent text-slate-600"
-                                )}
-                              >
-                                <Tag className="w-3 h-3" />
-                                <span className="text-[10px] font-bold uppercase">{cat}</span>
-                              </button>
-                            ))}
-                         </div>
-                       </div>
-                    </div>
-                  )}
-
-                  {/* shareStep === 2 (PIN Unlock) block removed */}
-
-                  {/* Navigation Footer for Share */}
-                  {/* Condition changed from shareStep < 2 to shareStep < 1, and the "Continue" button now directly calls handleShareConfirm on the last step */}
-                  {shareStep < 1 && ( // Only show navigation if not on the final step (which is now step 1)
-                    <div className="flex justify-between pt-8 border-t border-white/5">
-                      <button 
-                        onClick={() => setShareStep(prev => Math.max(0, prev - 1))}
-                        disabled={shareStep === 0}
-                        className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white disabled:opacity-20 flex items-center gap-2"
-                      >
-                        <ChevronLeft className="w-4 h-4" /> Back
-                      </button>
-                      <button 
-                        onClick={handleShareConfirm}
-                        disabled={shareStep === 0 ? !recipientName || !specialty : false}
-                        className="px-8 py-4 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-200 disabled:opacity-20 flex items-center gap-2"
-                      >
-                        {shareStep === 1 ? 'Generate Token' : 'Continue'} <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
           </AnimatePresence>
         </div>
 

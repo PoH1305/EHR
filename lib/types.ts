@@ -164,7 +164,7 @@ export interface ConsentToken {
   lastAccessedAt: string | null
   tokenHash: string
   patientName?: string | undefined
-  encryptedBundle?: string | undefined
+  allowedFiles?: string[]
   tokenKey?: string | undefined
 }
 
@@ -177,7 +177,7 @@ export interface ConsentTokenRequest {
   allowedCategories?: string[]
   emergencyAccess?: boolean
   patientName: string
-  encryptedBundle?: string | undefined
+  allowedFiles?: string[]
   tokenKey?: string | undefined
 }
 
@@ -488,4 +488,5 @@ export interface AccessRequest {
   status: 'PENDING' | 'APPROVED' | 'DENIED'
   patientName?: string | null
   sharedCategories: string[]
+  metadata?: Record<string, any>
 }

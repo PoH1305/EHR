@@ -48,6 +48,7 @@ export async function generateConsentToken(
     expiresAt,
     ttlSeconds: request.ttlSeconds,
     allowedCategories: request.allowedCategories ?? [],
+    allowedFiles: request.allowedFiles ?? [],
     emergencyAccess: request.emergencyAccess ?? false,
     status: 'ACTIVE',
     revokedAt: null,
@@ -56,7 +57,6 @@ export async function generateConsentToken(
     lastAccessedAt: null,
     tokenHash,
     patientName: request.patientName,
-    encryptedBundle,
     tokenKey
   }
 

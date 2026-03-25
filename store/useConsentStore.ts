@@ -33,6 +33,7 @@ interface ConsentActions {
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
   createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, patientName?: string | null) => Promise<void>
+  requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
@@ -196,10 +197,10 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
           patientName: patientName || null,
-          sharedCategories: []
+          sharedCategories: [],
+          metadata: {}
         }
         
-        // 1. Local Save
         set((state) => {
           state.accessRequests.unshift(newReq)
         })
@@ -207,7 +208,6 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           void db.access_requests.add(newReq)
         }
 
-        // 2. Supabase Sync (formerly Firestore)
         try {
           const { supabase } = await import('@/lib/supabase')
           if (supabase) {
@@ -223,19 +223,60 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 requested_at: newReq.requestedAt,
                 status: newReq.status,
                 patient_name: newReq.patientName,
-                shared_categories: newReq.sharedCategories
+                shared_categories: newReq.sharedCategories,
+                metadata: newReq.metadata
               })
             if (syncError) throw syncError
-            console.log('Access request synced to Supabase:', newReq.id)
           }
-        } catch (err: any) {
-          console.error('[ConsentStore] Supabase request sync failed!', {
-            error: err,
-            message: err?.message,
-            details: err?.details,
-            hint: err?.hint,
-            code: err?.code
-          })
+        } catch (err) {
+          console.error('[ConsentStore] Access request sync failed:', err)
+        }
+      },
+
+      requestFileAccess: async (patientId, doctorId, doctorName, doctorSpecialty, organization, fileId, fileName, patientName) => {
+        const newReq: AccessRequest = {
+          id: `req-file-${Date.now()}`,
+          doctorId,
+          doctorName,
+          doctorSpecialty,
+          organization,
+          patientId,
+          requestedAt: new Date().toISOString(),
+          status: 'PENDING',
+          patientName: patientName || null,
+          sharedCategories: ['attachments'],
+          metadata: { fileId, fileName, type: 'FILE_ACCESS' }
+        }
+        
+        set((state) => {
+          state.accessRequests.unshift(newReq)
+        })
+        if (typeof window !== 'undefined' && db) {
+          void db.access_requests.add(newReq)
+        }
+
+        try {
+          const { supabase } = await import('@/lib/supabase')
+          if (supabase) {
+            const { error: syncError } = await supabase
+              .from('access_requests')
+              .insert({
+                id: newReq.id,
+                doctor_id: newReq.doctorId,
+                doctor_name: newReq.doctorName,
+                doctor_specialty: newReq.doctorSpecialty,
+                organization: newReq.organization,
+                patient_id: newReq.patientId,
+                requested_at: newReq.requestedAt,
+                status: newReq.status,
+                patient_name: newReq.patientName,
+                shared_categories: newReq.sharedCategories,
+                metadata: newReq.metadata
+              })
+            if (syncError) throw syncError
+          }
+        } catch (err) {
+          console.error('[ConsentStore] File access request sync failed:', err)
         }
       },
 
@@ -277,7 +318,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               requestedAt: d.requested_at,
               status: d.status as any,
               patientName: d.patient_name,
-              sharedCategories: d.shared_categories || []
+              sharedCategories: d.shared_categories || [],
+              metadata: d.metadata || {}
             }))
 
             set((state) => {

@@ -1,13 +1,25 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Edit3, FileText, TrendingUp, AlertCircle, Loader2, Upload, Sparkles } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  ArrowLeft, 
+  Edit3, 
+  FileText, 
+  TrendingUp, 
+  AlertCircle, 
+  Loader2, 
+  Upload, 
+  Sparkles,
+  Plus
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { AddPrescriptionModal } from './AddPrescriptionModal'
 import { AddNoteModal } from './AddNoteModal'
 import FileUploadModal from './FileUploadModal'
 import { ClinicalCoPilot } from './ClinicalCoPilot'
+import DoctorRecords from './DoctorRecords'
 
 interface PatientDetailProps {
   onBack: () => void
@@ -210,10 +222,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
         
          <div className="flex gap-2 overflow-x-auto pb-8 -mb-8 no-scrollbar scroll-smooth relative z-40">
             <button 
-              onClick={() => {
-                console.log('Switching to RECORDS');
-                setActiveTab('RECORDS');
-              }}
+              onClick={() => setActiveTab('RECORDS')}
               className={cn(
                 "flex-none px-6 py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group",
                 activeTab === 'RECORDS' 
@@ -225,10 +234,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
                <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">Records</span>
             </button>
             <button 
-              onClick={() => {
-                console.log('Switching to COPILOT');
-                setActiveTab('COPILOT');
-              }}
+              onClick={() => setActiveTab('COPILOT')}
               className={cn(
                 "flex-none px-6 py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group",
                 activeTab === 'COPILOT' 
@@ -238,28 +244,6 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
             >
                <Sparkles className={cn("w-4 h-4", activeTab === 'COPILOT' ? "text-[#5B8DEF]" : "text-white/40")} />
                <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">Copilot</span>
-            </button>
-            <div className="w-[1px] h-10 bg-white/10 mx-2 self-center hidden sm:block shrink-0" />
-            <button 
-              onClick={() => setShowPrescribe(true)}
-              className="flex-none px-6 py-4 bg-[#5B8DEF] hover:bg-[#5B8DEF]/90 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-[#5B8DEF]/20 group"
-            >
-               <Edit3 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-               <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">Prescribe</span>
-            </button>
-            <button 
-              onClick={() => setShowNote(true)}
-              className="flex-none px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group"
-            >
-               <FileText className="w-4 h-4 text-white/40 group-hover:text-white" />
-               <span className="text-[11px] font-bold uppercase tracking-widest text-white/40 group-hover:text-white whitespace-nowrap">Note</span>
-            </button>
-            <button 
-              onClick={() => setShowUpload(true)}
-              className="flex-none px-6 py-4 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 border border-[#5B8DEF]/20 text-[#5B8DEF] rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group"
-            >
-               <Upload className="w-4 h-4" />
-               <span className="text-[11px] font-bold uppercase tracking-widest text-[#5B8DEF] whitespace-nowrap">Upload</span>
             </button>
          </div>
       </div>
@@ -276,28 +260,17 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
           </div>
         ) : (
           <div className="max-w-4xl">
-             {/* Center: Conditions */}
-             <div className="space-y-6">
-                <div className="flex items-center justify-between ml-1">
-                   <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Active Conditions</h2>
-                   <span className="text-[10px] font-bold text-white/10 uppercase tracking-widest">{conditions.length} Active</span>
-                </div>
-                <div className="bg-[#111827]/40 border border-white/[0.05] rounded-3xl p-8 space-y-4 shadow-xl">
-                   {conditions.length > 0 ? conditions.map((c) => (
-                     <div key={c.id} className="p-6 rounded-2xl border flex items-center justify-between group hover:scale-[1.01] transition-all bg-white/5 border-white/5 hover:border-[#5B8DEF]/20">
-                        <span className="text-lg font-bold text-white/80">{c.code?.text || 'Unspecified Condition'}</span>
-                        <span className="text-[10px] font-bold text-white/10 uppercase tracking-[0.2em]">Clinical Record</span>
-                     </div>
-                   )) : (
-                     <div className="p-8 text-center border-2 border-dashed border-white/5 rounded-2xl">
-                       <p className="text-xs text-white/20 font-bold uppercase tracking-widest">No Active Conditions Logged</p>
-                     </div>
-                   )}
-                </div>
-             </div>
+             <DoctorRecords patientId={patientId} />
           </div>
         )}
       </div>
+
+      {/* Floating Action Button (FAB) */}
+      <FloatingClinicalActions 
+        onPrescribe={() => setShowPrescribe(true)}
+        onNote={() => setShowNote(true)}
+        onUpload={() => setShowUpload(true)}
+      />
 
       {/* Modals */}
       <AddPrescriptionModal 
@@ -320,6 +293,63 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
         }}
         patientId={patientId}
       />
+    </div>
+  )
+}
+
+function FloatingClinicalActions({ onPrescribe, onNote, onUpload }: { onPrescribe: () => void, onNote: () => void, onUpload: () => void }) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const actions = [
+    { icon: Edit3, label: 'Prescribe', onClick: onPrescribe, color: 'bg-blue-500' },
+    { icon: FileText, label: 'Note', onClick: onNote, color: 'bg-indigo-500' },
+    { icon: Upload, label: 'Upload', onClick: onUpload, color: 'bg-emerald-500' },
+  ]
+
+  return (
+    <div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end gap-4">
+      <AnimatePresence>
+        {isOpen && (
+          <div className="flex flex-col items-end gap-3 mb-2">
+            {actions.map((action, i) => (
+              <motion.div
+                key={action.label}
+                initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.5, y: 20 }}
+                transition={{ delay: (actions.length - 1 - i) * 0.05 }}
+                className="flex items-center gap-3 group"
+              >
+                <span className="px-3 py-1.5 rounded-xl bg-[#0d1117] border border-white/10 text-[10px] font-black uppercase tracking-widest text-white shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                  {action.label}
+                </span>
+                <button
+                  onClick={() => {
+                    action.onClick()
+                    setIsOpen(false)
+                  }}
+                  className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all active:scale-90",
+                    action.color
+                  )}
+                >
+                  <action.icon className="w-5 h-5" />
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-16 h-16 rounded-[24px] bg-[#5B8DEF] text-white flex items-center justify-center shadow-2xl shadow-[#5B8DEF]/30 transition-all active:scale-95",
+          isOpen ? "rotate-45 bg-[#161b22]" : ""
+        )}
+      >
+        <Plus className="w-8 h-8" />
+      </button>
     </div>
   )
 }

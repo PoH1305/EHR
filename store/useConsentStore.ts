@@ -9,6 +9,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import type { ConsentToken, ConsentTokenRequest, AccessRequest } from '@/lib/types'
+import { DoctorSpecialty } from '@/lib/types'
 import { generateConsentToken, revokeConsentToken } from '@/lib/consentTokens'
 import { isExpired } from '@/lib/utils'
 import { useUserStore } from './useUserStore'
@@ -31,7 +32,7 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string, patientName?: string | null) => Promise<void>
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
@@ -184,11 +185,12 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: async (patientId, doctorId, doctorName, organization, patientName) => {
+      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, patientName) => {
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
           doctorName,
+          doctorSpecialty,
           organization,
           patientId,
           requestedAt: new Date().toISOString(),
@@ -268,6 +270,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               id: d.id,
               doctorId: d.doctor_id,
               doctorName: d.doctor_name,
+              doctorSpecialty: d.doctor_specialty as DoctorSpecialty,
               organization: d.organization,
               patientId: d.patient_id,
               requestedAt: d.requested_at,

@@ -2,9 +2,20 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, QrCode, Clipboard, CheckCircle2, Loader2, Search, User } from 'lucide-react'
-import { useConsentStore, type AccessRequest } from '@/store/useConsentStore'
+import { 
+  Shield, 
+  Search, 
+  X, 
+  Loader2, 
+  Sparkles, 
+  QrCode, 
+  Clipboard, 
+  CheckCircle2, 
+  User 
+} from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
+import { useConsentStore } from '@/store/useConsentStore'
+import { DoctorSpecialty, type AccessRequest } from '@/lib/types'
 import { cn, autoFormatEHI } from '@/lib/utils'
 import { createPortal } from 'react-dom'
 import QRScanner from '@/components/QRScanner'
@@ -103,6 +114,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
       patientId, 
       firebaseUid || 'doc-unknown', 
       firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
+      DoctorSpecialty.GENERAL_PRACTITIONER, // Default specialty for requestor
       'Clinical Health Network',
       foundPatient?.name || undefined
     )

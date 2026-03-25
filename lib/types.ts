@@ -481,6 +481,7 @@ export interface AccessRequest {
   id: string
   doctorId: string
   doctorName: string
+  doctorSpecialty: DoctorSpecialty
   organization: string
   patientId: string
   requestedAt: string

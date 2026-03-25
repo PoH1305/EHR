@@ -155,6 +155,42 @@ export function filterPatientDataBySpecialty(
   }
 }
 
+/**
+ * AI Recommendation Engine
+ * Suggests clinical categories based on the requesting doctor's specialty.
+ * This is a Semi-Agentic feature to assist patient data minimization.
+ */
+export function getRecommendedCategories(specialty: DoctorSpecialty): string[] {
+  const config = SPECIALTY_FIELD_MAP[specialty]
+  if (!config) return ['vitals'] // Fallback to bare minimum
+
+  const recommendations: string[] = []
+  
+  // Map FHIR resources to UI Category IDs
+  const resourceMap: Record<string, string> = {
+    'Observation': 'vitals',
+    'Condition': 'conditions',
+    'MedicationRequest': 'medications',
+    'AllergyIntolerance': 'allergies',
+    'ClinicalNote': 'clinicalNotes',
+    'DiagnosticReport': 'attachments',
+    'MedicalImage': 'medicalImages'
+  }
+
+  config.allowedResources.forEach(res => {
+    if (resourceMap[res]) {
+      recommendations.push(resourceMap[res])
+    }
+  })
+
+  // Specialty-specific overrides
+  if (specialty === DoctorSpecialty.CARDIOLOGIST) recommendations.push('vitals')
+  if (specialty === DoctorSpecialty.PSYCHIATRIST) recommendations.push('clinicalNotes')
+  if (specialty === DoctorSpecialty.EMERGENCY) return ['vitals', 'conditions', 'medications', 'allergies']
+
+  return [...new Set(recommendations)]
+}
+
 function getResourceCategory(resource: FHIRResource): string {
   const text = JSON.stringify(resource).toLowerCase()
   if (text.includes('psychi') || text.includes('mental') || text.includes('behavioral')) return 'psychiatric'

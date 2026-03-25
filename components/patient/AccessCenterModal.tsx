@@ -17,7 +17,8 @@ import {
   Search,
   Tag,
   History,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react'
 import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
@@ -25,7 +26,7 @@ import { useClinicalStore } from '@/store/useClinicalStore'
 import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type ConsentTokenRequest, type FHIRBundle, type AccessRequest, type ConsentToken } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
-import { filterPatientDataBySpecialty } from '@/lib/minimization'
+import { filterPatientDataBySpecialty, getRecommendedCategories } from '@/lib/minimization'
 // import { PinUnlock } from '../PinUnlock' // Removed as per instruction
 import { FilterPreviewCard } from '../FilterPreviewCard'
 
@@ -247,26 +248,57 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Minimization: Select Shared Scope</p>
-                            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-widest">{selected.length} Selected</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {categories.map(cat => (
-                              <button
-                                key={cat.id}
-                                onClick={() => toggleCategory(req.id, cat.id)}
-                                className={cn(
-                                  "px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.1em] border transition-all",
-                                  selected.includes(cat.id)
-                                    ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
-                                    : "bg-white/5 border-white/5 text-slate-500 hover:border-white/10"
-                                )}
-                              >
-                                {cat.label}
-                              </button>
-                            ))}
+                        <div className="space-y-4">
+                          {/* AI Recommendation Banner */}
+                          {req.doctorSpecialty && (
+                            <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
+                               <Sparkles className="w-4 h-4 text-blue-400 animate-pulse" />
+                               <div className="flex-1">
+                                  <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Semi-Agentic Insight</p>
+                                  <p className="text-[11px] text-white/60 leading-tight">Recommended scope for {req.doctorSpecialty} context</p>
+                               </div>
+                               <button 
+                                 onClick={() => {
+                                   const recommended = getRecommendedCategories(req.doctorSpecialty)
+                                   setSelectedCats(prev => ({ ...prev, [req.id]: recommended }))
+                                 }}
+                                 className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest text-blue-400 transition-all active:scale-95"
+                               >
+                                 Auto-Select
+                               </button>
+                            </div>
+                          )}
+
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Minimization: Select Shared Scope</p>
+                              <span className="text-[9px] text-blue-500 font-bold uppercase tracking-widest">{selected.length} Selected</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {categories.map(cat => {
+                                const isRecommended = req.doctorSpecialty && getRecommendedCategories(req.doctorSpecialty).includes(cat.id)
+                                return (
+                                  <button
+                                    key={cat.id}
+                                    onClick={() => toggleCategory(req.id, cat.id)}
+                                    className={cn(
+                                      "px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.1em] border transition-all relative overflow-hidden group/cat",
+                                      selected.includes(cat.id)
+                                        ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
+                                        : "bg-white/5 border-white/5 text-slate-500 hover:border-white/10"
+                                    )}
+                                  >
+                                    {isRecommended && !selected.includes(cat.id) && (
+                                      <div className="absolute inset-0 bg-blue-500/5 animate-pulse pointer-events-none" />
+                                    )}
+                                    <span className="relative z-10 flex items-center gap-2">
+                                      {cat.label}
+                                      {isRecommended && <Sparkles className="w-3 h-3 opacity-40 group-hover/cat:opacity-100 transition-opacity" />}
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                            </div>
                           </div>
                         </div>
                       </div>

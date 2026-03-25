@@ -30,7 +30,8 @@ CREATE TABLE public.access_requests (
   requested_at TIMESTAMPTZ DEFAULT NOW(),
   status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'DENIED')),
   patient_name TEXT,
-  shared_categories JSONB DEFAULT '[]'::jsonb
+  doctor_specialty TEXT,
+  shared_categories TEXT[] DEFAULT '{}'
 );
 
 CREATE TABLE public.shared_secrets (

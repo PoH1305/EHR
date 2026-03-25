@@ -9,10 +9,9 @@ import type { PatientProfile } from '@/lib/types'
 
 interface HealthIdentityCardProps {
   patient: PatientProfile
-  locked?: boolean
 }
 
-export function HealthIdentityCard({ patient, locked }: HealthIdentityCardProps) {
+export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -43,9 +42,7 @@ export function HealthIdentityCard({ patient, locked }: HealthIdentityCardProps)
         <div 
           className={cn(
             "absolute inset-0 rounded-[40px] p-8 flex flex-col justify-between border transition-all duration-500",
-            locked 
-              ? "border-red-500/30 bg-[#1a0a0a] text-white" 
-              : "border-white/10 bg-[#1a2233] text-white shadow-2xl shadow-black/40"
+              "border-white/10 bg-[#1a2233] text-white shadow-2xl shadow-black/40"
           )}
           style={{ backfaceVisibility: 'hidden' }}
         >
@@ -99,7 +96,7 @@ export function HealthIdentityCard({ patient, locked }: HealthIdentityCardProps)
         <div 
           className={cn(
             "absolute inset-0 rounded-[40px] p-6 sm:p-8 flex flex-col items-center justify-center border bg-[#1a2233] text-white overflow-hidden",
-            locked ? "border-red-500/30" : "border-white/10 shadow-2xl shadow-black/40"
+            "border-white/10 shadow-2xl shadow-black/40"
           )}
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
@@ -120,11 +117,6 @@ export function HealthIdentityCard({ patient, locked }: HealthIdentityCardProps)
             <p className="text-[11px] font-mono text-slate-400 mt-2">{formatHealthId(patient.healthId)}</p>
           </div>
 
-          {locked && (
-            <div className="absolute inset-0 bg-red-950/20 backdrop-blur-[2px] z-20 flex items-center justify-center rounded-[40px]">
-              <ShieldCheck className="w-12 h-12 text-red-500 animate-pulse" />
-            </div>
-          )}
         </div>
       </motion.div>
     </div>

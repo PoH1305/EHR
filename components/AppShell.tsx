@@ -22,7 +22,6 @@ import {
 import { cn } from '@/lib/utils'
 import { CommandPalette } from './CommandPalette'
 import { EmergencyBanner } from './EmergencyBanner'
-import { SecurityAlertModal } from './SecurityAlertModal'
 import AddPatientModal from './doctor/AddPatientModal'
 import EmergencyOverrideModal from './doctor/EmergencyOverrideModal'
 import RequestNotification from './RequestNotification'
@@ -52,7 +51,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [emergencyExpiresAt, setEmergencyExpiresAt] = useState<string | null>(null)
-  const [securityAlert] = useState(false)
   const { 
     sessionState, 
     role, 
@@ -260,7 +258,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Overlays */}
       <CommandPalette isOpen={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
-      <SecurityAlertModal isOpen={securityAlert} onUnlock={() => {}} />
 
       {/* Bottom navigation */}
       {isDoctor ? (

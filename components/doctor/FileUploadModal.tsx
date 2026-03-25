@@ -6,6 +6,7 @@ import { X, Upload, FileText, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/db'
 import { useToast } from '@/store/useToast'
+import { useClinicalStore } from '@/store/useClinicalStore'
 import type { PatientAttachment } from '@/lib/types'
 
 interface FileUploadModalProps {
@@ -20,6 +21,7 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
   const [category, setCategory] = useState<PatientAttachment['category']>('LAB_REPORT')
   const [description, setDescription] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+  const { addAttachment } = useClinicalStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,12 +40,8 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
     setIsUploading(true)
 
     try {
-      // Convert file to Base64 (simplified for offline-first demo)
-      const reader = new FileReader()
-      const fileUrl = await new Promise<string>((resolve) => {
-        reader.onload = () => resolve(reader.result as string)
-        reader.readAsDataURL(file)
-      })
+      // Create a local blob URL for the addAttachment flow
+      const fileUrl = URL.createObjectURL(file)
 
       const attachment: PatientAttachment = {
         id: Math.random().toString(36).substring(2, 11),
@@ -57,21 +55,10 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
         description: description || undefined
       }
 
-      await db.patient_attachments.add(attachment)
+      // Use clinical store action - handles cloud upload and sync
+      await addAttachment(attachment)
       
-      // Audit Log
-      await db.audit_log.add({
-        id: Math.random().toString(36).substring(2, 15),
-        type: 'RECORD_CREATED',
-        timestamp: new Date().toISOString(),
-        userId: 'DOCTOR_001', // Should come from session
-        description: `Uploaded attachment: ${file.name} (${category})`,
-        metadata: { attachmentId: attachment.id, patientId },
-        hash: '0x...',
-        previousHash: '0x...'
-      })
-
-      toast("File uploaded successfully", "success")
+      toast("File uploaded successfully and synced to patient", "success")
       setFile(null)
       setDescription('')
       onClose()

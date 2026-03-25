@@ -18,6 +18,7 @@ function RecordsPageContent() {
     medications, 
     allergies, 
     attachments,
+    medicalImages,
     loadClinicalData, 
     addAttachment 
   } = useClinicalStore()
@@ -125,6 +126,18 @@ function RecordsPageContent() {
         date: attachment.uploadedAt,
         verified: false,
         fileUrl: attachment.fileUrl,
+      })
+    }
+
+    for (const image of medicalImages) {
+      records.push({
+        id: image.id,
+        resourceType: 'DiagnosticReport',
+        title: image.type || 'Medical Image',
+        subtitle: image.description || 'Clinical Capture',
+        date: image.timestamp,
+        verified: true,
+        fileUrl: image.imageUrl,
       })
     }
 

@@ -10,7 +10,7 @@ import { devtools, persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import type { PatientProfile } from '@/lib/types'
 
-export type SessionState = 'UNAUTHENTICATED' | 'AUTHENTICATED' | 'SUSPENDED' | 'ALERT'
+export type SessionState = 'UNAUTHENTICATED' | 'AUTHENTICATED'
 export type UserRole = 'patient' | 'doctor' | null
 
 interface UserState {
@@ -20,7 +20,6 @@ interface UserState {
   publicKey: CryptoKey | null
   privateKey: CryptoKey | null
   sessionState: SessionState
-  failedAttempts: number
   lastActiveAt: number | null
   isLoading: boolean
   lastSyncAt: string | null
@@ -40,8 +39,6 @@ interface UserActions {
   setIsAddPatientOpen: (val: boolean) => void
   signOut: () => void
   setSessionState: (state: SessionState) => void
-  recordFailedAttempt: () => void
-  resetFailedAttempts: () => void
   updateLastActive: () => void
   updatePatient: (profile: Partial<PatientProfile>) => void
   loadPatient: (id: string) => Promise<void>
@@ -65,7 +62,6 @@ export const useUserStore = create<UserState & UserActions>()(
       publicKey: null,
       privateKey: null,
       sessionState: 'UNAUTHENTICATED',
-      failedAttempts: 0,
       lastActiveAt: null,
       isLoading: false,
       lastSyncAt: null,
@@ -158,7 +154,7 @@ export const useUserStore = create<UserState & UserActions>()(
           // Reset local state
           set((state) => {
             state.patient = null
-            state.sessionState = 'UNAUTHENTICATED' // Changed from LOCKED for fresh start
+            state.sessionState = 'UNAUTHENTICATED'
             state.role = 'patient'
             state.lastActiveAt = Date.now()
             state.firebaseUid = null
@@ -182,7 +178,6 @@ export const useUserStore = create<UserState & UserActions>()(
           state.firebaseUid = null
           state.firebaseEmail = null
           state.healthId = null
-          state.failedAttempts = 0
           state.lastActiveAt = null
         })
       },
@@ -203,21 +198,6 @@ export const useUserStore = create<UserState & UserActions>()(
       setSessionState: (sessionState: SessionState) => {
         set((state) => {
           state.sessionState = sessionState
-        })
-      },
-
-      recordFailedAttempt: () => {
-        set((state) => {
-          state.failedAttempts += 1
-          if (state.failedAttempts >= 3) {
-            state.sessionState = 'SUSPENDED'
-          }
-        })
-      },
-
-      resetFailedAttempts: () => {
-        set((state) => {
-          state.failedAttempts = 0
         })
       },
 
@@ -371,7 +351,6 @@ export const useUserStore = create<UserState & UserActions>()(
         firebaseUid: state.firebaseUid,
         firebaseEmail: state.firebaseEmail,
         sessionState: state.sessionState,
-        lastActiveAt: state.lastActiveAt,
       }) 
     }
   ),

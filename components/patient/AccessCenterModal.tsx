@@ -12,7 +12,7 @@ import {
   Check, 
   ChevronRight, 
   ChevronLeft,
-  Key,
+  Key, // This import is no longer needed if PinUnlock is removed and Key icon is not used elsewhere
   ShieldAlert,
   Search,
   Tag,
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type ConsentTokenRequest, type FHIRBundle, type AccessRequest, type ConsentToken } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
 import { filterPatientDataBySpecialty } from '@/lib/minimization'
-import { PinUnlock } from '../PinUnlock'
+// import { PinUnlock } from '../PinUnlock' // Removed as per instruction
 import { FilterPreviewCard } from '../FilterPreviewCard'
 
 interface AccessCenterModalProps {
@@ -415,21 +415,11 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                     </div>
                   )}
 
-                  {shareStep === 2 && (
-                    <div className="flex flex-col items-center justify-center py-10 gap-6">
-                       <div className="w-20 h-20 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                          <Key className="w-10 h-10 text-blue-500" />
-                       </div>
-                       <div className="text-center">
-                          <h3 className="text-xl font-bold text-white mb-2">Authorize Sharing</h3>
-                          <p className="text-sm text-slate-500 max-w-[240px] mx-auto">Enter your security PIN to encrypt the bundle and generate the access token.</p>
-                       </div>
-                       <PinUnlock onSuccess={handleShareConfirm} />
-                    </div>
-                  )}
+                  {/* shareStep === 2 (PIN Unlock) block removed */}
 
                   {/* Navigation Footer for Share */}
-                  {shareStep < 2 && (
+                  {/* Condition changed from shareStep < 2 to shareStep < 1, and the "Continue" button now directly calls handleShareConfirm on the last step */}
+                  {shareStep < 1 && ( // Only show navigation if not on the final step (which is now step 1)
                     <div className="flex justify-between pt-8 border-t border-white/5">
                       <button 
                         onClick={() => setShareStep(prev => Math.max(0, prev - 1))}
@@ -439,11 +429,11 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                         <ChevronLeft className="w-4 h-4" /> Back
                       </button>
                       <button 
-                        onClick={() => setShareStep(prev => prev + 1)}
+                        onClick={handleShareConfirm}
                         disabled={shareStep === 0 ? !recipientName || !specialty : false}
                         className="px-8 py-4 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-200 disabled:opacity-20 flex items-center gap-2"
                       >
-                        Continue <ChevronRight className="w-4 h-4" />
+                        {shareStep === 1 ? 'Generate Token' : 'Continue'} <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
                   )}

@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type AccessRequest } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
 import { SENSITIVE_FIELD_CATEGORIES } from '@/lib/aiFilter'
-import { PinUnlock } from './PinUnlock'
 import { useConsentStore } from '@/store/useConsentStore'
 
 interface AccessApprovalModalProps {
@@ -17,7 +16,7 @@ interface AccessApprovalModalProps {
   request: AccessRequest
 }
 
-const STEPS = ['Specialty', 'Duration', 'Sensitive Access', 'Review', 'Verify']
+const STEPS = ['Specialty', 'Duration', 'Sensitive Access', 'Review']
 
 export function AccessApprovalModal({ isOpen, onClose, request }: AccessApprovalModalProps) {
   const [step, setStep] = useState(0)
@@ -32,6 +31,7 @@ export function AccessApprovalModal({ isOpen, onClose, request }: AccessApproval
     try {
       await generateToken({
         patientId: request.patientId,
+        patientName: request.patientName || 'Patient',
         recipientName: request.doctorName,
         recipientId: request.doctorId,
         specialty,
@@ -42,7 +42,8 @@ export function AccessApprovalModal({ isOpen, onClose, request }: AccessApproval
       
       respondToAccessRequest(request.id, true)
       onClose()
-    } catch {
+    } catch (err) {
+      console.error('Failed to approve request:', err)
       setIsSubmitting(false)
     }
   }
@@ -182,41 +183,28 @@ export function AccessApprovalModal({ isOpen, onClose, request }: AccessApproval
                     <span className="text-sm font-bold text-white">{TTL_OPTIONS.find(o => o.seconds === ttlSeconds)?.label}</span>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {step === 4 && (
-              <div className="flex flex-col items-center py-8">
-                <div className="text-center mb-8">
-                  <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Authorize Access</h3>
-                  <p className="text-sm text-white/40 max-w-[200px] mx-auto leading-relaxed">
-                    Confirm your 4-digit PIN to approve this access request.
-                  </p>
-                </div>
-                <PinUnlock onSuccess={handleConfirm} />
-                {isSubmitting && <p className="mt-4 text-xs text-[#5B8DEF] animate-pulse uppercase tracking-widest font-black">Generating Secure Token...</p>}
+                {isSubmitting && <p className="mt-4 text-center text-xs text-[#5B8DEF] animate-pulse uppercase tracking-widest font-black">Generating Secure Token...</p>}
               </div>
             )}
           </motion.div>
         </AnimatePresence>
 
-        {step < 4 && (
-          <div className="flex justify-between mt-10">
-            <button
-               onClick={() => setStep(s => s - 1)}
-               disabled={step === 0}
-               className="text-xs font-bold text-white/40 uppercase tracking-widest disabled:opacity-30"
-            >
-              Back
-            </button>
-            <button
-               onClick={() => setStep(s => s + 1)}
-               className="px-8 py-3 bg-[#1A3A8F] text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#1A3A8F]/80 transition-all flex items-center gap-2"
-            >
-              {step === 3 ? 'Finalize' : 'Next'} <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex justify-between mt-10">
+          <button
+             onClick={() => setStep(s => s - 1)}
+             disabled={step === 0 || isSubmitting}
+             className="text-xs font-bold text-white/40 uppercase tracking-widest disabled:opacity-30"
+          >
+            Back
+          </button>
+          <button
+             onClick={() => step === 3 ? handleConfirm() : setStep(s => s + 1)}
+             disabled={isSubmitting}
+             className="px-8 py-3 bg-[#1A3A8F] text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#1A3A8F]/80 transition-all flex items-center gap-2"
+          >
+            {step === 3 ? 'Approve' : 'Next'} <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </motion.div>
     </div>,
     document.body

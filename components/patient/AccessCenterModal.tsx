@@ -12,7 +12,6 @@ import {
   Check, 
   ChevronRight, 
   ChevronLeft,
-  Key, // This import is no longer needed if PinUnlock is removed and Key icon is not used elsewhere
   ShieldAlert,
   Search,
   Tag,
@@ -27,7 +26,6 @@ import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type ConsentTokenRequest, type FHIRBundle, type AccessRequest, type ConsentToken } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
 import { filterPatientDataBySpecialty, getRecommendedCategories } from '@/lib/minimization'
-// import { PinUnlock } from '../PinUnlock' // Removed as per instruction
 import { FilterPreviewCard } from '../FilterPreviewCard'
 
 interface AccessCenterModalProps {

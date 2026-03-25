@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type ConsentTokenRequest, type FHIRBundle } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
 import { filterPatientDataBySpecialty } from '@/lib/minimization'
-import { PinUnlock } from './PinUnlock'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { FilterPreviewCard } from './FilterPreviewCard'
 
@@ -19,7 +18,7 @@ interface ShareRecordsModalProps {
   patientId: string
 }
 
-const STEPS = ['Recipient', 'Specialty', 'Duration', 'Sensitive Access', 'Review', 'Confirm']
+const STEPS = ['Recipient', 'Specialty', 'Duration', 'Sensitive Access', 'Review']
 
 export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: ShareRecordsModalProps) {
   const [step, setStep] = useState(0)
@@ -385,35 +384,9 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
                      )
                    })}
                 </div>
-              </div>
-            )}
 
-            {step === 5 && (
-              <div className="flex flex-col items-center gap-6 py-8">
-                <div className="w-20 h-20 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(59,130,246,0.1)]">
-                  <Key className="w-10 h-10 text-blue-500" />
-                </div>
-                <div className="text-center mb-8">
-                  <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Authorize Transmission</h3>
-                  <p className="text-sm text-slate-500 max-w-[200px] mx-auto font-medium leading-relaxed">
-                    Confirm your 4-digit PIN to finalize the filtered bundle.
-                  </p>
-                </div>
-                <PinUnlock onSuccess={handleConfirm} />
                 {isSubmitting && (
-                  <div className="mt-8 flex flex-col items-center gap-3">
-                    <div className="flex gap-1.5">
-                       {[0, 1, 2].map(i => (
-                         <motion.div 
-                           key={i}
-                           animate={{ y: [0, -5, 0], opacity: [0.3, 1, 0.3] }}
-                           transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                           className="w-2 h-2 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50"
-                         />
-                       ))}
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 animate-pulse">Encrypting & Finalizing...</span>
-                  </div>
+                  <p className="mt-4 text-center text-xs text-[#5B8DEF] animate-pulse uppercase tracking-widest font-black">Building Secure Bundle...</p>
                 )}
               </div>
             )}
@@ -421,24 +394,22 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
         </AnimatePresence>
 
         {/* Navigation */}
-        {step < 5 && (
-          <div className="flex justify-between mt-10">
-            <button
-              onClick={() => setStep(Math.max(0, step - 1))}
-              disabled={step === 0}
-              className="flex items-center gap-2 px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-white disabled:opacity-30 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-            <button
-              onClick={() => setStep(step + 1)}
-              disabled={!canProceed()}
-              className="flex items-center gap-2 px-10 py-4 bg-white text-black text-xs font-black uppercase tracking-widest rounded-[1.25rem] hover:bg-slate-200 disabled:opacity-30 transition-all active:scale-95 shadow-xl shadow-white/5"
-            >
-              {step === 4 ? 'Confirm & Secure' : 'Continue'} <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex justify-between mt-10">
+          <button
+            onClick={() => setStep(Math.max(0, step - 1))}
+            disabled={step === 0 || isSubmitting}
+            className="flex items-center gap-2 px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-white disabled:opacity-30 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <button
+            onClick={() => step === 4 ? handleConfirm() : setStep(step + 1)}
+            disabled={!canProceed() || isSubmitting}
+            className="flex items-center gap-2 px-10 py-4 bg-white text-black text-xs font-black uppercase tracking-widest rounded-[1.25rem] hover:bg-slate-200 disabled:opacity-30 transition-all active:scale-95 shadow-xl shadow-white/5"
+          >
+            {step === 4 ? (isSubmitting ? 'Securing...' : 'Authorize') : 'Continue'} <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </motion.div>
     </div>,
     document.body

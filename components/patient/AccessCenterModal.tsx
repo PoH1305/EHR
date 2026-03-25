@@ -138,7 +138,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
           <AnimatePresence mode="wait">
             {activeTab === 'requests' && (
               <motion.div
@@ -154,24 +154,25 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                       <div key={req.id} className="p-6 rounded-[32px] bg-white/[0.03] border border-white/5 space-y-6 relative overflow-hidden group">
                         <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/40" />
                         
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 rounded-3xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-14 h-14 rounded-3xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shrink-0">
                               <Shield className="w-7 h-7 text-blue-500" />
                             </div>
-                            <div>
-                              <h4 className="text-lg font-bold text-white tracking-tight">{req.doctorName}</h4>
-                              <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">{req.organization}</p>
-                              <span className="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-1 block">
+                            <div className="min-w-0">
+                              <h4 className="text-lg font-bold text-white tracking-tight truncate">{req.doctorName}</h4>
+                              <p className="text-xs text-slate-500 font-medium uppercase tracking-widest truncate">{req.organization}</p>
+                              <span className="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-1 block truncate">
                                 {req.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER}
                               </span>
                             </div>
                           </div>
                           
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 shrink-0">
                              <button 
                                onClick={() => respondToAccessRequest(req.id, false)}
-                               className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all"
+                               className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center shrink-0"
+                               title="Decline"
                              >
                                 <X className="w-5 h-5" />
                              </button>
@@ -183,7 +184,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                  const recommended = getRecommendedCategories(req.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
                                  setAcceptCats(recommended)
                                }}
-                               className="px-6 rounded-2xl bg-[#5B8DEF] text-white hover:bg-[#4A7BD9] transition-all font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#5B8DEF]/10"
+                               className="flex-1 sm:flex-none px-6 py-3 rounded-2xl bg-[#5B8DEF] text-white hover:bg-[#4A7BD9] transition-all font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#5B8DEF]/10 whitespace-nowrap"
                              >
                                 <Check className="w-4 h-4" />
                                 Review Request

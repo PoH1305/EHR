@@ -217,6 +217,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 id: newReq.id,
                 doctor_id: newReq.doctorId,
                 doctor_name: newReq.doctorName,
+                doctor_specialty: newReq.doctorSpecialty,
                 organization: newReq.organization,
                 patient_id: newReq.patientId,
                 requested_at: newReq.requestedAt,

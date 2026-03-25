@@ -63,6 +63,13 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
   const [specialtySearch, setSpecialtySearch] = useState('')
   const [filteredBundle, setFilteredBundle] = useState<any>(null)
 
+  // Multi-Step Acceptance State
+  const [acceptingRequest, setAcceptingRequest] = useState<AccessRequest | null>(null)
+  const [acceptStep, setAcceptStep] = useState(0)
+  const [acceptTtl, setAcceptTtl] = useState(3600)
+  const [acceptCats, setAcceptCats] = useState<string[]>([])
+  const [isAccepting, setIsAccepting] = useState(false)
+
   const categories = [
     { id: 'vitals', label: 'Vitals' },
     { id: 'conditions', label: 'Conditions' },
@@ -210,10 +217,9 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                 exit={{ opacity: 0, x: 10 }}
                 className="space-y-6"
               >
-                {pendingRequests.length > 0 ? (
-                  pendingRequests.map(req => {
-                    const selected = selectedCats[req.id] || []
-                    return (
+                {!acceptingRequest ? (
+                  pendingRequests.length > 0 ? (
+                    pendingRequests.map(req => (
                       <div key={req.id} className="p-6 rounded-[32px] bg-white/[0.03] border border-white/5 space-y-6 relative overflow-hidden group">
                         <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/40" />
                         
@@ -225,6 +231,9 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                             <div>
                               <h4 className="text-lg font-bold text-white tracking-tight">{req.doctorName}</h4>
                               <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">{req.organization}</p>
+                              <span className="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-1 block">
+                                {req.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER}
+                              </span>
                             </div>
                           </div>
                           
@@ -233,80 +242,252 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                onClick={() => respondToAccessRequest(req.id, false)}
                                className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all"
                              >
-                               <X className="w-5 h-5" />
+                                <X className="w-5 h-5" />
                              </button>
                              <button 
-                               onClick={() => respondToAccessRequest(req.id, true, selected)}
-                               disabled={selected.length === 0}
-                               className="px-6 rounded-2xl bg-green-500/20 border border-green-500/30 text-green-500 hover:bg-green-500/30 transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-30 flex items-center gap-2"
+                               onClick={() => {
+                                 setAcceptingRequest(req)
+                                 setAcceptStep(0)
+                                 setAcceptCats([]) // Start minimal
+                               }}
+                               className="px-6 rounded-2xl bg-[#5B8DEF] text-white hover:bg-[#4A7BD9] transition-all font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#5B8DEF]/10"
                              >
-                               {selected.length === 0 ? <AlertCircle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-                               Approve
+                                <Check className="w-4 h-4" />
+                                Review Request
                              </button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          {/* AI Recommendation Banner */}
-                          {req.doctorSpecialty && (
-                            <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
-                               <Sparkles className="w-4 h-4 text-blue-400 animate-pulse" />
-                               <div className="flex-1">
-                                  <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Semi-Agentic Insight</p>
-                                  <p className="text-[11px] text-white/60 leading-tight">Recommended scope for {req.doctorSpecialty} context</p>
-                               </div>
-                               <button 
-                                 onClick={() => {
-                                   const recommended = getRecommendedCategories(req.doctorSpecialty)
-                                   setSelectedCats(prev => ({ ...prev, [req.id]: recommended }))
-                                 }}
-                                 className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest text-blue-400 transition-all active:scale-95"
-                               >
-                                 Auto-Select
-                               </button>
-                            </div>
-                          )}
-
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Minimization: Select Shared Scope</p>
-                              <span className="text-[9px] text-blue-500 font-bold uppercase tracking-widest">{selected.length} Selected</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {categories.map(cat => {
-                                const isRecommended = req.doctorSpecialty && getRecommendedCategories(req.doctorSpecialty).includes(cat.id)
-                                return (
-                                  <button
-                                    key={cat.id}
-                                    onClick={() => toggleCategory(req.id, cat.id)}
-                                    className={cn(
-                                      "px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.1em] border transition-all relative overflow-hidden group/cat",
-                                      selected.includes(cat.id)
-                                        ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
-                                        : "bg-white/5 border-white/5 text-slate-500 hover:border-white/10"
-                                    )}
-                                  >
-                                    {isRecommended && !selected.includes(cat.id) && (
-                                      <div className="absolute inset-0 bg-blue-500/5 animate-pulse pointer-events-none" />
-                                    )}
-                                    <span className="relative z-10 flex items-center gap-2">
-                                      {cat.label}
-                                      {isRecommended && <Sparkles className="w-3 h-3 opacity-40 group-hover/cat:opacity-100 transition-opacity" />}
-                                    </span>
-                                  </button>
-                                )
-                              })}
-                            </div>
                           </div>
                         </div>
                       </div>
-                    )
-                  })
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                      <Shield className="w-16 h-16 mb-4 text-slate-600" />
+                      <h3 className="text-lg font-bold text-white mb-1">Gate is Secure</h3>
+                      <p className="text-xs uppercase tracking-[0.2em]">No pending access requests</p>
+                    </div>
+                  )
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
-                    <Shield className="w-16 h-16 mb-4 text-slate-600" />
-                    <h3 className="text-lg font-bold text-white mb-1">Gate is Secure</h3>
-                    <p className="text-xs uppercase tracking-[0.2em]">No pending access requests</p>
+                  /* Acceptance Flow Steps */
+                  <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                     {/* Step Header with back button */}
+                     <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                        <button 
+                          onClick={() => {
+                            if (acceptStep > 0) setAcceptStep(prev => prev - 1)
+                            else setAcceptingRequest(null)
+                          }}
+                          className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">
+                            {acceptStep === 0 ? 'Cancel' : 'Back'}
+                          </span>
+                        </button>
+                        <div className="flex gap-1.5">
+                           {[0, 1, 2, 3].map(s => (
+                             <div key={s} className={cn(
+                               "w-8 h-1 rounded-full transition-all duration-500",
+                               acceptStep >= s ? "bg-blue-500" : "bg-white/5"
+                             )} />
+                           ))}
+                        </div>
+                     </div>
+
+                     {/* Step 1: Consent */}
+                     {acceptStep === 0 && (
+                       <div className="space-y-8">
+                         <div className="space-y-2">
+                           <h3 className="text-2xl font-black text-white tracking-tighter">Clinical Consent</h3>
+                           <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                             You are about to establish a clinical link with <span className="text-white">Dr. {acceptingRequest.doctorName}</span>. 
+                             This provider will be able to access your records within the scope you define.
+                           </p>
+                         </div>
+                         <div className="p-6 rounded-[32px] bg-blue-500/5 border border-blue-500/10 flex items-center gap-4">
+                           <ShieldAlert className="w-8 h-8 text-blue-400" />
+                           <p className="text-xs text-blue-400/80 font-medium leading-tight">
+                             This process is decentralized. Only the specific records you approve will be synchronized.
+                           </p>
+                         </div>
+                         <div className="flex flex-col gap-3">
+                            <button 
+                              onClick={() => setAcceptStep(1)}
+                              className="w-full py-5 rounded-[24px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                            >
+                               Configure Access Scope <ChevronRight className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => respondToAccessRequest(acceptingRequest.id, false).then(() => setAcceptingRequest(null))}
+                              className="w-full py-3 text-red-400 text-[10px] font-black uppercase tracking-widest hover:text-red-300 transition-colors"
+                            >
+                              Decline & Block Provider
+                            </button>
+                         </div>
+                       </div>
+                     )}
+
+                     {/* Step 2: Duration */}
+                     {acceptStep === 1 && (
+                       <div className="space-y-6">
+                         <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-white tracking-tight">Access Duration</h3>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">How long should this access remain valid?</p>
+                         </div>
+                         <div className="grid grid-cols-2 gap-3">
+                           {TTL_OPTIONS.map(opt => (
+                             <button
+                               key={opt.seconds}
+                               onClick={() => setAcceptTtl(opt.seconds)}
+                               className={cn(
+                                 "px-6 py-5 rounded-3xl border flex flex-col gap-3 transition-all relative overflow-hidden group",
+                                 acceptTtl === opt.seconds ? "bg-blue-500 border-blue-500 text-white" : "bg-white/5 border-transparent text-slate-500"
+                               )}
+                             >
+                                <Clock className={cn("w-5 h-5", acceptTtl === opt.seconds ? "text-white" : "text-slate-600")} />
+                                <span className="text-sm font-bold truncate">{opt.label}</span>
+                             </button>
+                           ))}
+                         </div>
+                         <button 
+                           onClick={() => setAcceptStep(2)}
+                           className="w-full py-5 rounded-[24px] bg-white text-black font-black uppercase tracking-widest text-xs mt-8 hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                         >
+                            Continue to Records <ChevronRight className="w-4 h-4" />
+                         </button>
+                       </div>
+                     )}
+
+                     {/* Step 3: AI Minimization */}
+                     {acceptStep === 2 && (
+                       <div className="space-y-6">
+                         <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-white tracking-tight">Data Minimization</h3>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Select shared records. AI highlights essential scope.</p>
+                         </div>
+                         
+                         <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
+                            <Sparkles className="w-5 h-5 text-blue-400" />
+                            <div className="flex-1">
+                               <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">AI RECOMMENDATION</p>
+                               <p className="text-[11px] text-white/60 leading-tight">Optimized for {acceptingRequest.doctorSpecialty || 'General Practitioner'} utility</p>
+                            </div>
+                            <button 
+                               onClick={() => {
+                                 const recommended = getRecommendedCategories(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
+                                 setAcceptCats(recommended)
+                               }}
+                               className="px-4 py-2 bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                            >
+                               Auto-Select
+                            </button>
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-2">
+                           {categories.map(cat => {
+                             const isRecommended = getRecommendedCategories(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER).includes(cat.id)
+                             const isSelected = acceptCats.includes(cat.id)
+                             return (
+                               <button
+                                 key={cat.id}
+                                 onClick={() => setAcceptCats(prev => isSelected ? prev.filter(c => c !== cat.id) : [...prev, cat.id])}
+                                 className={cn(
+                                   "p-4 rounded-2xl border transition-all flex flex-col justify-between h-24 text-left relative overflow-hidden",
+                                   isSelected ? "bg-blue-500/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-transparent text-slate-600"
+                                 )}
+                               >
+                                 <span className="text-xs font-bold uppercase tracking-widest relative z-10">{cat.label}</span>
+                                 {!isRecommended && !isSelected && (
+                                   <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-white/5 text-slate-700 w-fit">Blocked</span>
+                                 )}
+                                 {isRecommended && isSelected && (
+                                   <Sparkles className="w-4 h-4 text-blue-400 absolute bottom-3 right-3 opacity-40" />
+                                 )}
+                                 {isRecommended && !isSelected && (
+                                    <div className="absolute inset-0 border border-blue-500/20 animate-pulse pointer-events-none" />
+                                 )}
+                               </button>
+                             )
+                           })}
+                         </div>
+
+                         <button 
+                           onClick={() => setAcceptStep(3)}
+                           disabled={acceptCats.length === 0}
+                           className="w-full py-5 rounded-[24px] bg-white text-black font-black uppercase tracking-widest text-xs mt-4 hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                         >
+                            Final Review <ChevronRight className="w-4 h-4" />
+                         </button>
+                       </div>
+                     )}
+
+                     {/* Step 4: Summary */}
+                     {acceptStep === 3 && (
+                       <div className="space-y-8">
+                         <div className="space-y-2 text-center py-4">
+                            <div className="w-16 h-16 rounded-3xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+                               <Shield className="w-8 h-8 text-green-500" />
+                            </div>
+                            <h3 className="text-2xl font-black text-white tracking-tighter">Confirm Access</h3>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Clinical Handshake Summary</p>
+                         </div>
+
+                         <div className="space-y-4">
+                            <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 space-y-4">
+                               <div className="flex justify-between items-center text-xs">
+                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Recipient</span>
+                                  <span className="text-white font-bold">Dr. {acceptingRequest.doctorName}</span>
+                               </div>
+                               <div className="flex justify-between items-center text-xs">
+                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Duration</span>
+                                  <span className="text-blue-400 font-bold">{TTL_OPTIONS.find(o => o.seconds === acceptTtl)?.label}</span>
+                               </div>
+                               <div className="flex justify-between items-start text-xs">
+                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Scope</span>
+                                  <div className="flex flex-wrap gap-1.5 justify-end max-w-[60%]">
+                                     {acceptCats.map(cat => (
+                                       <span key={cat} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase">{cat}</span>
+                                     ))}
+                                  </div>
+                               </div>
+                            </div>
+                         </div>
+
+                         <button 
+                           onClick={async () => {
+                             if (!acceptingRequest) return
+                             setIsAccepting(true)
+                             
+                             try {
+                               // 1. Generate the actual Decentralized Token
+                               await generateToken({
+                                 patientId: acceptingRequest.patientId,
+                                 recipientId: acceptingRequest.doctorId,
+                                 recipientName: acceptingRequest.doctorName,
+                                 specialty: acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER,
+                                 ttlSeconds: acceptTtl,
+                                 allowedCategories: acceptCats,
+                                 patientName: patient?.name || 'Authorized Patient'
+                               })
+
+                               // 2. Mark the incoming request as APPROVED
+                               await respondToAccessRequest(acceptingRequest.id, true, acceptCats)
+                               
+                               setAcceptingRequest(null)
+                               setActiveTab('active')
+                             } catch (err) {
+                               console.error('Handshake failed:', err)
+                             } finally {
+                               setIsAccepting(false)
+                             }
+                           }}
+                           disabled={isAccepting || isGenerating}
+                           className="w-full py-6 rounded-[32px] bg-[#5B8DEF] text-white font-black uppercase tracking-widest text-xs hover:bg-[#4A7BD9] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                         >
+                            {isAccepting ? 'Synchronizing Node...' : 'Grant Access & Link Node'} 
+                            {!isAccepting && <Check className="w-5 h-5" />}
+                         </button>
+                       </div>
+                     )}
                   </div>
                 )}
               </motion.div>

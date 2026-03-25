@@ -110,11 +110,13 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     // Simulate API delay
     await new Promise(r => setTimeout(r, 1500))
     
+    const { patient: doctorProfile } = useUserStore.getState()
+    
     await createAccessRequest(
       patientId, 
       firebaseUid || 'doc-unknown', 
-      firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
-      DoctorSpecialty.GENERAL_PRACTITIONER, // Default specialty for requestor
+      doctorProfile?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
+      (doctorProfile as any)?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER, 
       'Clinical Health Network',
       foundPatient?.name || undefined
     )

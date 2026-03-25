@@ -64,13 +64,13 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
 
             {/* Header */}
             <div className="flex items-start justify-between mb-8">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 min-w-0 flex-1">
                 <div className="w-12 h-12 rounded-2xl bg-foreground/[0.05] flex items-center justify-center flex-shrink-0 border border-foreground/10">
                   {RESOURCE_ICONS[record.resourceType] || <FileText className="w-5 h-5 text-foreground/50" />}
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-foreground leading-tight truncate break-all">{record.title}</h2>
-                  <p className="text-sm text-foreground/50">{RESOURCE_LABELS[record.resourceType] || record.resourceType}</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-bold text-foreground leading-tight truncate">{record.title}</h2>
+                  <p className="text-xs text-foreground/50 truncate">{RESOURCE_LABELS[record.resourceType] || record.resourceType}</p>
                 </div>
               </div>
               <button

@@ -74,6 +74,7 @@ TO anon
 USING (true)
 WITH CHECK (true);
 
--- 5. Storage Buckets (Optional: Create manually in UI)
--- Bucket name: 'patient-files'
--- Policy: Set to public or allow all for testing
+-- 6. Enable Realtime
+-- This is critical for the patient request inbox to receive live updates
+ALTER PUBLICATION supabase_realtime ADD TABLE public.access_requests;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;

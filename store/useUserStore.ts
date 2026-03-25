@@ -28,6 +28,7 @@ interface UserState {
   firebaseUid: string | null
   firebaseEmail: string | null
   isAddPatientOpen: boolean
+  isProfileRestoring: boolean
   _hasHydrated: boolean
 }
 
@@ -72,6 +73,7 @@ export const useUserStore = create<UserState & UserActions>()(
       firebaseUid: null,
       firebaseEmail: null,
       isAddPatientOpen: false,
+      isProfileRestoring: false,
       _hasHydrated: false,
 
       // Actions
@@ -259,8 +261,11 @@ export const useUserStore = create<UserState & UserActions>()(
         }
       },
       fetchProfileFromCloud: async () => {
-        const { firebaseUid, patient } = get()
-        if (!firebaseUid || patient) return
+        const { firebaseUid, patient, isProfileRestoring } = get()
+        if (!firebaseUid || patient || isProfileRestoring) return
+
+        set((state) => { state.isProfileRestoring = true })
+        console.log('[UserStore] Starting cloud profile restoration...')
 
         try {
           const { supabase } = await import('@/lib/supabase')
@@ -271,7 +276,10 @@ export const useUserStore = create<UserState & UserActions>()(
             .single()
 
           if (error) {
-            if (error.code === 'PGRST116') return // Not found
+            if (error.code === 'PGRST116') {
+               console.log('[UserStore] No cloud profile found.')
+               return
+            }
             throw error
           }
 
@@ -286,10 +294,12 @@ export const useUserStore = create<UserState & UserActions>()(
               }
             })
             if (db) void db.patient_profiles.put(cloudProfile)
-            console.log('[UserStore] Profile restored from Supabase')
+            console.log('[UserStore] Profile successfully restored from Supabase')
           }
         } catch (error) {
-          console.error('[UserStore] Failed to fetch profile from Supabase:', error)
+          console.error('[UserStore] Cloud profile restoration failed:', error)
+        } finally {
+          set((state) => { state.isProfileRestoring = false })
         }
       },
       checkHealthIdUnique: async (healthId: string) => {

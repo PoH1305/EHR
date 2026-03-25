@@ -23,7 +23,8 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     role, 
     setFirebaseUser,
     firebaseUid,
-    fetchProfileFromCloud
+    fetchProfileFromCloud,
+    isProfileRestoring
   } = useUserStore()
 
   const isAuthRoute = useMemo(() => pathname.startsWith('/auth'), [pathname])
@@ -122,10 +123,17 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!_hasHydrated || isAuthChecking) {
+  if (!_hasHydrated || isAuthChecking || isProfileRestoring) {
     return (
       <div className="fixed inset-0 bg-[#080D16] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#0D7377] animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-[#0D7377] animate-spin" />
+          {isProfileRestoring && (
+            <p className="text-[10px] text-[#4A6075] uppercase tracking-[0.2em] animate-pulse">
+              Restoring Clinical Identity...
+            </p>
+          )}
+        </div>
       </div>
     )
   }

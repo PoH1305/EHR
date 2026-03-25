@@ -13,7 +13,8 @@ import {
   Droplets,
   Phone,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -57,9 +58,47 @@ export default function OnboardingPage() {
     organDonor: 'Unspecified',
     insuranceId: ''
   })
+  const [isCheckingCloud, setIsCheckingCloud] = useState(true)
 
+  // 1. Proactive Cloud Check (Second Layer Safety)
   useEffect(() => {
-    if (!formData.healthId) {
+    const checkExisting = async () => {
+      const { firebaseUid } = useUserStore.getState()
+      if (!firebaseUid) {
+        setIsCheckingCloud(false)
+        return
+      }
+
+      try {
+        const { supabase } = await import('@/lib/supabase')
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('data')
+          .eq('id', firebaseUid)
+          .single()
+
+        if (data && data.data) {
+          console.log('[Onboarding] Existing profile found. Redirecting...')
+          const profile = data.data as PatientProfile
+          setRole('patient')
+          setPatient(profile)
+          setSessionState('AUTHENTICATED')
+          router.replace('/dashboard')
+          return
+        }
+      } catch (err) {
+        console.log('[Onboarding] Cloud check skipped or not found.')
+      } finally {
+        setIsCheckingCloud(false)
+      }
+    }
+
+    checkExisting()
+  }, [router, setPatient, setRole, setSessionState])
+
+  // 2. ID Generation
+  useEffect(() => {
+    if (!formData.healthId && !isCheckingCloud) {
       const g = () => Math.random().toString(36).substring(2, 6).toUpperCase()
       const generated = `EHI-${g()}-${g()}-${g()}`
       setFormData(prev => ({ ...prev, healthId: generated }))
@@ -148,6 +187,19 @@ export default function OnboardingPage() {
       ? list.filter(i => i !== item) 
       : [...list, item]
     setFormData(prev => ({ ...prev, [key]: updated }))
+  }
+
+  if (isCheckingCloud) {
+    return (
+      <div className="min-h-screen bg-[#080D16] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-[#0D7377] animate-spin" />
+          <p className="text-[10px] text-[#4A6075] uppercase tracking-[0.2em] animate-pulse">
+            Verifying Identity...
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -421,7 +421,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                           <Key className="w-10 h-10 text-blue-500" />
                        </div>
                        <div className="text-center">
-                          <h3 className="text-xl font-bold text-white mb-2">Finalize Decentralized Handshake</h3>
+                          <h3 className="text-xl font-bold text-white mb-2">Authorize Sharing</h3>
                           <p className="text-sm text-slate-500 max-w-[240px] mx-auto">Enter your security PIN to encrypt the bundle and generate the access token.</p>
                        </div>
                        <PinUnlock onSuccess={handleShareConfirm} />

@@ -230,8 +230,8 @@ export const useUserStore = create<UserState & UserActions>()(
         const { lastActiveAt, sessionState } = get()
         if (sessionState === 'AUTHENTICATED' && lastActiveAt) {
           const elapsed = Date.now() - lastActiveAt
-          // 5 minutes timer
-          if (elapsed > 5 * 60 * 1000) {
+          // 15 minutes timer
+          if (elapsed > 15 * 60 * 1000) {
             set((state) => {
               state.sessionState = 'LOCKED'
             })

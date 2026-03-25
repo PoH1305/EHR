@@ -34,7 +34,7 @@ export class ClinicalNodeDB extends Dexie {
 
   constructor() {
     super('EHIClinicalNode')
-    this.version(6).stores({
+    this.version(5).stores({
       patient_profiles: 'id, healthId',
       vitals: '++id, patientId, type',
       conditions: 'id, patientId',

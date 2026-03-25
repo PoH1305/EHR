@@ -99,23 +99,15 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     // Simulate API delay
     await new Promise(r => setTimeout(r, 1500))
     
-    console.log('[AddPatientModal] Submitting access request for:', patientId)
-    try {
-      await createAccessRequest(
-        patientId, 
-        firebaseUid || 'doc-unknown', 
-        firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
-        'Clinical Health Network',
-        foundPatient?.name || undefined
-      )
-      console.log('[AddPatientModal] Request submission successful.')
-      setStep('success')
-    } catch (err: any) {
-      console.error('[AddPatientModal] Submission failed:', err)
-      alert(`Failed to send request: ${err?.message || 'Unknown error'}. Check console for details.`)
-    } finally {
-      setIsSubmitting(false)
-    }
+    await createAccessRequest(
+      patientId, 
+      firebaseUid || 'doc-unknown', 
+      firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
+      'Clinical Health Network'
+    )
+    
+    setIsSubmitting(false)
+    setStep('success')
 
     // Refresh recent
     if (db) {

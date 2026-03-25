@@ -1,5 +1,10 @@
 'use client'
 
+/**
+ * Consent Store — Active/expired/revoked tokens, generation, revocation.
+ * Updated with Decentralized AI Minimization Handshake.
+ */
+
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
@@ -26,9 +31,9 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string) => Promise<void>
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, organization: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
-  respondToAccessRequest: (requestId: string, approved: boolean) => Promise<void>
+  respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
 }
 
@@ -44,6 +49,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       isRevoking: false,
       isLoading: false,
       activeListenerId: null,
+      sharedCategories: [],
       pendingRevocationId: null,
 
       // Actions
@@ -92,7 +98,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         try {
           const newToken = await generateConsentToken(request)
 
-          // Step C: Push encrypted bundle to Supabase relay
+          // Step C: Push encrypted bundle to Supabase relay (formerly Firestore)
           if ((request as any).encryptedBundle) {
             try {
               const { supabase } = await import('@/lib/supabase')
@@ -107,6 +113,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                     created_at: new Date().toISOString()
                   })
                 if (relayError) throw relayError
+                console.log('Encrypted bundle pushed to Supabase relay:', newToken.id)
               }
             } catch (err) {
               console.error('Supabase relay push failed:', err)
@@ -165,6 +172,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               state.pendingRevocationId = null
             })
           } catch (error) {
+            // Rollback
             set((state) => {
               state.revokedTokens = state.revokedTokens.filter((t) => t.id !== tokenId)
               state.activeTokens.push(tokenToRevoke)
@@ -176,7 +184,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: async (patientId, doctorId, doctorName, organization) => {
+      createAccessRequest: async (patientId, doctorId, doctorName, organization, patientName) => {
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
@@ -184,9 +192,12 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           organization,
           patientId,
           requestedAt: new Date().toISOString(),
-          status: 'PENDING'
+          status: 'PENDING',
+          patientName: patientName || null,
+          sharedCategories: []
         }
         
+        // 1. Local Save
         set((state) => {
           state.accessRequests.unshift(newReq)
         })
@@ -194,6 +205,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           void db.access_requests.add(newReq)
         }
 
+        // 2. Supabase Sync (formerly Firestore)
         try {
           const { supabase } = await import('@/lib/supabase')
           if (supabase) {
@@ -206,12 +218,21 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 organization: newReq.organization,
                 patient_id: newReq.patientId,
                 requested_at: newReq.requestedAt,
-                status: newReq.status
+                status: newReq.status,
+                patient_name: newReq.patientName,
+                shared_categories: newReq.sharedCategories
               })
             if (syncError) throw syncError
+            console.log('Access request synced to Supabase:', newReq.id)
           }
-        } catch (err) {
-          console.error('Supabase request sync failed:', err)
+        } catch (err: any) {
+          console.error('[ConsentStore] Supabase request sync failed!', {
+            error: err,
+            message: err?.message,
+            details: err?.details,
+            hint: err?.hint,
+            code: err?.code
+          })
         }
       },
 
@@ -219,6 +240,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         if (get().activeListenerId === uid) return
         
         const field = isDoctor ? 'doctor_id' : 'patient_id'
+        console.log(`[ConsentStore] Initializing Supabase sync for ${field}:`, uid)
+
         set({ activeListenerId: uid, isLoading: true })
 
         const fetchRequests = async () => {
@@ -226,22 +249,31 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
             const { supabase } = await import('@/lib/supabase')
             if (!supabase) return
 
+            // 1. Initial Fetch
             const { data, error } = await supabase
               .from('access_requests')
               .select('*')
               .eq(field, uid)
               .order('requested_at', { ascending: false })
 
-            if (error) throw error
+            console.log(`[ConsentStore] Supabase Fetch [${field}=${uid}]:`, { count: data?.length, error })
 
-            const formatted = (data || []).map(d => ({
+            if (error) throw error
+            
+            if (data) {
+              console.log('[ConsentStore] Raw access_requests data:', data)
+            }
+
+            const formatted: AccessRequest[] = (data || []).map(d => ({
               id: d.id,
               doctorId: d.doctor_id,
               doctorName: d.doctor_name,
               organization: d.organization,
               patientId: d.patient_id,
               requestedAt: d.requested_at,
-              status: d.status as any
+              status: d.status as any,
+              patientName: d.patient_name,
+              sharedCategories: d.shared_categories || []
             }))
 
             set((state) => {
@@ -249,6 +281,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               state.isLoading = false
             })
 
+            // 2. Subscribe to changes (Realtime)
             supabase
               .channel(`public:access_requests:${field}=${uid}`)
               .on('postgres_changes', { 
@@ -257,7 +290,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 table: 'access_requests',
                 filter: `${field}=eq.${uid}` 
               }, () => {
-                fetchRequests()
+                fetchRequests() // Re-fetch on any change for simplicity
               })
               .subscribe()
 
@@ -270,26 +303,35 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         fetchRequests()
       },
 
-      respondToAccessRequest: async (requestId, approved) => {
+      respondToAccessRequest: async (requestId, approved, categories = []) => {
         const status = approved ? 'APPROVED' : 'DENIED'
         
         set((state) => {
           const req = state.accessRequests.find(r => r.id === requestId)
           if (req) {
             req.status = status
+            req.sharedCategories = approved ? categories : []
           }
         })
         
+        // 1. Local Update
         if (typeof window !== 'undefined' && db) {
-          void db.access_requests.update(requestId, { status })
+          void db.access_requests.update(requestId, { 
+            status, 
+            sharedCategories: approved ? categories : [] 
+          })
         }
 
+        // 2. Supabase Update
         try {
           const { supabase } = await import('@/lib/supabase')
           if (supabase) {
-             const { error: updateError } = await supabase
+            const { error: updateError } = await supabase
               .from('access_requests')
-              .update({ status })
+              .update({ 
+                status, 
+                shared_categories: approved ? categories : [] 
+              })
               .eq('id', requestId)
             if (updateError) throw updateError
           }

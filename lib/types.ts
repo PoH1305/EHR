@@ -487,4 +487,6 @@ export interface AccessRequest {
   patientId: string
   requestedAt: string
   status: 'PENDING' | 'APPROVED' | 'DENIED'
+  patientName?: string | null
+  sharedCategories: string[]
 }

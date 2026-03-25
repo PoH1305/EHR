@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, QrCode, Clipboard, CheckCircle2, Loader2, Search, User } from 'lucide-react'
-import { useConsentStore } from '@/store/useConsentStore'
+import { useConsentStore, type AccessRequest } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
 import { cn, autoFormatEHI } from '@/lib/utils'
 import { createPortal } from 'react-dom'
 import QRScanner from '@/components/QRScanner'
 import { db } from '@/lib/db'
-import type { PatientProfile, AccessRequest } from '@/lib/types'
+import type { PatientProfile } from '@/lib/types'
 
 interface AddPatientModalProps {
   isOpen: boolean
@@ -103,12 +103,13 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
       patientId, 
       firebaseUid || 'doc-unknown', 
       firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
-      'Clinical Health Network'
+      'Clinical Health Network',
+      foundPatient?.name || undefined
     )
     
     setIsSubmitting(false)
     setStep('success')
-
+    
     // Refresh recent
     if (db) {
       db.access_requests.orderBy('requestedAt').reverse().limit(3).toArray()

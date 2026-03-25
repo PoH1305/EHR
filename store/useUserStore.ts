@@ -10,7 +10,7 @@ import { devtools, persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import type { PatientProfile } from '@/lib/types'
 
-export type SessionState = 'UNAUTHENTICATED' | 'AUTHENTICATED' | 'LOCKED' | 'SUSPENDED' | 'ALERT'
+export type SessionState = 'UNAUTHENTICATED' | 'AUTHENTICATED' | 'SUSPENDED' | 'ALERT'
 export type UserRole = 'patient' | 'doctor' | null
 
 interface UserState {
@@ -42,7 +42,6 @@ interface UserActions {
   recordFailedAttempt: () => void
   resetFailedAttempts: () => void
   updateLastActive: () => void
-  checkBackgroundLock: () => void
   updatePatient: (profile: Partial<PatientProfile>) => void
   loadPatient: (id: string) => Promise<void>
   deleteAccount: () => Promise<void>
@@ -226,19 +225,6 @@ export const useUserStore = create<UserState & UserActions>()(
         })
       },
 
-      checkBackgroundLock: () => {
-        const { lastActiveAt, sessionState } = get()
-        if (sessionState === 'AUTHENTICATED' && lastActiveAt) {
-          const elapsed = Date.now() - lastActiveAt
-          // 5 minutes timer
-          if (elapsed > 5 * 60 * 1000) {
-            set((state) => {
-              state.sessionState = 'LOCKED'
-            })
-          }
-        }
-      },
-
       updatePatient: (profile) => {
         set((state) => {
           if (state.patient) {
@@ -294,7 +280,10 @@ export const useUserStore = create<UserState & UserActions>()(
             set((state) => {
               state.patient = cloudProfile
               state.healthId = cloudProfile.healthId
-              state.role = 'patient'
+              // Only set role to patient if it's currently null or already patient
+              if (state.role !== 'doctor') {
+                state.role = 'patient'
+              }
             })
             if (db) void db.patient_profiles.put(cloudProfile)
             console.log('[UserStore] Profile restored from Supabase')
@@ -371,7 +360,7 @@ export const useUserStore = create<UserState & UserActions>()(
         healthId: state.healthId,
         firebaseUid: state.firebaseUid,
         firebaseEmail: state.firebaseEmail,
-        sessionState: state.sessionState === 'AUTHENTICATED' ? 'LOCKED' : state.sessionState,
+        sessionState: state.sessionState,
         lastActiveAt: state.lastActiveAt,
       }) 
     }

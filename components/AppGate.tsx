@@ -87,8 +87,11 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     // Navigation logic
     if (sessionState === 'UNAUTHENTICATED') {
       router.replace('/auth')
-    } else if (!patient && pathname !== '/onboarding' && role !== 'doctor') {
-      // If no profile and not a doctor, always go to onboarding to re-link or create
+    } else if (role === 'doctor') {
+      // Doctors always go to dashboard (which matches the doctor UI in AppShell)
+      if (pathname === '/onboarding') router.replace('/dashboard')
+    } else if (!patient && pathname !== '/onboarding') {
+      // Patients without profile go to onboarding
       router.replace('/onboarding')
     } else if (pathname === '/onboarding' && patient) {
       router.replace('/dashboard')

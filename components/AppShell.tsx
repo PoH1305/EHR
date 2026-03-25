@@ -56,7 +56,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { 
     sessionState, 
     role, 
-    checkBackgroundLock, 
     updateLastActive,
     isAddPatientOpen,
     setIsAddPatientOpen
@@ -87,19 +86,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkBackgroundLock()
-      } else {
+      if (document.visibilityState !== 'visible') {
         updateLastActive()
       }
     }
     
-    // Check lock on mount
-    checkBackgroundLock()
-
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [mounted, checkBackgroundLock, updateLastActive])
+  }, [mounted, updateLastActive])
 
   // Redirection is now handled by the parent AppGate component
   // this avoids duplicate router.replace calls and inconsistent state
@@ -156,7 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  const isLocked = sessionState !== 'AUTHENTICATED'
+
 
   return (
     <div className={cn(
@@ -257,7 +251,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         data-privacy-mode={isPrivacyMode}
         className={cn(
           'flex-1 pt-24 pb-24 px-4 sm:px-6 max-w-4xl mx-auto w-full transition-all duration-700',
-          isLocked && 'blur-2xl pointer-events-none select-none',
           isEmergencyMode && 'pt-40 grayscale-[0.5] contrast-125',
           isSuspicious && 'pt-32'
         )}

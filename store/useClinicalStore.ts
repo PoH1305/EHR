@@ -246,6 +246,39 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             state.lastUpdated = new Date().toISOString()
           })
           clearTimeout(timeoutId)
+
+          // --- PATIENT ROLE: Merge doctor-uploaded attachments from Supabase ---
+          // Doctor may have uploaded files to clinical_data that aren't in patient's local Dexie
+          if (role !== 'doctor' && supabase) {
+            try {
+              const { data: cloudRec } = await supabase
+                .from('clinical_data')
+                .select('data')
+                .eq('patient_id', patientId)
+                .maybeSingle()
+
+              if (cloudRec?.data?.attachments) {
+                const cloudAtts: PatientAttachment[] = cloudRec.data.attachments || []
+                const localIds = new Set(attachments.map((a: PatientAttachment) => a.id))
+                const newFromDoctor = cloudAtts.filter(a => !localIds.has(a.id))
+
+                if (newFromDoctor.length > 0) {
+                  console.log(`[ClinicalStore] Merging ${newFromDoctor.length} doctor-uploaded file(s) from cloud`)
+                  if (db) {
+                    for (const att of newFromDoctor) {
+                      try { await db.patient_attachments.add(att) } catch { /* already exists */ }
+                    }
+                  }
+                  set((state) => {
+                    state.attachments = [...state.attachments, ...newFromDoctor]
+                  })
+                }
+              }
+            } catch (mergeErr) {
+              console.warn('[ClinicalStore] Could not merge cloud attachments:', mergeErr)
+            }
+          }
+
         } catch (error) {
           clearTimeout(timeoutId)
           console.error('Failed to load clinical data:', error)

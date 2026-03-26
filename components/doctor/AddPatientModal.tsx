@@ -34,6 +34,20 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
   const [mounted, setMounted] = useState(false)
   const [foundPatient, setFoundPatient] = useState<PatientProfile | null>(null)
   const [recentRequests, setRecentRequests] = useState<AccessRequest[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['vitals', 'medications'])
+  const [requestReason, setRequestReason] = useState('Routine Checkup')
+  
+  const categories = [
+    { id: 'vitals', label: 'Vitals' },
+    { id: 'conditions', label: 'Conditions' },
+    { id: 'medications', label: 'Prescriptions' },
+    { id: 'allergies', label: 'Allergies' },
+    { id: 'clinicalNotes', label: 'Clinical Notes' },
+    { id: 'attachments', label: 'Lab Reports' }
+  ]
+
+  const reasons = ['Routine Checkup', 'Emergency Case', 'Referral', 'Diagnostic Review']
+
   const { createAccessRequest, parseEHILink } = useConsentStore()
   const { firebaseEmail, firebaseUid } = useUserStore()
   
@@ -118,6 +132,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
       doctorProfile?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
       (doctorProfile as any)?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER, 
       'Clinical Health Network',
+      selectedCategories,
       foundPatient?.name || undefined
     )
     
@@ -267,23 +282,73 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                   
                   {foundPatient && (
                     <motion.div
-                      initial={{ opacity: 0, y: 5 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-3 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20"
+                      className="space-y-6"
                     >
-                      <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30 overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        {foundPatient.photoUrl ? (
-                          <img src={foundPatient.photoUrl} className="w-full h-full object-cover" alt="" />
-                        ) : (
-                          <User className="w-5 h-5 text-blue-400" />
-                        )}
+                      {/* Identity Strip */}
+                      <div className="flex items-center gap-3 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30 overflow-hidden">
+                          {foundPatient.photoUrl ? (
+                            <img src={foundPatient.photoUrl} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <User className="w-5 h-5 text-blue-400" />
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-bold text-white/90">{foundPatient.name}</span>
+                          <div className="flex items-center gap-1.5">
+                             <span className="text-[9px] text-white/40 uppercase tracking-widest">Identity Verified</span>
+                             <CheckCircle2 className="w-3 h-3 text-green-500" />
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-bold text-white/90">{foundPatient.name}</span>
-                        <div className="flex items-center gap-1.5">
-                           <span className="text-[9px] text-white/40 uppercase tracking-widest">Identity Verified</span>
-                           <CheckCircle2 className="w-3 h-3 text-green-500" />
+
+                      {/* Reason Picker */}
+                      <div className="space-y-3">
+                        <label className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-1">Request Reason</label>
+                        <div className="grid grid-cols-2 gap-2">
+                           {reasons.map(r => (
+                             <button
+                               key={r}
+                               onClick={() => setRequestReason(r)}
+                               className={cn(
+                                 "px-3 py-2 rounded-xl text-[10px] font-bold transition-all border",
+                                 requestReason === r ? "bg-white/10 border-white/20 text-white" : "bg-white/5 border-transparent text-white/30 hover:bg-white/[0.07]"
+                               )}
+                             >
+                               {r}
+                             </button>
+                           ))}
+                        </div>
+                      </div>
+
+                      {/* Scoping Grid */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between ml-1">
+                          <label className="text-[9px] font-black text-white/20 uppercase tracking-widest">Data Scoping</label>
+                          <span className="text-[8px] text-blue-400 font-bold uppercase">{selectedCategories.length} selected</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                           {categories.map(cat => (
+                             <button
+                               key={cat.id}
+                               onClick={() => {
+                                 setSelectedCategories(prev => 
+                                   prev.includes(cat.id) ? prev.filter(i => i !== cat.id) : [...prev, cat.id]
+                                 )
+                               }}
+                               className={cn(
+                                 "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[10px] font-bold transition-all border",
+                                 selectedCategories.includes(cat.id) ? "bg-[#1A3A8F]/20 border-[#1A3A8F]/40 text-[#5B8DEF]" : "bg-white/5 border-transparent text-white/20"
+                               )}
+                             >
+                               <div className={cn("w-3.5 h-3.5 rounded-md border flex items-center justify-center transition-all", selectedCategories.includes(cat.id) ? "bg-[#5B8DEF] border-[#5B8DEF]" : "border-white/10")}>
+                                 {selectedCategories.includes(cat.id) && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
+                               </div>
+                               {cat.label}
+                             </button>
+                           ))}
                         </div>
                       </div>
                     </motion.div>
@@ -292,8 +357,13 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
 
                 <button
                   onClick={handleSubmit}
-                  disabled={!patientId || isSubmitting}
-                  className={cn("w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-xs transition-all shadow-xl", patientId && !isSubmitting ? "bg-[#1A3A8F] text-white shadow-[#1A3A8F]/20" : "bg-white/5 text-white/20 cursor-not-allowed")}
+                  disabled={!patientId || !foundPatient || isSubmitting || selectedCategories.length === 0}
+                  className={cn(
+                    "w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-xs transition-all shadow-xl", 
+                    patientId && foundPatient && !isSubmitting && selectedCategories.length > 0 
+                      ? "bg-[#1A3A8F] text-white shadow-[#1A3A8F]/20" 
+                      : "bg-white/5 text-white/20 cursor-not-allowed"
+                  )}
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Request Secure Access"}
                 </button>

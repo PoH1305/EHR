@@ -32,7 +32,7 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, patientName?: string | null) => Promise<void>
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, sharedCategories: string[], patientName?: string | null) => Promise<void>
   requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
@@ -186,7 +186,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, patientName) => {
+      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, sharedCategories, patientName) => {
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
@@ -197,7 +197,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
           patientName: patientName || null,
-          sharedCategories: [],
+          sharedCategories: sharedCategories || [],
           metadata: {}
         }
         

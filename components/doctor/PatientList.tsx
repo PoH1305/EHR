@@ -48,10 +48,28 @@ export default function PatientList({ onSelect }: PatientListProps) {
 
         if (profileError) throw profileError
 
-        const approvedPatients = (profileData || []).map(d => ({
-          ...d.data,
-          id: d.id
-        })) as PatientProfile[]
+        // 3. Merge request data with profile data (Fallback for missing profiles)
+        const approvedPatients = approvedRequests.map(req => {
+          const profile = (profileData || []).find(p => p.health_id === req.patient_id)
+          
+          if (profile) {
+            return {
+              ...profile.data,
+              id: profile.id,
+              healthId: profile.health_id
+            }
+          }
+
+          // Fallback: Use data from the access request itself
+          return {
+            id: req.patient_id, // Use EHI ID as stable ID if profile missing
+            name: req.patient_name || 'Authorized Patient',
+            healthId: req.patient_id,
+            age: '??',
+            gender: 'Unknown',
+            bloodGroup: 'UNK'
+          }
+        }) as PatientProfile[]
 
         setPatients(approvedPatients)
       } catch (error) {

@@ -128,6 +128,8 @@ function RecordsPageContent() {
         date: attachment.uploadedAt,
         verified: false,
         fileUrl: attachment.fileUrl,
+        fileName: attachment.fileName,
+        fileType: attachment.fileType,
       })
     }
 

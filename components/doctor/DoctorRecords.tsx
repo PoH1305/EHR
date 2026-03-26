@@ -21,6 +21,7 @@ import { useClinicalStore } from '@/store/useClinicalStore'
 import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
 import { DoctorSpecialty } from '@/lib/types'
+import { FileTypeBadge } from '@/components/FileTypeBadge'
 
 interface DoctorRecordsProps {
    patientId?: string | null
@@ -179,9 +180,12 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                   <div className="flex items-start justify-between gap-2">
                      <div className="flex-1 min-w-0">
                         <p className="font-bold text-white text-sm truncate">{att.fileName}</p>
-                        <p className="text-[10px] text-white/30 uppercase tracking-widest mt-0.5">
-                           {att.category?.replace('_', ' ')} · {(att.fileSize / 1024).toFixed(1)} KB
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                           <FileTypeBadge fileName={att.fileName} mimeType={att.fileType ?? undefined} />
+                           <span className="text-[10px] text-white/30 uppercase tracking-widest">
+                              {att.category?.replace('_', ' ')} · {(att.fileSize / 1024).toFixed(1)} KB
+                           </span>
+                        </div>
                      </div>
                      {/* VIEW-ONLY badge — no download link */}
                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 shrink-0">

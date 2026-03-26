@@ -5,6 +5,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { FileText, Pill, AlertCircle, Activity, Heart, ShieldCheck } from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { GlassCard } from './GlassCard'
+import { FileTypeBadge } from './FileTypeBadge'
 
 export interface RecordItem {
   id: string
@@ -16,6 +17,8 @@ export interface RecordItem {
   sensitive?: boolean | undefined
   verified?: boolean
   fileUrl?: string
+  fileName?: string
+  fileType?: string
 }
 
 interface RecordListProps {
@@ -105,7 +108,13 @@ export function RecordList({ records, onRecordClick }: RecordListProps) {
                       )}
                     </div>
                     <p className="text-xs text-foreground/60 mt-0.5 truncate">{record.subtitle}</p>
-                    <p className="text-[10px] text-foreground/45 mt-1">{formatRelativeTime(record.date)}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-foreground/45">{formatRelativeTime(record.date)}</p>
+                      {/* Color-coded file type badge for uploaded files */}
+                      {record.resourceType === 'DiagnosticReport' && record.fileName && (
+                        <FileTypeBadge fileName={record.fileName} mimeType={record.fileType} />
+                      )}
+                    </div>
                   </div>
                 </div>
               </GlassCard>

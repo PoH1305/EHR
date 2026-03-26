@@ -55,9 +55,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       allergies,
       clinicalNotes,
       attachments,
-      isLoading,
-      loadClinicalData,
-      loadPatientMetadata,
       selectedPatientProfile,
    } = useClinicalStore()
 
@@ -69,7 +66,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    const { firebaseUid } = useUserStore()
 
    const hasListenedRef = useRef(false)
-   const hasDataLoadedRef = useRef<string | null>(null) // tracks which patientId we loaded
 
    useEffect(() => {
       if (firebaseUid && !hasListenedRef.current) {
@@ -77,16 +73,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
          void loadAccessRequests(firebaseUid, true)
       }
    }, [firebaseUid, loadAccessRequests])
-
-   useEffect(() => {
-      // Only load if patientId changed (resets on new patient)
-      if (patientId && hasDataLoadedRef.current !== patientId) {
-         hasDataLoadedRef.current = patientId
-         void loadClinicalData(patientId)
-         void loadPatientMetadata(patientId)
-      }
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [patientId]) // intentionally omit store functions — they are stable actions
 
    // Find the APPROVED access request for this patient to determine shared categories
    const approvedRequest = accessRequests.find(r =>
@@ -103,14 +89,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    const effectiveTab = visibleTabs.find(t => t.key === activeTab) ? activeTab : (visibleTabs[0]?.key || 'medications')
 
    const renderContent = () => {
-      if (isLoading) {
-         return (
-            <div className="flex h-64 items-center justify-center">
-               <Loader2 className="w-8 h-8 text-[#5B8DEF] animate-spin" />
-            </div>
-         )
-      }
-
+      // Loading state is managed by PatientDetail above — just show empty state here
       switch (effectiveTab) {
          case 'medications':
             return medications.length > 0 ? medications.map((m, i) => (
@@ -208,7 +187,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       }
    }
 
-   if (visibleTabs.length === 0 && !isLoading) {
+   if (visibleTabs.length === 0) {
       return (
          <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-16 h-16 rounded-[24px] bg-white/5 flex items-center justify-center">

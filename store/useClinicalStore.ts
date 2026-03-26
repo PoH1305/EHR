@@ -135,6 +135,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         if (typeof window === 'undefined' || !db) return
         set((state) => { state.isLoading = true })
         
+        // Safety timeout to prevent permanent loading hangs
+        const timeoutId = setTimeout(() => {
+          if (get().isLoading) {
+            console.warn('[ClinicalStore] loadClinicalData timed out after 10s')
+            set({ isLoading: false })
+          }
+        }, 10000)
+
         try {
           const { firebaseUid, role } = useUserStore.getState()
           const { supabase } = await import('@/lib/supabase')
@@ -197,6 +205,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                   state.isLoading = false
                   state.lastUpdated = data.last_synced_at
                 })
+                clearTimeout(timeoutId)
                 return
               }
             }
@@ -226,7 +235,9 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             state.isLoading = false
             state.lastUpdated = new Date().toISOString()
           })
+          clearTimeout(timeoutId)
         } catch (error) {
+          clearTimeout(timeoutId)
           console.error('Failed to load clinical data:', error)
           set((state) => { state.isLoading = false })
         }

@@ -52,9 +52,18 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0d1117]">
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-6">
            <Loader2 className="w-10 h-10 text-[#5B8DEF] animate-spin" />
-           <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">Synchronizing Clinical Node</p>
+           <div className="text-center space-y-2">
+              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">Synchronizing Clinical Node</p>
+              <p className="text-[8px] text-white/10 uppercase tracking-widest">Waiting for decentralized handshake...</p>
+           </div>
+           <button 
+             onClick={() => loadClinicalData(patientId)}
+             className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] text-white/40 uppercase tracking-widest font-black hover:bg-white/10 transition-all mt-4"
+           >
+             Force Re-Sync
+           </button>
         </div>
       </div>
     )

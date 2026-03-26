@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { 
@@ -52,8 +52,11 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       organization: 'Clinical Center'
    }
 
+   const hasListenedRef = useRef(false)
+
    useEffect(() => {
-      if (firebaseUid) {
+      if (firebaseUid && !hasListenedRef.current) {
+         hasListenedRef.current = true
          void loadAccessRequests(firebaseUid, true)
       }
    }, [firebaseUid, loadAccessRequests])

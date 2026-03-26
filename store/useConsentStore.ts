@@ -290,7 +290,11 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
 
         set({ activeListenerId: uid, isLoading: true })
 
+        let isFetching = false // Guard against re-entrant realtime callbacks
+
         const fetchRequests = async () => {
+          if (isFetching) return // Skip if already in-flight
+          isFetching = true
           try {
             const { supabase } = await import('@/lib/supabase')
             if (!supabase) return
@@ -302,13 +306,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               .eq(field, uid)
               .order('requested_at', { ascending: false })
 
-            console.log(`[ConsentStore] Supabase Fetch [${field}=${uid}]:`, { count: data?.length, error })
-
             if (error) throw error
-            
-            if (data) {
-              console.log('[ConsentStore] Raw access_requests data:', data)
-            }
 
             const formatted: AccessRequest[] = (data || []).map(d => ({
               id: d.id,
@@ -329,22 +327,28 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               state.isLoading = false
             })
 
-            // 2. Subscribe to changes (Realtime)
+            // 2. Subscribe to changes (Realtime) — only register once
+            const channelName = `public:access_requests:${field}=${uid}`
+            const existingChannel = supabase.channel(channelName)
+            // Remove & re-subscribe to avoid duplicate listeners
+            await supabase.removeChannel(existingChannel)
             supabase
-              .channel(`public:access_requests:${field}=${uid}`)
+              .channel(channelName)
               .on('postgres_changes', { 
                 event: '*', 
                 schema: 'public', 
                 table: 'access_requests',
                 filter: `${field}=eq.${uid}` 
               }, () => {
-                fetchRequests() // Re-fetch on any change for simplicity
+                void fetchRequests() // Guard prevents re-entrant loops
               })
               .subscribe()
 
           } catch (err) {
             console.error('[ConsentStore] Supabase sync error:', err)
             set({ activeListenerId: null, isLoading: false })
+          } finally {
+            isFetching = false
           }
         }
 

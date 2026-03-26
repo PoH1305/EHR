@@ -31,9 +31,12 @@ function RecordsPageContent() {
   const [mounted, setMounted] = useState(false)
   const searchParams = useSearchParams()
 
+  const hasLoadedRef = useRef(false)
+
   useEffect(() => {
     setMounted(true)
-    if (patient?.healthId) {
+    if (patient?.healthId && !hasLoadedRef.current) {
+      hasLoadedRef.current = true
       void loadClinicalData(patient.healthId)
     }
     

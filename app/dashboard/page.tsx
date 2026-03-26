@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Sparkles, Share2, ShieldCheck, Shield } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useConsentStore } from '@/store/useConsentStore'
@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const { loadClinicalData, loadAuditLog, auditEvents } = useClinicalStore()
   const [showSummary, setShowSummary] = useState(false)
   const [showAccessCenter, setShowAccessCenter] = useState(false)
+  const hasLoadedRef = useRef(false)
 
   const pendingCount = accessRequests.filter(r => r.status === 'PENDING').length
 
@@ -34,7 +35,8 @@ export default function DashboardPage() {
         await initializeKeys()
       }
       
-      if (patient) {
+      if (patient && !hasLoadedRef.current) {
+        hasLoadedRef.current = true
         // UNIFIED KEY: Use healthId (EHI ID) for all clinical data lookups
         void loadClinicalData(patient.healthId)
         void loadAuditLog(patient.id)

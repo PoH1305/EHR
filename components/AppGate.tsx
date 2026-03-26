@@ -78,7 +78,8 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     if (!mounted || !_hasHydrated || isAuthChecking) return
 
     // Cloud recovery if profile lost but auth exists
-    if (firebaseUid && !patient) {
+    const { isProfileRestoring } = useUserStore.getState()
+    if (firebaseUid && !patient && !isProfileRestoring) {
       console.log('[AppGate] Profile recovery check (UID: ' + firebaseUid + ')...')
       fetchProfileFromCloud()
     }

@@ -32,7 +32,7 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, sharedCategories: string[], patientName?: string | null) => Promise<void>
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, patientName?: string | null, sharedCategories?: string[]) => Promise<void>
   requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
@@ -186,7 +186,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, sharedCategories, patientName) => {
+      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, patientName, sharedCategories = []) => {
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
@@ -197,7 +197,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
           patientName: patientName || null,
-          sharedCategories: sharedCategories || [],
+          sharedCategories,
           metadata: {}
         }
         
@@ -353,12 +353,14 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
 
       respondToAccessRequest: async (requestId, approved, categories = []) => {
         const status = approved ? 'APPROVED' : 'DENIED'
+        const patientName = approved ? useUserStore.getState().patient?.name || null : null
         
         set((state) => {
           const req = state.accessRequests.find(r => r.id === requestId)
           if (req) {
             req.status = status
             req.sharedCategories = approved ? categories : []
+            if (patientName) req.patientName = patientName
           }
         })
         
@@ -366,7 +368,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         if (typeof window !== 'undefined' && db) {
           void db.access_requests.update(requestId, { 
             status, 
-            sharedCategories: approved ? categories : [] 
+            sharedCategories: approved ? categories : [],
+            patientName: patientName || null
           })
         }
 
@@ -378,7 +381,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               .from('access_requests')
               .update({ 
                 status, 
-                shared_categories: approved ? categories : [] 
+                shared_categories: approved ? categories : [],
+                patient_name: patientName 
               })
               .eq('id', requestId)
             if (updateError) throw updateError

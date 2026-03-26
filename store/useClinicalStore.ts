@@ -135,9 +135,10 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         if (typeof window === 'undefined' || !db) return
         set((state) => { state.isLoading = true })
         
+        // Safety timeout to prevent permanent loading hangs
         const timeoutId = setTimeout(() => {
           if (get().isLoading) {
-            console.warn('[ClinicalStore] loadClinicalData timed out')
+            console.warn('[ClinicalStore] loadClinicalData timed out after 10s')
             set({ isLoading: false })
           }
         }, 10000)
@@ -146,9 +147,9 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           const { firebaseUid, role } = useUserStore.getState()
           const { supabase } = await import('@/lib/supabase')
           
-          let approvedCats: string[] | null = null
+          let sharedCats: string[] | null = null
           
-          // 1. If Doctor, get the approved categories first
+          // 1. If Doctor, find the APPROVED access request to get shared categories
           if (role === 'doctor' && firebaseUid && supabase) {
             const { data: accessData } = await supabase
               .from('access_requests')
@@ -159,78 +160,86 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               .maybeSingle()
             
             if (accessData) {
-              approvedCats = accessData.shared_categories
-            } else {
-              // Strictly forbid access if no approved request exists
-              console.warn('[ClinicalStore] Access denied: No approved request found for doctor.')
-              set({ isLoading: false, vitals: [], conditions: [], medications: [], allergies: [], clinicalNotes: [], medicalImages: [], attachments: [], riskAnalyses: [] })
-              clearTimeout(timeoutId)
-              return
+              sharedCats = accessData.shared_categories
+              console.log('[ClinicalStore] Filtering records by shared categories:', sharedCats)
             }
           }
 
-          const isAllowed = (cat: string) => role === 'patient' || (approvedCats && approvedCats.includes(cat))
-
-          // 2. Conditional Fetching (Performance & Privacy)
           const [vitals, conditions, medications, allergies, clinicalNotes, medicalImages, riskAnalyses, attachments] = await Promise.all([
-            isAllowed('vitals') ? db.vitals.where('patientId').equals(patientId).toArray() : Promise.resolve([]),
-            isAllowed('conditions') ? db.conditions.where('patientId').equals(patientId).toArray() : Promise.resolve([]),
-            isAllowed('medications') ? db.medications.where('patientId').equals(patientId).toArray() : Promise.resolve([]),
-            isAllowed('allergies') ? db.allergies.where('patientId').equals(patientId).toArray() : Promise.resolve([]),
-            isAllowed('clinicalNotes') ? db.clinical_notes.where('patientId').equals(patientId).toArray() : Promise.resolve([]),
-            isAllowed('medicalImages') ? db.medical_images.where('patientId').equals(patientId).toArray() : Promise.resolve([]),
-            isAllowed('riskAnalyses') ? db.risk_analysis.where('patientId').equals(patientId).toArray() : Promise.resolve([]),
-            isAllowed('attachments') ? db.patient_attachments.where('patientId').equals(patientId).toArray() : Promise.resolve([])
+            db.vitals.where('patientId').equals(patientId).toArray(),
+            db.conditions.where('patientId').equals(patientId).toArray(),
+            db.medications.where('patientId').equals(patientId).toArray(),
+            db.allergies.where('patientId').equals(patientId).toArray(),
+            db.clinical_notes.where('patientId').equals(patientId).toArray(),
+            db.medical_images.where('patientId').equals(patientId).toArray(),
+            db.risk_analysis.where('patientId').equals(patientId).toArray(),
+            db.patient_attachments.where('patientId').equals(patientId).toArray()
           ])
 
           const isMinimization = get().isMinimizationActive
 
-          // 3. Cloud Fallback (Strictly Scoped)
-          if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0 && supabase) {
-            const { data, error } = await supabase
-              .from('clinical_data')
-              .select('data, last_synced_at')
-              .eq('patient_id', patientId)
-              .maybeSingle()
-              
-            if (data?.data) {
-              const cloudData = data.data
-              set((state) => {
-                state.vitals = isAllowed('vitals') ? (cloudData.vitals || []) : []
-                state.conditions = isAllowed('conditions') ? (cloudData.conditions || []) : []
-                state.medications = isAllowed('medications') ? (cloudData.medications || []) : []
-                state.allergies = isAllowed('allergies') ? (cloudData.allergies || []) : []
-                state.clinicalNotes = isAllowed('clinicalNotes') ? (cloudData.clinicalNotes || []) : []
-                state.medicalImages = isAllowed('medicalImages') ? (cloudData.medicalImages || []) : []
-                state.attachments = isAllowed('attachments') ? (cloudData.attachments || []) : []
-                state.riskAnalyses = isAllowed('riskAnalyses') ? (cloudData.riskAnalyses || []) : []
-                state.isLoading = false
-                state.lastUpdated = data.last_synced_at
-              })
-              clearTimeout(timeoutId)
-              return
+          // Fallback: If local is empty, try Cloud (Supabase)
+          if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
+            console.log('[ClinicalStore] Local storage empty, checking Cloud (Supabase)...')
+            
+            if (supabase) {
+              const { data, error } = await supabase
+                .from('clinical_data')
+                .select('data, last_synced_at')
+                .eq('patient_id', patientId)
+                .maybeSingle()
+                
+              if (error) throw error
+
+              if (data && data.data) {
+                const cloudData = data.data
+                set((state) => {
+                  state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : []
+                  state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : []
+                  state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.length === 0 || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
+                  state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : []
+                  state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : []
+                  state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
+                  state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
+                  state.riskAnalyses = cloudData.riskAnalyses || []
+                  state.isLoading = false
+                  state.lastUpdated = data.last_synced_at
+                })
+                clearTimeout(timeoutId)
+                return
+              }
             }
           }
 
           set((state) => {
-            state.vitals = isMinimization ? (vitals as any[]).slice(-4) : (vitals as any[])
-            state.conditions = isMinimization 
-              ? (conditions as any[]).filter(c => c.clinicalStatus === 'active') 
-              : (conditions as any[])
-            state.medications = medications as any[]
-            state.allergies = allergies as any[]
-            state.clinicalNotes = isMinimization ? (clinicalNotes as any[]).slice(-2) : (clinicalNotes as any[])
-            state.medicalImages = isMinimization ? [] : (medicalImages as any[])
-            state.attachments = attachments as any[]
-            state.riskAnalyses = riskAnalyses as any[]
+            state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) 
+              ? (isMinimization ? vitals.slice(-4) : vitals) 
+              : []
+            state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions'))
+              ? (isMinimization 
+                  ? conditions.filter(c => typeof c.clinicalStatus === 'string' ? c.clinicalStatus === 'active' : (c.clinicalStatus as any)?.coding?.[0]?.code === 'active') // eslint-disable-line @typescript-eslint/no-explicit-any
+                  : conditions)
+              : []
+            state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications'))
+              ? (isMinimization ? medications.filter(m => m.status === 'active') : medications)
+              : []
+            state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? allergies : []
+            state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes'))
+              ? (isMinimization ? clinicalNotes.slice(-2) : clinicalNotes)
+              : []
+            state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages'))
+              ? (isMinimization ? [] : medicalImages)
+              : []
+            state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (attachments as any[]) : []
+            state.riskAnalyses = riskAnalyses
             state.isLoading = false
             state.lastUpdated = new Date().toISOString()
           })
           clearTimeout(timeoutId)
         } catch (error) {
           clearTimeout(timeoutId)
-          console.error('[ClinicalStore] Load error:', error)
-          set({ isLoading: false })
+          console.error('Failed to load clinical data:', error)
+          set((state) => { state.isLoading = false })
         }
       },
 

@@ -11,12 +11,10 @@ import {
   Loader2, 
   Upload, 
   Sparkles,
-  Plus,
-  Shield
+  Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
-import { useConsentStore } from '@/store/useConsentStore'
 import { AddPrescriptionModal } from './AddPrescriptionModal'
 import { AddNoteModal } from './AddNoteModal'
 import FileUploadModal from './FileUploadModal'
@@ -38,19 +36,11 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
     isLoading, 
     isEmergencyMode 
   } = useClinicalStore()
-  
-  const { activeTokens } = useConsentStore()
   const [activeTab, setActiveTab] = useState<'RECORDS' | 'COPILOT'>('RECORDS')
   const [showPrescribe, setShowPrescribe] = useState(false)
   const [showNote, setShowNote] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [, setRefreshAttachments] = useState(0)
-
-  // Find active token for this patient to show scope banner
-  const activeToken = activeTokens.find((t: any) => t.patientId === patientId)
-  const approvedCategories = activeToken?.allowedCategories || []
-  const expiryTime = activeToken?.expiresAt ? new Date(activeToken.expiresAt) : null
-  const isExpired = expiryTime ? expiryTime.getTime() < Date.now() : false
 
   useEffect(() => {
     if (patientId) {
@@ -66,7 +56,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
            <Loader2 className="w-10 h-10 text-[#5B8DEF] animate-spin" />
            <div className="text-center space-y-2">
               <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">Synchronizing Clinical Node</p>
-              <p className="text-[8px] text-white/10 uppercase tracking-widest">Verifying decentralized consent bundle...</p>
+              <p className="text-[8px] text-white/10 uppercase tracking-widest">Waiting for decentralized handshake...</p>
            </div>
         </div>
       </div>
@@ -208,61 +198,6 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
            <span className="text-[10px] font-bold text-red-500 uppercase tracking-[0.2em]">High Alert</span>
         </div>
       </div>
-
-      {/* Data Scope Banner */}
-      {activeToken && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={cn(
-            "p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 transition-all shadow-xl",
-            isExpired 
-              ? "bg-red-500/10 border-red-500/20" 
-              : "bg-emerald-500/5 border-emerald-500/20"
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-8 h-8 rounded-xl flex items-center justify-center",
-              isExpired ? "bg-red-500/20" : "bg-emerald-500/20"
-            )}>
-              <Shield className={cn("w-4 h-4", isExpired ? "text-red-500" : "text-emerald-500")} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/60">
-                {isExpired ? 'Access Expired' : 'Secure Session Active'}
-              </p>
-              <p className="text-[9px] font-bold text-white/30 uppercase">
-                Viewing {approvedCategories.length} of 6 record types
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {!isExpired && (
-              <div className="flex flex-wrap gap-1.5">
-                {approvedCategories.map((cat: string) => (
-                  <span key={cat} className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[8px] font-bold text-white/40 uppercase">
-                    {cat}
-                  </span>
-                ))}
-              </div>
-            )}
-            
-            <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
-            
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Time Remaining</span>
-              <span className={cn(
-                "text-xs font-mono font-bold",
-                isExpired ? "text-red-500" : "text-white"
-              )}>
-                {isExpired ? '00:00:00' : 'Authorized Access'}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Patient Profile Masthead */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pt-4">

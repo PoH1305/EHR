@@ -69,6 +69,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    const { firebaseUid } = useUserStore()
 
    const hasListenedRef = useRef(false)
+   const hasDataLoadedRef = useRef<string | null>(null) // tracks which patientId we loaded
 
    useEffect(() => {
       if (firebaseUid && !hasListenedRef.current) {
@@ -78,11 +79,14 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    }, [firebaseUid, loadAccessRequests])
 
    useEffect(() => {
-      if (patientId) {
+      // Only load if patientId changed (resets on new patient)
+      if (patientId && hasDataLoadedRef.current !== patientId) {
+         hasDataLoadedRef.current = patientId
          void loadClinicalData(patientId)
          void loadPatientMetadata(patientId)
       }
-   }, [patientId, loadClinicalData, loadPatientMetadata])
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [patientId]) // intentionally omit store functions — they are stable actions
 
    // Find the APPROVED access request for this patient to determine shared categories
    const approvedRequest = accessRequests.find(r =>

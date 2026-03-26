@@ -135,6 +135,13 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       loadClinicalData: async (patientId: string) => {
         if (typeof window === 'undefined' || !db) return
+        
+        // Skip if already loading — prevents parallel duplicate Supabase calls
+        if (get().isLoading) {
+          console.log('[ClinicalStore] Skipping duplicate loadClinicalData call for:', patientId)
+          return
+        }
+        
         set((state) => { state.isLoading = true })
         
         // Safety timeout to prevent permanent loading hangs

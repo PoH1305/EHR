@@ -57,7 +57,8 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
       }
     }, 6000)
     return () => clearTimeout(timer)
-  }, [patientId, loadClinicalData, loadPatientMetadata])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId]) // intentionally omit store functions — they are stable actions
 
   if (isLoading) {
     return (

@@ -19,7 +19,8 @@ function RecordsPageContent() {
     allergies, 
     attachments,
     medicalImages,
-    loadClinicalData, 
+    loadClinicalData,
+    syncToCloud,
     addAttachment 
   } = useClinicalStore()
   const { patient } = useUserStore()
@@ -37,7 +38,11 @@ function RecordsPageContent() {
     setMounted(true)
     if (patient?.healthId && !hasLoadedRef.current) {
       hasLoadedRef.current = true
-      void loadClinicalData(patient.healthId)
+      void loadClinicalData(patient.healthId).then(() => {
+        // After data loads into store, push any local-only records to Supabase
+        // so the doctor always sees the most up-to-date record set
+        setTimeout(() => void syncToCloud(patient.healthId), 300)
+      })
     }
     
     // Handle deep-linking from search
@@ -45,7 +50,8 @@ function RecordsPageContent() {
     if (resourceId) {
       setSelectedRecordId(resourceId)
     }
-  }, [searchParams, patient?.healthId, loadClinicalData])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, patient?.healthId]) // intentionally omit store functions
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

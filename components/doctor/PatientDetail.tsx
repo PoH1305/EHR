@@ -41,12 +41,22 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
   const [showNote, setShowNote] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [, setRefreshAttachments] = useState(0)
+  const [loadTimedOut, setLoadTimedOut] = useState(false)
 
   useEffect(() => {
+    setLoadTimedOut(false)
     if (patientId) {
       void loadClinicalData(patientId)
       void loadPatientMetadata(patientId)
     }
+    // Safety timeout — if still loading after 6s, show fallback instead of spinning forever
+    const timer = setTimeout(() => {
+      if (useClinicalStore.getState().isLoading) {
+        useClinicalStore.setState({ isLoading: false })
+        setLoadTimedOut(true)
+      }
+    }, 6000)
+    return () => clearTimeout(timer)
   }, [patientId, loadClinicalData, loadPatientMetadata])
 
   if (isLoading) {
@@ -178,6 +188,29 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
                  </div>
               </div>
            </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Fallback when Supabase found no data (patient has no cloud record yet)
+  if (loadTimedOut) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0d1117]">
+        <div className="flex flex-col items-center gap-4 text-center px-6">
+          <div className="w-14 h-14 rounded-[20px] bg-white/5 flex items-center justify-center">
+            <AlertCircle className="w-7 h-7 text-white/30" />
+          </div>
+          <p className="text-sm font-bold text-white/40">No clinical records found</p>
+          <p className="text-[10px] text-white/20 uppercase tracking-widest max-w-[220px]">
+            This patient has not synced any records yet, or access has not been granted.
+          </p>
+          <button
+            onClick={onBack}
+            className="mt-2 px-5 py-2 rounded-xl bg-white/5 text-white/40 text-xs font-bold hover:bg-white/10 transition-all"
+          >
+            Go back
+          </button>
         </div>
       </div>
     )

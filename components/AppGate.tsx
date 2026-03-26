@@ -83,12 +83,8 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       fetchProfileFromCloud()
     }
 
-    // Recovery sync: Ensure clinical data is pushed to cloud once patient is ready
-    if (patient?.id) {
-      import('@/store/useClinicalStore').then(mod => {
-        mod.useClinicalStore.getState().syncToCloud(patient.id)
-      })
-    }
+    // Note: Recovery sync is now handled by Dashboard.tsx after loadClinicalData
+    // which ensures we don't overwrite cloud data with an empty local state.
 
     if (isAuthRoute) return
 

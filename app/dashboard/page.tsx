@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const { patient, initializeKeys, role } = useUserStore()
   const { loadTokens, activeTokens, revokeToken, accessRequests } = useConsentStore()
   const { loadClinicalData, loadAuditLog, auditEvents } = useClinicalStore()
-   const [showSummary, setShowSummary] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
   const [showAccessCenter, setShowAccessCenter] = useState(false)
 
   const pendingCount = accessRequests.filter(r => r.status === 'PENDING').length
@@ -35,14 +35,15 @@ export default function DashboardPage() {
       }
       
       if (patient) {
-        void loadClinicalData(patient.id)
+        // UNIFIED KEY: Use healthId (EHI ID) for all clinical data lookups
+        void loadClinicalData(patient.healthId)
         void loadAuditLog(patient.id)
         void loadTokens()
       }
     }
     
     void init()
-  }, [patient?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [patient?.id, patient?.healthId, loadClinicalData, loadAuditLog, loadTokens, initializeKeys])
 
   if (role === 'doctor') {
     return (
@@ -158,7 +159,7 @@ export default function DashboardPage() {
           <AISummaryModal
             isOpen={showSummary}
             onClose={() => setShowSummary(false)}
-            patientId={patient.id}
+            patientId={patient.healthId} // Changed to patient.healthId
           />
           <AccessCenterModal
             isOpen={showAccessCenter}

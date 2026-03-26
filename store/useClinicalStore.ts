@@ -35,6 +35,7 @@ interface ClinicalState {
   emergencyPatientId: string | null
   selectedPatientProfile: any | null
   lastUpdated: string | null
+  isLoaded: boolean
 }
 
 interface ClinicalActions {
@@ -56,7 +57,7 @@ interface ClinicalActions {
   activateEmergencyMode: (patientId: string) => void
   clearEmergencyMode: () => void
   clearClinicalState: () => void
-  syncToCloud: (patientId: string) => Promise<void>
+  syncToCloud: (patientId?: string) => Promise<void>
   loadSharedClinicalData: (tokenHash: string, handshakeKey: string) => Promise<void>
 }
 
@@ -78,6 +79,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       attachments: [],
       auditEvents: [],
       isLoading: false,
+      isLoaded: false,
       isEmergencyMode: false,
       isMinimizationActive: true, // Default to true for Phase 10 demo
       emergencyPatientId: null,
@@ -233,6 +235,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (attachments as any[]) : []
             state.riskAnalyses = riskAnalyses
             state.isLoading = false
+            state.isLoaded = true // Set safety flag
             state.lastUpdated = new Date().toISOString()
           })
           clearTimeout(timeoutId)
@@ -401,7 +404,22 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      syncToCloud: async (patientId: string) => {
+      syncToCloud: async (explicitPatientId?: string) => {
+        const { patient, firebaseUid } = useUserStore.getState()
+        
+        // Safety lock: Don't sync if store isn't loaded yet (prevents blanking cloud data)
+        if (!get().isLoaded && !explicitPatientId) {
+          console.warn('[ClinicalStore] Skipping sync: Store not loaded yet.')
+          return
+        }
+
+        // UNIFIED KEY: We always use the healthId (EHI ID) for clinical data shards
+        const targetId = explicitPatientId || patient?.healthId
+        if (!targetId) {
+          console.warn('[ClinicalStore] Skipping sync: No target ID (healthId) found.')
+          return
+        }
+
         try {
           const { supabase } = await import('@/lib/supabase')
           if (!supabase) return
@@ -410,7 +428,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           const { error } = await supabase
             .from('clinical_data')
             .upsert({
-              patient_id: patientId,
+              patient_id: targetId,
               data: {
                 vitals: state.vitals,
                 conditions: state.conditions,
@@ -436,7 +454,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           set((state) => {
             state.lastUpdated = new Date().toISOString()
           })
-          console.log('[ClinicalStore] Successfully synced to Supabase for:', patientId)
+          console.log('[ClinicalStore] Successfully synced to Supabase for:', targetId)
         } catch (error) {
           console.error('[ClinicalStore] Supabase Sync Error:', error)
           throw error

@@ -33,8 +33,8 @@ function RecordsPageContent() {
 
   useEffect(() => {
     setMounted(true)
-    if (patient?.id) {
-      void loadClinicalData(patient.id)
+    if (patient?.healthId) {
+      void loadClinicalData(patient.healthId)
     }
     
     // Handle deep-linking from search
@@ -42,22 +42,21 @@ function RecordsPageContent() {
     if (resourceId) {
       setSelectedRecordId(resourceId)
     }
-  }, [searchParams, patient?.id, loadClinicalData])
+  }, [searchParams, patient?.healthId, loadClinicalData])
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !patient?.id) return
+    if (!file || !patient?.healthId) return
 
     setIsUploading(true)
     
     try {
       // Create a local blob URL for temporary viewing
-      // Note: In a real app, you'd store the actual file in IndexedDB
       const fileUrl = URL.createObjectURL(file)
       
       const newAttachment = {
         id: `upload-${Date.now()}`,
-        patientId: patient.id,
+        patientId: patient.healthId,
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,

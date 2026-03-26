@@ -175,9 +175,9 @@ export default function OnboardingPage() {
       }
     }
 
-    // Final Cloud Sync (Now Supabase)
+    // Final Cloud Sync (Now using healthId for the shard key)
     const { syncToCloud } = useClinicalStore.getState()
-    await syncToCloud(patientId)
+    await syncToCloud(healthId)
 
     router.push('/dashboard')
   }

@@ -122,7 +122,7 @@ export default function PatientList({ onSelect }: PatientListProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            onClick={() => onSelect(p.id)}
+            onClick={() => onSelect(p.healthId || p.id)}
             className="bg-[#111827]/40 border border-white/[0.03] p-4 rounded-[28px] flex items-center gap-4 hover:bg-white/[0.02] hover:border-white/10 active:scale-[0.98] transition-all cursor-pointer group shadow-lg shadow-black/20"
           >
             <div className={cn(

@@ -253,13 +253,10 @@ export const useUserStore = create<UserState & UserActions>()(
             .from('profiles')
             .select('data')
             .eq('id', firebaseUid)
-            .single()
+            .maybeSingle()
 
           if (error) {
-            if (error.code === 'PGRST116') {
-               console.log('[UserStore] No cloud profile found.')
-               return
-            }
+            console.error('[UserStore] Error fetching cloud profile:', error)
             throw error
           }
 

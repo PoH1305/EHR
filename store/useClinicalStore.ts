@@ -115,7 +115,9 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                 .eq('id', patientId)
                 .maybeSingle()
               
-              if (data && data.data) {
+              if (error) {
+                console.error('[ClinicalStore] Error fetching cloud profile:', error)
+              } else if (data && data.data) {
                 profile = data.data as any
               }
             }
@@ -415,12 +417,15 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               last_synced_at: new Date().toISOString()
             })
 
-          if (error) throw error
+          if (error) {
+            console.error('[ClinicalStore] Supabase Upsert Error details:', error.message, error.details, error.hint)
+            throw error
+          }
           
           set((state) => {
             state.lastUpdated = new Date().toISOString()
           })
-          console.log('[ClinicalStore] Successfully synced to Supabase')
+          console.log('[ClinicalStore] Successfully synced to Supabase for:', patientId)
         } catch (error) {
           console.error('[ClinicalStore] Supabase Sync Error:', error)
           throw error

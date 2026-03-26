@@ -228,8 +228,9 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               })
             if (syncError) throw syncError
           }
-        } catch (err) {
-          console.error('[ConsentStore] Access request sync failed:', err)
+        } catch (err: any) {
+          console.error('[ConsentStore] Access request sync failed:', err?.message || err)
+          if (err?.details) console.error('[ConsentStore] Error details:', err.details, err.hint)
         }
       },
 
@@ -275,8 +276,9 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               })
             if (syncError) throw syncError
           }
-        } catch (err) {
-          console.error('[ConsentStore] File access request sync failed:', err)
+        } catch (err: any) {
+          console.error('[ConsentStore] File access request sync failed:', err?.message || err)
+          if (err?.details) console.error('[ConsentStore] Error details:', err.details, err.hint)
         }
       },
 

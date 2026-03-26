@@ -87,17 +87,20 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
 -- Create the bucket if it doesn't exist (This requires storage extension)
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('patient-files', 'patient-files', true) ON CONFLICT (id) DO NOTHING;
 
--- Set up RLS for Storage
+-- Set up RLS for Storage (Idempotent)
+DROP POLICY IF EXISTS "Allow public read of patient files" ON storage.objects;
 CREATE POLICY "Allow public read of patient files"
 ON storage.objects FOR SELECT
 TO anon
 USING ( bucket_id = 'patient-files' );
 
+DROP POLICY IF EXISTS "Allow authenticated uploads to patient-files" ON storage.objects;
 CREATE POLICY "Allow authenticated uploads to patient-files"
 ON storage.objects FOR INSERT
 TO anon
 WITH CHECK ( bucket_id = 'patient-files' );
 
+DROP POLICY IF EXISTS "Allow authenticated updates to patient-files" ON storage.objects;
 CREATE POLICY "Allow authenticated updates to patient-files"
 ON storage.objects FOR UPDATE
 TO anon

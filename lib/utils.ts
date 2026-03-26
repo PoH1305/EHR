@@ -25,7 +25,8 @@ export function generateUUID(): string {
 
 export function formatHealthId(id: string | null | undefined): string {
   if (!id) return 'EHI-0000-0000'
-  const clean = id.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+  // Strip "EHI" prefix (case-insensitive, optional dash) to prevent doubling
+  const clean = id.toUpperCase().replace(/^EHI-?/, '').replace(/[^A-Z0-9]/g, '')
   const parts: string[] = []
   for (let i = 0; i < clean.length; i += 4) {
     parts.push(clean.slice(i, i + 4))

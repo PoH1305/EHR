@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import { Phone, ShieldCheck, User } from 'lucide-react'
+import { Phone, User } from 'lucide-react'
 import { cn, formatHealthId } from '@/lib/utils'
 import type { PatientProfile } from '@/lib/types'
 
@@ -76,14 +76,6 @@ export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
           </div>
 
           <div className="mt-auto flex items-center gap-2.5 text-slate-500/80">
-            <motion.div 
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5"
-            >
-              <ShieldCheck className="w-3 h-3" />
-              Verified EHI Node
-            </motion.div>
             <div className="flex-1" />
             <Phone className="w-4 h-4" />
             <span className="text-[10px] font-medium tracking-tight">

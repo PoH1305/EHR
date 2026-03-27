@@ -65,7 +65,7 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     try {
       await signOut()
-      router.replace('/auth/patient')
+      router.replace('/auth/role')
     } catch (error) {
       console.error('Sign out failed:', error)
       alert('Failed to sign out. Please try again.')
@@ -210,9 +210,6 @@ export default function ProfilePage() {
         </div>
       </GlassCard>
 
-
-
-
       {/* Dashboard Preferences */}
       <GlassCard>
         <h3 className="text-sm font-semibold text-foreground/60 mb-4 flex items-center gap-2">
@@ -292,8 +289,6 @@ export default function ProfilePage() {
           ))}
         </div>
       </GlassCard>
-
-
 
       {/* Danger Zone */}
       <GlassCard className="border-red-500/10">

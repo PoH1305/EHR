@@ -28,7 +28,7 @@ export default function DoctorProfilePage() {
     try {
       clearClinicalState()
       await signOut()
-      router.push('/auth/doctor')
+      router.push('/auth/role')
       toast("Signed out successfully", "success")
     } catch (error) {
       toast("Failed to sign out", "error")

@@ -29,12 +29,7 @@ interface DoctorRecordsProps {
 }
 
 const VIEW_ONLY_CATEGORIES = [
-  { key: 'medications', label: 'Prescriptions', icon: Pill, color: 'blue' },
-  { key: 'conditions', label: 'Conditions', icon: Stethoscope, color: 'rose' },
-  { key: 'allergies', label: 'Allergies', icon: AlertCircle, color: 'amber' },
-  { key: 'clinicalNotes', label: 'Notes', icon: FileText, color: 'indigo' },
-  { key: 'vitals', label: 'Vitals', icon: Activity, color: 'emerald' },
-  { key: 'attachments', label: 'Labs / Files', icon: Paperclip, color: 'purple' },
+  { key: 'attachments', label: 'Records', icon: Paperclip, color: 'purple' },
 ]
 
 const ICON_COLORS: Record<string, string> = {
@@ -47,7 +42,7 @@ const ICON_COLORS: Record<string, string> = {
 }
 
 export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
-   const [activeTab, setActiveTab] = useState('medications')
+   const [activeTab, setActiveTab] = useState('attachments')
 
    const {
       vitals,
@@ -147,116 +142,45 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    const effectiveTab = visibleTabs.find(t => t.key === activeTab) ? activeTab : (visibleTabs[0]?.key || 'medications')
 
    const renderContent = () => {
-      // Loading state is managed by PatientDetail above — just show empty state here
-      switch (effectiveTab) {
-         case 'medications':
-            return medications.length > 0 ? medications.map((m, i) => (
-               <ViewOnlyCard key={m.id || i} color="blue" icon={<Pill className="w-4 h-4 text-blue-400" />}>
-                  <p className="font-bold text-white text-sm">{m.medicationCodeableConcept?.text || 'Unknown Medication'}</p>
-                  <p className="text-xs text-white/40 mt-1">{m.dosageInstruction?.[0]?.text || 'See notes'}</p>
-                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5">
-                     <span className={cn(
-                        "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full",
-                        m.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-white/5 text-white/20'
-                     )}>{m.status}</span>
-                     <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">
-                        {m.authoredOn ? new Date(m.authoredOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
-                     </span>
-                  </div>
-               </ViewOnlyCard>
-            )) : <EmptyState icon={<Pill className="w-8 h-8 text-white/10" />} label="No prescriptions shared" />
+      const allAttachments = attachments.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
 
-         case 'conditions':
-            return conditions.length > 0 ? conditions.map((c, i) => (
-               <ViewOnlyCard key={c.id || i} color="rose" icon={<Stethoscope className="w-4 h-4 text-rose-400" />}>
-                  <p className="font-bold text-white text-sm">{c.code?.text || c.code?.coding?.[0]?.display || 'Unknown Condition'}</p>
-                  <p className="text-xs text-white/30 font-mono mt-1">ICD-10: {c.code?.coding?.[0]?.code || 'N/A'}</p>
-                  <div className="mt-3 pt-3 border-t border-white/5">
-                     <span className="text-[9px] font-bold text-rose-400/60 uppercase tracking-widest">
-                        {c.clinicalStatus?.coding?.[0]?.code || 'unknown status'}
-                     </span>
-                  </div>
-               </ViewOnlyCard>
-            )) : <EmptyState icon={<Stethoscope className="w-8 h-8 text-white/10" />} label="No conditions shared" />
-
-         case 'allergies':
-            return allergies.length > 0 ? allergies.map((a, i) => (
-               <ViewOnlyCard key={a.id || i} color="amber" icon={<AlertCircle className="w-4 h-4 text-amber-400" />}>
-                  <p className="font-bold text-white text-sm">{(a.code as any)?.text || (a.code as any)?.coding?.[0]?.display || 'Unknown Allergen'}</p>
-                  <p className="text-xs text-white/40 mt-1">
-                     Criticality: <span className="text-amber-400 font-semibold">{a.criticality || 'unknown'}</span>
-                  </p>
-               </ViewOnlyCard>
-            )) : <EmptyState icon={<AlertCircle className="w-8 h-8 text-white/10" />} label="No allergies shared" />
-
-         case 'clinicalNotes':
-            return clinicalNotes.length > 0 ? clinicalNotes.map((note, i) => (
-               <ViewOnlyCard key={note.id || i} color="indigo" icon={<FileText className="w-4 h-4 text-indigo-400" />}>
-                  <div className="flex items-center justify-between mb-2">
-                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{note.type?.replace('_', ' ')}</span>
-                     <span className="text-[9px] text-white/20">{new Date(note.timestamp).toLocaleDateString('en-IN')}</span>
-                  </div>
-                  <p className="text-sm text-white/60 leading-relaxed whitespace-pre-wrap select-none">{note.content}</p>
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/5">
-                     <User className="w-3 h-3 text-white/20" />
-                     <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider">{note.doctorName || 'Unknown Author'}</span>
-                  </div>
-               </ViewOnlyCard>
-            )) : <EmptyState icon={<FileText className="w-8 h-8 text-white/10" />} label="No notes shared" />
-
-         case 'vitals':
-            return vitals.length > 0 ? vitals.map((v, i) => (
-               <ViewOnlyCard key={v.type || i} color="emerald" icon={<Activity className="w-4 h-4 text-emerald-400" />}>
-                  <p className="text-[10px] font-black text-emerald-400/60 uppercase tracking-widest mb-1">{v.type}</p>
-                  <div className="flex items-baseline gap-2">
-                     <span className="text-3xl font-black text-white tracking-tighter">{v.latestValue}</span>
-                     <span className="text-xs font-bold text-white/30">{v.unit}</span>
-                  </div>
-               </ViewOnlyCard>
-            )) : <EmptyState icon={<Activity className="w-8 h-8 text-white/10" />} label="No vitals shared" />
-
-         case 'attachments':
-            // attachments from store are already either local (if primary user) 
-            // or cloud-synced (if viewing a patient as a doctor)
-            const allAttachments = attachments.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-
-            return allAttachments.length > 0 ? allAttachments.map((att: any, i) => (
-               <ViewOnlyCard key={att.id || i} color="purple" icon={<Paperclip className="w-4 h-4 text-purple-400" />}>
-                  <div className="flex items-start justify-between gap-2">
-                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                           <p className="font-bold text-white text-sm truncate">{att.fileName}</p>
-                           {att.isVerified && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 shrink-0">
-                                 <BadgeCheck className="w-3 h-3 text-[#5B8DEF]" />
-                                 <span className="text-[8px] font-black text-[#5B8DEF] uppercase tracking-widest">Verified</span>
-                              </div>
-                           )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                           <FileTypeBadge fileName={att.fileName} mimeType={att.fileType ?? undefined} />
-                           <span className="text-[10px] text-white/30 uppercase tracking-widest">
-                              {att.category?.replace('_', ' ')} {att.fileSize > 0 ? `· ${(att.fileSize / 1024).toFixed(1)} KB` : ''}
-                           </span>
-                        </div>
-                     </div>
-                     <button 
-                        onClick={() => handleDownload(att.fileUrl, att.fileName)}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#5B8DEF]/20 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 shrink-0 transition-colors"
-                     >
-                        <Activity className="w-3 h-3 text-[#5B8DEF]" />
-                        <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Download</span>
-                     </button>
-                  </div>
-                  <p className="text-[9px] text-white/15 mt-3 font-bold uppercase tracking-widest">
-                     Uploaded {new Date(att.uploadedAt).toLocaleDateString()}
-                  </p>
-               </ViewOnlyCard>
-            )) : <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No lab files shared" />
-
-         default:
-            return <EmptyState icon={<Lock className="w-8 h-8 text-white/10" />} label="No data available" />
+      if (allAttachments.length === 0) {
+         return <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No records shared" />
       }
+
+      return allAttachments.map((att: any, i) => (
+         <ViewOnlyCard key={att.id || i} color="purple" icon={<Paperclip className="w-4 h-4 text-purple-400" />}>
+            <div className="flex items-start justify-between gap-2">
+               <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                     <p className="font-bold text-white text-sm truncate">{att.fileName}</p>
+                     {att.isVerified && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 shrink-0">
+                           <BadgeCheck className="w-3 h-3 text-[#5B8DEF]" />
+                           <span className="text-[8px] font-black text-[#5B8DEF] uppercase tracking-widest">Verified</span>
+                        </div>
+                     )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                     <FileTypeBadge fileName={att.fileName} mimeType={att.fileType ?? undefined} />
+                     <span className="text-[10px] text-white/30 uppercase tracking-widest">
+                        {att.category?.replace('_', ' ')} {att.fileSize > 0 ? `· ${(att.fileSize / 1024).toFixed(1)} KB` : ''}
+                     </span>
+                  </div>
+               </div>
+               <button 
+                  onClick={() => handleDownload(att.fileUrl, att.fileName)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#5B8DEF]/20 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 shrink-0 transition-colors"
+               >
+                  <Activity className="w-3 h-3 text-[#5B8DEF]" />
+                  <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Download</span>
+               </button>
+            </div>
+            <p className="text-[9px] text-white/15 mt-3 font-bold uppercase tracking-widest">
+               Uploaded {new Date(att.uploadedAt).toLocaleDateString()}
+            </p>
+         </ViewOnlyCard>
+      ))
    }
 
    if (visibleTabs.length === 0) {

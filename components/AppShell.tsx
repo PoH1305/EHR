@@ -41,7 +41,6 @@ const PATIENT_NAV = [
 const DOCTOR_NAV = [
   { href: '/dashboard', label: 'HOME', icon: LayoutGrid },
   { href: '/patients', label: 'PATIENTS', icon: Users },
-  { href: '/ai-insights', label: 'AI', icon: Sparkles },
   { href: '/doctor/profile', label: 'PROFILE', icon: User },
 ]
 

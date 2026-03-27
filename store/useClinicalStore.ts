@@ -55,6 +55,7 @@ interface ClinicalActions {
   addAttachment: (attachment: PatientAttachment) => Promise<void>
   addAuditEvent: (event: Omit<AuditEvent, 'hash' | 'previousHash'>, patientId?: string) => Promise<void>
   setEmergencyMode: (active: boolean) => void
+  activateEmergencyMode: (patientId: string) => void
   clearEmergencyMode: () => void
   clearClinicalState: () => void
   syncToCloud: (patientId?: string) => Promise<void>

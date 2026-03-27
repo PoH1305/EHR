@@ -349,7 +349,8 @@ export interface PatientAttachment {
   fileName: string
   fileType: string
   fileSize: number
-  fileUrl: string // Local blob/data URL
+  fileUrl: string // Public URL or Proxy URL
+  storagePath?: string // Internal Supabase storage path
   uploadedAt: string
   category: 'LAB_REPORT' | 'PRESCRIPTION' | 'DISCHARGE_SUMMARY' | 'OTHER'
   description?: string | undefined

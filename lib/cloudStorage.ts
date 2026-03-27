@@ -2,13 +2,13 @@ import { supabase } from './supabase'
 
 /**
  * Uploads a file (Blob or File) to Supabase Storage under a patient-specific path.
- * Returns the public download URL.
+ * Returns the public download URL and the internal storage path.
  */
 export async function uploadMedicalFile(
   patientId: string,
   fileId: string,
   file: Blob | File
-): Promise<string> {
+): Promise<{ publicUrl: string; storagePath: string }> {
   const filePath = `${patientId}/${fileId}`
   
   const { data, error } = await supabase.storage
@@ -24,7 +24,7 @@ export async function uploadMedicalFile(
     .from('patient-files')
     .getPublicUrl(filePath)
   
-  return publicUrl
+  return { publicUrl, storagePath: filePath }
 }
 
 /**

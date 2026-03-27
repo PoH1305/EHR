@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { 
@@ -15,15 +15,24 @@ import {
   FlaskConical,
   Paperclip,
   BadgeCheck,
-  ChevronRight
+  Download,
+  Lock
 } from 'lucide-react'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
 import { FileTypeBadge } from '@/components/FileTypeBadge'
+import { supabase } from '@/lib/supabase'
 
 interface DoctorRecordsProps {
    patientId?: string | null
+}
+
+interface Permission {
+  record_id: string
+  permission_type: string
+  is_revoked: boolean
+  expires_at: string
 }
 
 const VIEW_ONLY_CATEGORIES = [
@@ -35,17 +44,10 @@ const VIEW_ONLY_CATEGORIES = [
   { key: 'clinicalNotes', label: 'Notes', icon: Edit3, color: 'indigo' },
 ]
 
-const ICON_COLORS: Record<string, string> = {
-  blue: 'text-blue-400 bg-blue-500/10',
-  rose: 'text-rose-400 bg-rose-500/10',
-  amber: 'text-amber-400 bg-amber-500/10',
-  indigo: 'text-indigo-400 bg-indigo-500/10',
-  emerald: 'text-emerald-400 bg-emerald-500/10',
-  purple: 'text-purple-400 bg-purple-500/10',
-}
-
 export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    const [activeTab, setActiveTab] = useState('attachments')
+   const [permissions, setPermissions] = useState<Permission[]>([])
+   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true)
 
    const {
       vitals,
@@ -55,7 +57,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       clinicalNotes,
       attachments,
       selectedPatientProfile,
-      isLoading,
+      isLoading: isClinicalStoreLoading,
       addAuditEvent
    } = useClinicalStore()
 
@@ -76,35 +78,94 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       }
    }, [patientId, firebaseUid, firebaseEmail, addAuditEvent])
 
-   // 2. Tab Switch Log
+   // 2. Fetch and Subscribe to Permissions
    useEffect(() => {
-      if (patientId && firebaseUid && activeTab) {
-         void addAuditEvent({
-            id: crypto.randomUUID(),
-            type: 'RECORD_VIEWED',
-            timestamp: new Date().toISOString(),
-            userId: firebaseUid,
-            description: `Doctor viewed your ${activeTab} history.`,
-            metadata: { category: activeTab, doctorId: firebaseUid }
-         }, patientId)
-      }
-   }, [activeTab, patientId, firebaseUid, addAuditEvent])
+      if (!firebaseUid || !patientId) return
 
-   const handleDownload = async (fileUrl: string, filename: string) => {
+      const fetchPermissions = async () => {
+         const { data, error } = await supabase
+            .from('record_access_permissions')
+            .select('record_id, permission_type, is_revoked, expires_at')
+            .eq('doctor_id', firebaseUid)
+            .eq('patient_id', patientId)
+         
+         if (!error && data) {
+            setPermissions(data)
+         }
+         setIsPermissionsLoading(false)
+      }
+
+      void fetchPermissions()
+
+      // Real-time subscription for revocations/expiries
+      const channel = supabase
+         .channel('permissions_updates')
+         .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'record_access_permissions',
+            filter: `doctor_id=eq.${firebaseUid}`
+         }, (payload) => {
+            if (payload.eventType === 'INSERT') {
+               setPermissions(prev => [...prev, payload.new as Permission])
+            } else if (payload.eventType === 'UPDATE') {
+               setPermissions(prev => prev.map(p => 
+                  (p.record_id === payload.new.record_id && p.permission_type === payload.new.permission_type) 
+                  ? payload.new as Permission 
+                  : p
+               ))
+            } else if (payload.eventType === 'DELETE') {
+               setPermissions(prev => prev.filter(p => p.record_id !== payload.old.record_id))
+            }
+         })
+         .subscribe()
+
+      return () => {
+         void supabase.removeChannel(channel)
+      }
+   }, [firebaseUid, patientId])
+
+   const hasPermission = (recordId: string, type: 'view' | 'download') => {
+      const perm = permissions.find(p => p.record_id === recordId && p.permission_type === type)
+      if (!perm) return false
+      if (perm.is_revoked) return false
+      if (new Date(perm.expires_at) <= new Date()) return false
+      return true
+   }
+
+   const handleAction = async (recordId: string, type: 'view' | 'download', filename: string) => {
+      if (!hasPermission(recordId, type)) {
+         alert(`Access Denied: You do not have active ${type} permissions for this record.`)
+         return
+      }
+
+      const endpoint = `/api/records/${type}/${encodeURIComponent(recordId)}?userId=${firebaseUid}`
+      
       try {
          if (patientId && firebaseUid) {
             void addAuditEvent({
                id: crypto.randomUUID(),
-               type: 'EXPORT_DATA',
+               type: type === 'view' ? 'RECORD_VIEWED' : 'EXPORT_DATA',
                timestamp: new Date().toISOString(),
                userId: firebaseUid,
-               description: `Doctor downloaded record: ${filename}`,
-               metadata: { filename, fileUrl, doctorId: firebaseUid }
+               description: `Doctor ${type}ed record: ${filename}`,
+               metadata: { filename, type, doctorId: firebaseUid }
             }, patientId)
          }
-         window.open(fileUrl, '_blank')
+
+         if (type === 'view') {
+            window.open(endpoint, '_blank')
+         } else {
+            // Trigger download
+            const a = document.createElement('a')
+            a.href = endpoint
+            a.download = filename
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+         }
       } catch (err) {
-         console.error('Download failed:', err)
+         console.error(`${type} failed:`, err)
       }
    }
 
@@ -118,48 +179,23 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       sharedCats.length === 0 || sharedCats.includes(cat.key)
    )
 
+   // Filter attachments based on real-time permissions
+   const filteredAttachments = attachments.filter(att => {
+      const recordId = att.storagePath || att.fileName
+      return hasPermission(recordId, 'view') || hasPermission(recordId, 'download')
+   })
+
    const renderContent = () => {
       switch (activeTab) {
-         case 'vitals':
-            return (
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vitals.map((v) => (
-                    <div key={v.type} className="bg-white/5 border border-white/10 p-6 rounded-[32px] group hover:bg-white/[0.08] transition-all">
-                       <p className="text-[10px] uppercase font-bold text-white/20 tracking-widest mb-2">{v.type}</p>
-                       <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-black text-white tracking-tighter">{v.latestValue}</span>
-                          <span className="text-xs font-bold text-white/20">{v.unit}</span>
-                       </div>
-                    </div>
-                  ))}
-                  {vitals.length === 0 && <EmptyState icon={<Activity className="w-8 h-8 text-white/10" />} label="No vitals shared" />}
-               </div>
-            )
-         case 'medications':
-            return (
-               <div className="space-y-3">
-                  {medications.map((m: any) => (
-                    <div key={m.id} className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4 group hover:bg-white/[0.08] transition-all">
-                       <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                          <Pill className="w-5 h-5 text-emerald-500" />
-                       </div>
-                       <div className="flex-1">
-                          <p className="text-sm font-bold text-white">{m.medicationCodeableConcept?.text || 'Unknown Medication'}</p>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">{m.dosageInstruction?.[0]?.text || 'As directed'}</p>
-                       </div>
-                       <div className="px-2.5 py-1 rounded-md bg-white/5 text-[9px] font-bold text-white/30 uppercase tracking-tighter">
-                          {m.status}
-                       </div>
-                    </div>
-                  ))}
-                  {medications.length === 0 && <EmptyState icon={<Pill className="w-8 h-8 text-white/10" />} label="No medications shared" />}
-               </div>
-            )
          case 'attachments':
             return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                   {attachments.length > 0 ? attachments.map((att: any, i) => (
-                      <div key={att.id || i} className="bg-white/5 border border-white/10 p-5 rounded-[32px] group hover:bg-white/[0.08] transition-all">
+                   {filteredAttachments.length > 0 ? filteredAttachments.map((att: any, i) => {
+                      const canView = hasPermission(att.storagePath || att.fileName, 'view')
+                      const canDownload = hasPermission(att.storagePath || att.fileName, 'download')
+
+                      return (
+                      <div key={att.id || i} className="bg-white/5 border border-white/10 p-5 rounded-[32px] group hover:bg-white/[0.08] transition-all relative overflow-hidden">
                          <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                                <div className="flex items-center gap-2 mb-1">
@@ -178,89 +214,61 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                                   </span>
                                </div>
                             </div>
-                            <button 
-                               onClick={() => handleDownload(att.fileUrl, att.fileName)}
-                               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#5B8DEF]/20 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 shrink-0 transition-colors"
-                            >
-                               <Activity className="w-3 h-3 text-[#5B8DEF]" />
-                               <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Open</span>
-                            </button>
+                            
+                            <div className="flex gap-2 shrink-0">
+                               <button 
+                                  onClick={() => handleAction(att.storagePath || att.fileName, 'view', att.fileName)}
+                                  disabled={!canView}
+                                  className={cn(
+                                    "p-2.5 rounded-xl border transition-all",
+                                    canView 
+                                      ? "border-[#5B8DEF]/20 bg-[#5B8DEF]/10 text-[#5B8DEF] hover:bg-[#5B8DEF]/20" 
+                                      : "border-white/5 bg-white/5 text-white/10 cursor-not-allowed"
+                                  )}
+                                  title={canView ? "View Record" : "View Access Restricted"}
+                               >
+                                  {canView ? <Activity className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                               </button>
+                               <button 
+                                  onClick={() => handleAction(att.storagePath || att.fileName, 'download', att.fileName)}
+                                  disabled={!canDownload}
+                                  className={cn(
+                                    "p-2.5 rounded-xl border transition-all",
+                                    canDownload 
+                                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20" 
+                                      : "border-white/5 bg-white/5 text-white/10 cursor-not-allowed"
+                                  )}
+                                  title={canDownload ? "Download Record" : "Download Access Restricted"}
+                               >
+                                  {canDownload ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                               </button>
+                            </div>
                          </div>
-                         <p className="text-[9px] text-white/15 mt-3 font-bold uppercase tracking-widest">
-                            Uploaded {new Date(att.uploadedAt).toLocaleDateString()}
-                         </p>
+                         <div className="mt-4 flex items-center justify-between">
+                            <p className="text-[9px] text-white/15 font-bold uppercase tracking-widest">
+                               Uploaded {new Date(att.uploadedAt).toLocaleDateString()}
+                            </p>
+                         </div>
                       </div>
-                   )) : (
+                   )}) : (
                      <div className="col-span-full">
-                        <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No documents shared" />
+                        <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No clinical records available for this patient" />
                      </div>
                    )}
                 </div>
             )
-         case 'conditions':
-            return (
-               <div className="space-y-3">
-                  {conditions.map((c: any) => (
-                    <div key={c.id} className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4 group hover:bg-white/[0.08] transition-all">
-                       <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                          <ClipboardList className="w-5 h-5 text-amber-500" />
-                       </div>
-                       <div>
-                          <p className="text-sm font-bold text-white">{c.code?.text || 'Unknown Condition'}</p>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">{c.clinicalStatus || 'Active'}</p>
-                       </div>
-                    </div>
-                  ))}
-                  {conditions.length === 0 && <EmptyState icon={<ClipboardList className="w-8 h-8 text-white/10" />} label="No conditions shared" />}
-               </div>
-            )
-         case 'allergies':
-            return (
-               <div className="space-y-3">
-                  {allergies.map((a: any) => (
-                    <div key={a.id} className="bg-red-500/10 border border-red-500/20 p-5 rounded-[28px] flex items-center gap-4 group hover:bg-white/[0.08] transition-all">
-                       <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                          <AlertCircle className="w-5 h-5 text-red-500" />
-                       </div>
-                       <div>
-                          <p className="text-sm font-bold text-white">{a.code?.text || 'Unknown Allergy'}</p>
-                          <p className="text-[10px] text-red-500/60 uppercase tracking-widest font-bold">{a.criticality || 'Normal'}</p>
-                       </div>
-                    </div>
-                  ))}
-                  {allergies.length === 0 && <EmptyState icon={<AlertCircle className="w-8 h-8 text-white/10" />} label="No allergies shared" />}
-               </div>
-            )
-         case 'clinicalNotes':
-            return (
-               <div className="space-y-4">
-                  {clinicalNotes.map((n) => (
-                    <div key={n.id} className="bg-white/5 border border-white/10 p-6 rounded-[32px] group hover:bg-white/[0.08] transition-all">
-                       <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                                <Edit3 className="w-4 h-4 text-indigo-500" />
-                             </div>
-                             <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{n.doctorName}</span>
-                          </div>
-                          <span className="text-[9px] text-white/20 font-mono">{new Date(n.timestamp).toLocaleDateString()}</span>
-                       </div>
-                       <p className="text-sm text-white/70 leading-relaxed italic">&quot;{n.content}&quot;</p>
-                    </div>
-                  ))}
-                  {clinicalNotes.length === 0 && <EmptyState icon={<Edit3 className="w-8 h-8 text-white/10" />} label="No notes shared" />}
-               </div>
-            )
          default:
-            return <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No data available" />
+            return <div className="space-y-4"></div>
       }
    }
+
+   const isLoading = isClinicalStoreLoading || isPermissionsLoading
 
    if (isLoading) {
       return (
          <div className="flex flex-col items-center justify-center py-24 gap-4">
             <Loader2 className="w-8 h-8 text-[#5B8DEF] animate-spin" />
-            <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-bold">Synchronizing Clinical Flux</p>
+            <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-bold">Synchronizing Secure Flux</p>
          </div>
       )
    }
@@ -289,29 +297,15 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                <div>
                   <h1 className="text-xl font-bold text-white tracking-tight">{selectedPatientProfile?.name || 'Patient'}</h1>
                   <div className="text-[10px] text-white/20 tracking-[0.2em] font-bold uppercase mt-0.5">
-                     Clinical Records • Read-Only Access
+                     Clinical Records • Secure Controlled Access
                   </div>
                </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-               <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">View Only</span>
+               <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Permission Guarded</span>
             </div>
          </div>
-
-         {/* Shared categories info */}
-         {sharedCats.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-               {sharedCats.map(cat => (
-                  <span key={cat} className="text-[9px] font-black text-white/30 bg-white/5 border border-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest">
-                     {cat}
-                  </span>
-               ))}
-               <span className="text-[9px] font-black text-white/15 px-2.5 py-1 uppercase tracking-widest">
-                  — patient-approved categories
-               </span>
-            </div>
-         )}
 
          {/* Tab Bar */}
          <div className="flex border-b border-white/5 pb-0.5 gap-6 overflow-x-auto no-scrollbar">

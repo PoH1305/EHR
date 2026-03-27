@@ -5,6 +5,7 @@ import { devtools } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { db } from '@/lib/db'
 import { useUserStore } from './useUserStore'
+import { supabase } from '@/lib/supabase'
 import type { 
   VitalSeries, 
   AuditEvent, 
@@ -109,7 +110,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           let profile = await db.patient_profiles.get(patientId)
           
           if (!profile) {
-            const { supabase } = await import('@/lib/supabase')
             if (supabase) {
               const { data, error } = await supabase
                 .from('profiles')
@@ -152,7 +152,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
         try {
           const { firebaseUid, role } = useUserStore.getState()
-          const { supabase } = await import('@/lib/supabase')
           
           let sharedCats: string[] | null = null
           
@@ -293,15 +292,10 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      /**
-       * HELPER: Atomically appends a record to the cloud if the current user is a doctor.
-       * If user is a patient, use the default full-state syncToCloud (Dexie is master).
-       */
       syncAtomic: async (patientId: string, key: string, value: any) => {
         const { role } = useUserStore.getState()
         if (role === 'doctor') {
           try {
-            const { supabase } = await import('@/lib/supabase')
             if (!supabase) return
             
             console.log(`[ClinicalStore] Syncing atomicaly: ${key} for patient ${patientId}`)
@@ -325,7 +319,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addVital: async (patientId: string, vital: VitalSeries) => {
         const vitalWithId = { ...vital, patientId }
-        if (db) await db.vitals.add(vitalWithId)
+        if (db) await db.vitals.add(vitalWithId as any)
         set((state) => {
           state.vitals.push(vital)
         })
@@ -334,7 +328,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addCondition: async (patientId: string, condition: Condition) => {
         const condWithId = { ...condition, patientId }
-        if (db) await db.conditions.add(condWithId)
+        if (db) await db.conditions.add(condWithId as any)
         set((state) => {
           state.conditions.push(condition)
         })
@@ -343,7 +337,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addMedication: async (patientId: string, medication: MedicationRequest) => {
         const medWithId = { ...medication, patientId }
-        if (db) await db.medications.add(medWithId)
+        if (db) await db.medications.add(medWithId as any)
         set((state) => {
           state.medications.push(medication)
         })
@@ -396,13 +390,15 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addMedicalImage: async (image: MedicalImage) => {
         let finalImage = { ...image }
+        let storagePath = ''
         
         if (image.imageUrl.startsWith('blob:') || image.imageUrl.startsWith('data:')) {
           try {
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
             const blob = await blobUrlToBlob(image.imageUrl)
-            const cloudUrl = await uploadMedicalFile(image.patientId, image.id, blob)
-            finalImage.imageUrl = cloudUrl
+            const uploadResult = await uploadMedicalFile(image.patientId, image.id, blob)
+            finalImage.imageUrl = uploadResult.publicUrl
+            storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to upload image to Cloud:', error)
           }
@@ -413,6 +409,15 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           state.medicalImages.unshift(finalImage)
         })
         void get().syncAtomic(finalImage.patientId, 'medicalImages', finalImage)
+
+        // Generate immediate view permission for doctors
+        const { role, firebaseUid } = useUserStore.getState()
+        if (role === 'doctor' && firebaseUid && storagePath && supabase) {
+           await supabase.from('record_access_permissions').insert([
+              { record_id: storagePath, patient_id: image.patientId, doctor_id: firebaseUid, permission_type: 'view', expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() },
+              { record_id: storagePath, patient_id: image.patientId, doctor_id: firebaseUid, permission_type: 'download', expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }
+           ])
+        }
       },
 
       addRiskAnalysis: async (analysis: RiskAnalysis) => {
@@ -425,13 +430,16 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addAttachment: async (attachment: PatientAttachment) => {
         let finalAttachment = { ...attachment }
+        let storagePath = ''
 
         if (attachment.fileUrl.startsWith('blob:') || attachment.fileUrl.startsWith('data:')) {
           try {
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
             const blob = await blobUrlToBlob(attachment.fileUrl)
-            const cloudUrl = await uploadMedicalFile(attachment.patientId, attachment.id, blob)
-            finalAttachment.fileUrl = cloudUrl
+            const uploadResult = await uploadMedicalFile(attachment.patientId, attachment.id, blob)
+            finalAttachment.fileUrl = uploadResult.publicUrl
+            finalAttachment.storagePath = uploadResult.storagePath
+            storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to upload attachment to Cloud:', error)
           }
@@ -442,6 +450,28 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           state.attachments.unshift(finalAttachment)
         })
         void get().syncAtomic(finalAttachment.patientId, 'attachments', finalAttachment)
+
+        // NEW: Generate initial permissions for doctor-uploaded files
+        const { role, firebaseUid } = useUserStore.getState()
+        if (role === 'doctor' && firebaseUid && storagePath && supabase) {
+           console.log('[ClinicalStore] Generating 7-day permissions for new attachment:', storagePath)
+           await supabase.from('record_access_permissions').insert([
+              { 
+                record_id: storagePath, 
+                patient_id: attachment.patientId, 
+                doctor_id: firebaseUid, 
+                permission_type: 'view', 
+                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
+              },
+              { 
+                record_id: storagePath, 
+                patient_id: attachment.patientId, 
+                doctor_id: firebaseUid, 
+                permission_type: 'download', 
+                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
+              }
+           ])
+        }
       },
 
       addAuditEvent: async (event: Omit<AuditEvent, 'hash' | 'previousHash'>, patientId?: string) => {
@@ -510,7 +540,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         }
 
         try {
-          const { supabase } = await import('@/lib/supabase')
           if (!supabase) return
 
           const state = get()
@@ -552,7 +581,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       loadSharedClinicalData: async (tokenHash: string, handshakeKey: string) => {
         try {
-          const { supabase } = await import('@/lib/supabase')
           if (!supabase) return
 
           set((state) => { state.isLoading = true })
@@ -571,16 +599,16 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             const bundle = await decryptBundle(encryptedBundle, handshakeKey)
 
             set((state) => {
-              state.vitals = bundle.vitals || []
-              state.conditions = bundle.conditions || []
-              state.medications = bundle.medications || []
-              state.allergies = bundle.allergies || []
-              state.clinicalNotes = bundle.clinicalNotes || []
-              state.medicalImages = bundle.medicalImages || []
-              state.attachments = bundle.attachments || []
-              state.riskAnalyses = bundle.riskAnalyses || []
-              state.isLoading = false
-              state.isLoaded = true
+               state.vitals = bundle.vitals || []
+               state.conditions = bundle.conditions || []
+               state.medications = bundle.medications || []
+               state.allergies = bundle.allergies || []
+               state.clinicalNotes = bundle.clinicalNotes || []
+               state.medicalImages = bundle.medicalImages || []
+               state.attachments = bundle.attachments || []
+               state.riskAnalyses = bundle.riskAnalyses || []
+               state.isLoading = false
+               state.isLoaded = true
             })
             console.log('[ClinicalStore] Successfully loaded shared records from Supabase')
           } else {

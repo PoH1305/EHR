@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { 
@@ -9,19 +9,17 @@ import {
   Pill, 
   Activity,
   AlertCircle,
-  User, 
-  Eye,
+  ClipboardList,
+  Edit3,
   ShieldCheck,
-  Lock,
-  Stethoscope,
   FlaskConical,
   Paperclip,
-  BadgeCheck
+  BadgeCheck,
+  ChevronRight
 } from 'lucide-react'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
-import { DoctorSpecialty } from '@/lib/types'
 import { FileTypeBadge } from '@/components/FileTypeBadge'
 
 interface DoctorRecordsProps {
@@ -29,7 +27,12 @@ interface DoctorRecordsProps {
 }
 
 const VIEW_ONLY_CATEGORIES = [
-  { key: 'attachments', label: 'Records', icon: Paperclip, color: 'purple' },
+  { key: 'attachments', label: 'Records', icon: FileText, color: 'purple' },
+  { key: 'vitals', label: 'Vitals', icon: Activity, color: 'blue' },
+  { key: 'medications', label: 'Medications', icon: Pill, color: 'emerald' },
+  { key: 'conditions', label: 'Conditions', icon: ClipboardList, color: 'amber' },
+  { key: 'allergies', label: 'Allergies', icon: AlertCircle, color: 'rose' },
+  { key: 'clinicalNotes', label: 'Notes', icon: Edit3, color: 'indigo' },
 ]
 
 const ICON_COLORS: Record<string, string> = {
@@ -52,14 +55,11 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       clinicalNotes,
       attachments,
       selectedPatientProfile,
+      isLoading,
       addAuditEvent
    } = useClinicalStore()
 
-   const { 
-      accessRequests, 
-      loadAccessRequests 
-   } = useConsentStore()
-   
+   const { accessRequests } = useConsentStore()
    const { firebaseUid, firebaseEmail } = useUserStore()
 
    // 1. Initial Access Log
@@ -78,7 +78,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
 
    // 2. Tab Switch Log
    useEffect(() => {
-      if (patientId && firebaseUid && activeTab) { // Use activeTab instead of subTab
+      if (patientId && firebaseUid && activeTab) {
          void addAuditEvent({
             id: crypto.randomUUID(),
             type: 'RECORD_VIEWED',
@@ -92,7 +92,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
 
    const handleDownload = async (fileUrl: string, filename: string) => {
       try {
-         // Log download activity
          if (patientId && firebaseUid) {
             void addAuditEvent({
                id: crypto.randomUUID(),
@@ -100,87 +99,170 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                timestamp: new Date().toISOString(),
                userId: firebaseUid,
                description: `Doctor downloaded record: ${filename}`,
-               metadata: { fileUrl, filename, doctorId: firebaseUid }
+               metadata: { filename, fileUrl, doctorId: firebaseUid }
             }, patientId)
          }
-
-         // In our Supabase architecture, we just open the public URL or create a link
-         const a = document.createElement('a')
-         a.href = fileUrl
-         a.download = filename
-         a.target = '_blank'
-         document.body.appendChild(a)
-         a.click()
-         document.body.removeChild(a)
-      } catch (error) {
-         console.error('Download error:', error)
-         alert('Failed to download record')
+         window.open(fileUrl, '_blank')
+      } catch (err) {
+         console.error('Download failed:', err)
       }
    }
 
-   const hasListenedRef = useRef(false)
-
-   useEffect(() => {
-      if (firebaseUid && !hasListenedRef.current) {
-         hasListenedRef.current = true
-         void loadAccessRequests(firebaseUid, true)
-      }
-   }, [firebaseUid, loadAccessRequests])
-
-   // Find the APPROVED access request for this patient to determine shared categories
-   const approvedRequest = accessRequests.find(r =>
+   const approvedRequest = accessRequests.find(r => 
       r.patientId === patientId && r.status === 'APPROVED'
    )
    const sharedCats: string[] = approvedRequest?.sharedCategories || []
 
    // Only show tabs for categories that were approved
-   const visibleTabs = VIEW_ONLY_CATEGORIES.filter(cat =>
+   const visibleTabs = VIEW_ONLY_CATEGORIES.filter(cat => 
       sharedCats.length === 0 || sharedCats.includes(cat.key)
    )
 
-   // Set the first visible tab by default if current tab is hidden
-   const effectiveTab = visibleTabs.find(t => t.key === activeTab) ? activeTab : (visibleTabs[0]?.key || 'medications')
-
    const renderContent = () => {
-      const allAttachments = attachments.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-
-      if (allAttachments.length === 0) {
-         return <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No records shared" />
-      }
-
-      return allAttachments.map((att: any, i) => (
-         <ViewOnlyCard key={att.id || i} color="purple" icon={<Paperclip className="w-4 h-4 text-purple-400" />}>
-            <div className="flex items-start justify-between gap-2">
-               <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                     <p className="font-bold text-white text-sm truncate">{att.fileName}</p>
-                     {att.isVerified && (
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 shrink-0">
-                           <BadgeCheck className="w-3 h-3 text-[#5B8DEF]" />
-                           <span className="text-[8px] font-black text-[#5B8DEF] uppercase tracking-widest">Verified</span>
-                        </div>
-                     )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                     <FileTypeBadge fileName={att.fileName} mimeType={att.fileType ?? undefined} />
-                     <span className="text-[10px] text-white/30 uppercase tracking-widest">
-                        {att.category?.replace('_', ' ')} {att.fileSize > 0 ? `· ${(att.fileSize / 1024).toFixed(1)} KB` : ''}
-                     </span>
-                  </div>
+      switch (activeTab) {
+         case 'vitals':
+            return (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {vitals.map((v) => (
+                    <div key={v.type} className="bg-white/5 border border-white/10 p-6 rounded-[32px] group hover:bg-white/[0.08] transition-all">
+                       <p className="text-[10px] uppercase font-bold text-white/20 tracking-widest mb-2">{v.type}</p>
+                       <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-black text-white tracking-tighter">{v.latestValue}</span>
+                          <span className="text-xs font-bold text-white/20">{v.unit}</span>
+                       </div>
+                    </div>
+                  ))}
+                  {vitals.length === 0 && <EmptyState icon={<Activity className="w-8 h-8 text-white/10" />} label="No vitals shared" />}
                </div>
-               <button 
-                  onClick={() => handleDownload(att.fileUrl, att.fileName)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#5B8DEF]/20 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 shrink-0 transition-colors"
-               >
-                  <Activity className="w-3 h-3 text-[#5B8DEF]" />
-                  <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Download</span>
-               </button>
-            </div>
-            <p className="text-[9px] text-white/15 mt-3 font-bold uppercase tracking-widest">
-               Uploaded {new Date(att.uploadedAt).toLocaleDateString()}
-            </p>
-         </ViewOnlyCard>
-      ))
+            )
+         case 'medications':
+            return (
+               <div className="space-y-3">
+                  {medications.map((m: any) => (
+                    <div key={m.id} className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4 group hover:bg-white/[0.08] transition-all">
+                       <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                          <Pill className="w-5 h-5 text-emerald-500" />
+                       </div>
+                       <div className="flex-1">
+                          <p className="text-sm font-bold text-white">{m.medicationCodeableConcept?.text || 'Unknown Medication'}</p>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">{m.dosageInstruction?.[0]?.text || 'As directed'}</p>
+                       </div>
+                       <div className="px-2.5 py-1 rounded-md bg-white/5 text-[9px] font-bold text-white/30 uppercase tracking-tighter">
+                          {m.status}
+                       </div>
+                    </div>
+                  ))}
+                  {medications.length === 0 && <EmptyState icon={<Pill className="w-8 h-8 text-white/10" />} label="No medications shared" />}
+               </div>
+            )
+         case 'attachments':
+            return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   {attachments.length > 0 ? attachments.map((att: any, i) => (
+                      <div key={att.id || i} className="bg-white/5 border border-white/10 p-5 rounded-[32px] group hover:bg-white/[0.08] transition-all">
+                         <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                               <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-bold text-white text-sm truncate">{att.fileName}</p>
+                                  {att.isVerified && (
+                                     <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 shrink-0">
+                                        <BadgeCheck className="w-3 h-3 text-[#5B8DEF]" />
+                                        <span className="text-[8px] font-black text-[#5B8DEF] uppercase tracking-widest">Verified</span>
+                                     </div>
+                                  )}
+                               </div>
+                               <div className="flex items-center gap-2 mt-1">
+                                  <FileTypeBadge fileName={att.fileName} mimeType={att.fileType ?? undefined} />
+                                  <span className="text-[10px] text-white/30 uppercase tracking-widest">
+                                     {att.category?.replace('_', ' ')} {att.fileSize > 0 ? `· ${(att.fileSize / 1024).toFixed(1)} KB` : ''}
+                                  </span>
+                               </div>
+                            </div>
+                            <button 
+                               onClick={() => handleDownload(att.fileUrl, att.fileName)}
+                               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#5B8DEF]/20 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 shrink-0 transition-colors"
+                            >
+                               <Activity className="w-3 h-3 text-[#5B8DEF]" />
+                               <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Open</span>
+                            </button>
+                         </div>
+                         <p className="text-[9px] text-white/15 mt-3 font-bold uppercase tracking-widest">
+                            Uploaded {new Date(att.uploadedAt).toLocaleDateString()}
+                         </p>
+                      </div>
+                   )) : (
+                     <div className="col-span-full">
+                        <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No documents shared" />
+                     </div>
+                   )}
+                </div>
+            )
+         case 'conditions':
+            return (
+               <div className="space-y-3">
+                  {conditions.map((c: any) => (
+                    <div key={c.id} className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4 group hover:bg-white/[0.08] transition-all">
+                       <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                          <ClipboardList className="w-5 h-5 text-amber-500" />
+                       </div>
+                       <div>
+                          <p className="text-sm font-bold text-white">{c.code?.text || 'Unknown Condition'}</p>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">{c.clinicalStatus || 'Active'}</p>
+                       </div>
+                    </div>
+                  ))}
+                  {conditions.length === 0 && <EmptyState icon={<ClipboardList className="w-8 h-8 text-white/10" />} label="No conditions shared" />}
+               </div>
+            )
+         case 'allergies':
+            return (
+               <div className="space-y-3">
+                  {allergies.map((a: any) => (
+                    <div key={a.id} className="bg-red-500/10 border border-red-500/20 p-5 rounded-[28px] flex items-center gap-4 group hover:bg-white/[0.08] transition-all">
+                       <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                          <AlertCircle className="w-5 h-5 text-red-500" />
+                       </div>
+                       <div>
+                          <p className="text-sm font-bold text-white">{a.code?.text || 'Unknown Allergy'}</p>
+                          <p className="text-[10px] text-red-500/60 uppercase tracking-widest font-bold">{a.criticality || 'Normal'}</p>
+                       </div>
+                    </div>
+                  ))}
+                  {allergies.length === 0 && <EmptyState icon={<AlertCircle className="w-8 h-8 text-white/10" />} label="No allergies shared" />}
+               </div>
+            )
+         case 'clinicalNotes':
+            return (
+               <div className="space-y-4">
+                  {clinicalNotes.map((n) => (
+                    <div key={n.id} className="bg-white/5 border border-white/10 p-6 rounded-[32px] group hover:bg-white/[0.08] transition-all">
+                       <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                                <Edit3 className="w-4 h-4 text-indigo-500" />
+                             </div>
+                             <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{n.doctorName}</span>
+                          </div>
+                          <span className="text-[9px] text-white/20 font-mono">{new Date(n.timestamp).toLocaleDateString()}</span>
+                       </div>
+                       <p className="text-sm text-white/70 leading-relaxed italic">&quot;{n.content}&quot;</p>
+                    </div>
+                  ))}
+                  {clinicalNotes.length === 0 && <EmptyState icon={<Edit3 className="w-8 h-8 text-white/10" />} label="No notes shared" />}
+               </div>
+            )
+         default:
+            return <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No data available" />
+      }
+   }
+
+   if (isLoading) {
+      return (
+         <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <Loader2 className="w-8 h-8 text-[#5B8DEF] animate-spin" />
+            <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-bold">Synchronizing Clinical Flux</p>
+         </div>
+      )
    }
 
    if (visibleTabs.length === 0) {
@@ -211,7 +293,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                   </div>
                </div>
             </div>
-            {/* View-Only global badge */}
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">View Only</span>
@@ -233,7 +314,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
          )}
 
          {/* Tab Bar */}
-         <div className="flex border-b border-white/5 pb-0.5 gap-6 overflow-x-auto">
+         <div className="flex border-b border-white/5 pb-0.5 gap-6 overflow-x-auto no-scrollbar">
             {visibleTabs.map((tab) => {
                const Icon = tab.icon
                return (
@@ -242,15 +323,16 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                      onClick={() => setActiveTab(tab.key)}
                      className={cn(
                         "flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] pb-3 whitespace-nowrap transition-all relative shrink-0",
-                        effectiveTab === tab.key ? "text-[#5B8DEF]" : "text-white/20 hover:text-white/40"
+                        activeTab === tab.key ? "text-[#5B8DEF]" : "text-white/20 hover:text-white/40"
                      )}
                   >
                      <Icon className="w-3 h-3" />
                      {tab.label}
-                     {effectiveTab === tab.key && (
-                        <motion.div
-                           layoutId="doctor-records-tab-indicator"
-                           className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#5B8DEF] shadow-[0_0_10px_rgba(91,141,239,0.5)]"
+                     {activeTab === tab.key && (
+                        <motion.div 
+                           layoutId="activeTabDoctor"
+                           className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#5B8DEF]"
+                           initial={false}
                         />
                      )}
                   </button>
@@ -258,61 +340,21 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
             })}
          </div>
 
-         {/* Content */}
-         <div className="space-y-4">
-            <AnimatePresence mode="wait">
-               <motion.div
-                  key={effectiveTab}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="space-y-4"
-               >
-                  {renderContent()}
-               </motion.div>
-            </AnimatePresence>
-         </div>
-
-         {/* View-only footer watermark */}
-         <div className="flex items-center justify-center gap-2 py-4 border-t border-white/5">
-            <Lock className="w-3 h-3 text-white/10" />
-            <p className="text-[9px] font-bold text-white/10 uppercase tracking-[0.3em]">
-               Shared Clinical Data · Synchronized from MedVault
-            </p>
+         {/* Tab Content */}
+         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {renderContent()}
          </div>
       </div>
    )
 }
 
-
-
-// Reusable card for a single read-only record
-function ViewOnlyCard({ children, color, icon }: { children: React.ReactNode; color: string; icon: React.ReactNode }) {
+function EmptyState({ icon, label }: { icon: React.ReactNode, label: string }) {
    return (
-      <div className="bg-[#111827]/40 border border-white/[0.04] p-5 rounded-3xl relative overflow-hidden select-none"
-           onContextMenu={e => e.preventDefault()} // Disable right-click
-      >
-         <div className="flex items-start gap-3">
-            <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5", ICON_COLORS[color])}>
-               {icon}
-            </div>
-            <div className="flex-1 min-w-0">
-               {children}
-            </div>
+      <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-white/5 rounded-[40px] bg-white/[0.01]">
+         <div className="mb-4 text-white/10">
+            {icon}
          </div>
-         {/* Subtle view-only corner indicator */}
-         <div className="absolute top-3 right-3">
-            <Eye className="w-3 h-3 text-white/10" />
-         </div>
-      </div>
-   )
-}
-
-function EmptyState({ icon, label }: { icon: React.ReactNode; label: string }) {
-   return (
-      <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl">
-         <div className="flex justify-center mb-3">{icon}</div>
-         <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">{label}</p>
+         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{label}</p>
       </div>
    )
 }

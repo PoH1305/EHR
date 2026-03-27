@@ -490,7 +490,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       setEmergencyMode: (active) => set({ isEmergencyMode: active }),
       
       syncToCloud: async (explicitPatientId?: string) => {
-        const { patient, firebaseUid } = useUserStore.getState()
+        const { patient } = useUserStore.getState()
         
         if (!get().isLoaded && !explicitPatientId) {
           console.warn('[ClinicalStore] Skipping sync: Store not loaded yet.')
@@ -544,7 +544,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           set((state) => {
             state.lastUpdated = new Date().toISOString()
           })
-          console.log('[ClinicalStore] Successfully synced to Supabase for:', targetId)
         } catch (error) {
           console.error('[ClinicalStore] Supabase Sync Error:', error)
           throw error
@@ -574,10 +573,16 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             set((state) => {
               state.vitals = bundle.vitals || []
               state.conditions = bundle.conditions || []
+              state.medications = bundle.medications || []
+              state.allergies = bundle.allergies || []
               state.clinicalNotes = bundle.clinicalNotes || []
+              state.medicalImages = bundle.medicalImages || []
+              state.attachments = bundle.attachments || []
+              state.riskAnalyses = bundle.riskAnalyses || []
               state.isLoading = false
+              state.isLoaded = true
             })
-            console.log('[ClinicalStore] Successfully loaded and decrypted shared records from Supabase')
+            console.log('[ClinicalStore] Successfully loaded shared records from Supabase')
           } else {
             throw new Error('Shared record not found or expired')
           }

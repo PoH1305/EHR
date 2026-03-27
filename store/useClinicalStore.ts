@@ -136,13 +136,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       loadClinicalData: async (patientId: string) => {
         if (typeof window === 'undefined' || !db) return
         
-        // Skip if already loading — prevents parallel duplicate Supabase calls
+        // Skip if already loading — prevents duplicate parallel calls
         if (get().isLoading) {
           console.log('[ClinicalStore] Skipping duplicate loadClinicalData call for:', patientId)
           return
         }
         
-        set((state) => { state.isLoading = true })
+        // Reset stale state before loading new patient
+        set((state) => { state.isLoading = true; state.isLoaded = false })
         
         // Safety timeout to prevent permanent loading hangs
         const timeoutId = setTimeout(() => {
@@ -212,6 +213,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                   state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
                   state.riskAnalyses = cloudData.riskAnalyses || []
                   state.isLoading = false
+                  state.isLoaded = true  // ← was missing: lets syncToCloud proceed after cloud load
                   state.lastUpdated = data.last_synced_at
                 })
                 clearTimeout(timeoutId)

@@ -64,8 +64,62 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    } = useConsentStore()
    
    const { firebaseUid } = useUserStore()
+   const [backendRecords, setBackendRecords] = useState<any[]>([])
+   const [isUploading, setIsUploading] = useState(false)
+   const fileInputRef = useRef<HTMLInputElement>(null)
+
+   const loadBackendRecords = async (pid: string) => {
+      try {
+         const response = await fetch(`http://localhost:8000/records/${pid}`)
+         if (response.ok) {
+            const data = await response.json()
+            setBackendRecords(data)
+         }
+      } catch (error) {
+         console.error('Failed to load backend records:', error)
+      }
+   }
+
+   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file || !patientId) return
+
+      setIsUploading(true)
+      try {
+         const formData = new FormData()
+         formData.append('file', file)
+         formData.append('user_id', patientId)
+         formData.append('role', 'doctor')
+
+         const response = await fetch('http://localhost:8000/upload', {
+            method: 'POST',
+            body: formData,
+         })
+
+         if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.detail || 'Upload failed')
+         }
+
+         await loadBackendRecords(patientId)
+         alert('Record uploaded successfully for patient!')
+      } catch (error: any) {
+         console.error('Doctor upload failed:', error)
+         alert(`Upload failed: ${error.message}`)
+      } finally {
+         setIsUploading(false)
+         if (fileInputRef.current) fileInputRef.current.value = ''
+      }
+   }
+
+   useEffect(() => {
+      if (patientId) {
+         loadBackendRecords(patientId)
+      }
+   }, [patientId])
 
    const hasListenedRef = useRef(false)
+
 
    useEffect(() => {
       if (firebaseUid && !hasListenedRef.current) {
@@ -158,7 +212,20 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
             )) : <EmptyState icon={<Activity className="w-8 h-8 text-white/10" />} label="No vitals shared" />
 
          case 'attachments':
-            return attachments.length > 0 ? attachments.map((att, i) => (
+            const allAttachments = [
+               ...attachments.map(att => ({ ...att, source: 'local' })),
+               ...backendRecords.map(rec => ({
+                  id: rec.id,
+                  fileName: rec.filename,
+                  fileType: rec.file_type,
+                  fileSize: 0, // Not stored in DB currently, but could be
+                  uploadedAt: rec.uploaded_at,
+                  category: 'LAB_REPORT',
+                  source: 'backend'
+               }))
+            ].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+
+            return allAttachments.length > 0 ? allAttachments.map((att: any, i) => (
                <ViewOnlyCard key={att.id || i} color="purple" icon={<Paperclip className="w-4 h-4 text-purple-400" />}>
                   <div className="flex items-start justify-between gap-2">
                      <div className="flex-1 min-w-0">
@@ -166,15 +233,42 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                         <div className="flex items-center gap-2 mt-1">
                            <FileTypeBadge fileName={att.fileName} mimeType={att.fileType ?? undefined} />
                            <span className="text-[10px] text-white/30 uppercase tracking-widest">
-                              {att.category?.replace('_', ' ')} · {(att.fileSize / 1024).toFixed(1)} KB
+                              {att.category?.replace('_', ' ')} {att.fileSize > 0 ? `· ${(att.fileSize / 1024).toFixed(1)} KB` : ''}
                            </span>
+                           {att.source === 'backend' && (
+                              <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-widest">Server</span>
+                           )}
                         </div>
                      </div>
-                     {/* VIEW-ONLY badge — no download link */}
-                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 shrink-0">
-                        <Eye className="w-3 h-3 text-purple-400" />
-                        <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">View Only</span>
-                     </div>
+                     <a 
+                        href={att.source === 'backend' ? `http://localhost:8000/download/${att.id}` : '#'} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={cn(
+                           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border shrink-0 transition-colors",
+                           att.source === 'backend' 
+                              ? "bg-primary/10 border-primary/20 hover:bg-primary/20" 
+                              : "bg-purple-500/10 border-purple-500/20"
+                        )}
+                        onClick={(e) => {
+                           if (att.source !== 'backend') {
+                              e.preventDefault()
+                              alert('Local-only files cannot be downloaded directly. Please wait for sync.')
+                           }
+                        }}
+                     >
+                        {att.source === 'backend' ? (
+                           <>
+                              <Activity className="w-3 h-3 text-primary" />
+                              <span className="text-[9px] font-black text-primary uppercase tracking-widest">Download</span>
+                           </>
+                        ) : (
+                           <>
+                              <Eye className="w-3 h-3 text-purple-400" />
+                              <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">View Only</span>
+                           </>
+                        )}
+                     </a>
                   </div>
                   <p className="text-[9px] text-white/15 mt-3 font-bold uppercase tracking-widest">
                      Uploaded {new Date(att.uploadedAt).toLocaleDateString()}
@@ -281,12 +375,38 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
          <div className="flex items-center justify-center gap-2 py-4 border-t border-white/5">
             <Lock className="w-3 h-3 text-white/10" />
             <p className="text-[9px] font-bold text-white/10 uppercase tracking-[0.3em]">
-               Read-Only · Cannot be downloaded or modified · Patient-controlled access
+               Shared Clinical Data · Synchronized from MedVault
             </p>
+         </div>
+
+         {/* Doctor Upload Action */}
+         <div className="fixed bottom-24 right-8 z-50">
+            <input 
+               type="file" 
+               ref={fileInputRef} 
+               onChange={handleUpload} 
+               className="hidden" 
+               accept=".pdf,.jpg,.jpeg,.png"
+            />
+            <button
+               onClick={() => fileInputRef.current?.click()}
+               disabled={isUploading}
+               className={cn(
+                  "w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-110 active:scale-95 transition-all",
+                  isUploading && "opacity-50 cursor-not-allowed"
+               )}
+            >
+               {isUploading ? (
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+               ) : (
+                  <Paperclip className="w-6 h-6 text-white" />
+               )}
+            </button>
          </div>
       </div>
    )
 }
+
 
 // Reusable card for a single read-only record
 function ViewOnlyCard({ children, color, icon }: { children: React.ReactNode; color: string; icon: React.ReactNode }) {

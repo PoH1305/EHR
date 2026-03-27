@@ -53,6 +53,26 @@ function RecordsPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, patient?.healthId]) // intentionally omit store functions
 
+  const [backendRecords, setBackendRecords] = useState<any[]>([])
+
+  const loadBackendRecords = async (healthId: string) => {
+    try {
+      const response = await fetch(`http://localhost:8000/records/${healthId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setBackendRecords(data)
+      }
+    } catch (error) {
+      console.error('Failed to load backend records:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (patient?.healthId) {
+      loadBackendRecords(patient.healthId)
+    }
+  }, [patient?.healthId])
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !patient?.healthId) return
@@ -60,29 +80,33 @@ function RecordsPageContent() {
     setIsUploading(true)
     
     try {
-      // Create a local blob URL for temporary viewing
-      const fileUrl = URL.createObjectURL(file)
-      
-      const newAttachment = {
-        id: `upload-${Date.now()}`,
-        patientId: patient.healthId,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        fileUrl: fileUrl,
-        uploadedAt: new Date().toISOString(),
-        category: 'LAB_REPORT' as const,
-        description: 'Patient Uploaded Document'
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('user_id', patient.healthId)
+      formData.append('role', 'patient')
+
+      const response = await fetch('http://localhost:8000/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Upload failed')
       }
 
-      await addAttachment(newAttachment)
-    } catch (error) {
+      // Refresh list dynamically
+      await loadBackendRecords(patient.healthId)
+      alert('File uploaded successfully!')
+    } catch (error: any) {
       console.error('File upload failed:', error)
+      alert(`Upload failed: ${error.message}`)
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
+
 
   const allRecords: RecordItem[] = useMemo(() => {
     const records: RecordItem[] = []
@@ -151,8 +175,23 @@ function RecordsPageContent() {
       })
     }
 
+    for (const record of backendRecords) {
+      records.push({
+        id: record.id,
+        resourceType: 'DiagnosticReport',
+        title: record.filename.replace(/\.[^/.]+$/, ''),
+        subtitle: 'Medical Record (Verified)',
+        date: record.uploaded_at,
+        verified: true,
+        fileUrl: `http://localhost:8000/download/${record.id}`,
+        fileName: record.filename,
+        fileType: record.file_type,
+      })
+    }
+
     return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [attachments, conditions, medications, allergies])
+  }, [attachments, conditions, medications, allergies, backendRecords])
+
 
   const filteredRecords = useMemo(() => {
     let records = allRecords

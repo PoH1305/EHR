@@ -105,3 +105,28 @@ CREATE POLICY "Allow authenticated updates to patient-files"
 ON storage.objects FOR UPDATE
 TO anon
 USING ( bucket_id = 'patient-files' );
+
+-- 8. Medical Records Table
+CREATE TABLE IF NOT EXISTS public.medical_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('patient', 'doctor')),
+  filename TEXT NOT NULL,
+  filepath TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'
+);
+
+ALTER TABLE public.medical_records ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow anon read medical_records"
+ON public.medical_records FOR SELECT
+TO anon
+USING (true);
+
+CREATE POLICY "Allow anon insert medical_records"
+ON public.medical_records FOR INSERT
+TO anon
+WITH CHECK (true);
+

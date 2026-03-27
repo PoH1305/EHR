@@ -9,28 +9,29 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 1. Define protected routes
-  const isProtectedRoute = pathname.startsWith('/dashboard') || 
-                           pathname.startsWith('/patients') || 
-                           pathname.startsWith('/api/clinical')
+  const isDoctorRoute = pathname.startsWith('/doctor') || pathname.startsWith('/patients')
+  const isPatientRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/records')
 
-  // 2. In a real production app, we would verify the JWT/Session cookie here.
-  // For this demo, we'll simulate a session check using a 'session-state' cookie or header.
+  // 2. Auth Check
   const sessionToken = request.cookies.get('ehi-session-active')?.value || 
                        request.headers.get('Authorization')
+  const userRole = request.cookies.get('medVault-user-role')?.value
 
-  if (isProtectedRoute && !sessionToken) {
-    // Redirect to login if unauthenticated
-    // (In This demo, we allow it if the cookie is set or if we're in the same local dev context)
-    // return NextResponse.redirect(new URL('/auth/login', request.url))
-    console.log(`[Middleware] Protected route accessed: ${pathname}`)
+  // Simulation: If no role/session but access protected, redirect (in production)
+  // For this demo, we'll focus on role mismatch
+  if (isDoctorRoute && userRole === 'patient') {
+    return new NextResponse('403 Unauthorized: Patients cannot access doctor dashboard', { status: 403 })
   }
 
-  // 3. Security Headers for Production (Moved to next.config.mjs for global coverage)
+  if (isPatientRoute && userRole === 'doctor') {
+    return new NextResponse('403 Unauthorized: Doctors cannot access patient dashboard directly', { status: 403 })
+  }
+
   const response = NextResponse.next()
-  
   return response
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/patients/:path*', '/api/:path*'],
+  matcher: ['/dashboard/:path*', '/patients/:path*', '/doctor/:path*', '/records/:path*'],
 }
+

@@ -32,6 +32,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
     conditions,
     loadClinicalData, 
     loadPatientMetadata,
+    clearClinicalState,
     selectedPatientProfile,
     isLoading, 
     isEmergencyMode 
@@ -45,11 +46,12 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
 
   useEffect(() => {
     setLoadTimedOut(false)
+    // Clear any stale data from a previous patient before loading new one
+    clearClinicalState()
     if (patientId) {
       void loadClinicalData(patientId)
       void loadPatientMetadata(patientId)
     }
-    // Safety timeout — if still loading after 6s, show fallback instead of spinning forever
     const timer = setTimeout(() => {
       if (useClinicalStore.getState().isLoading) {
         useClinicalStore.setState({ isLoading: false })
@@ -58,7 +60,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
     }, 6000)
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId]) // intentionally omit store functions — they are stable actions
+  }, [patientId])
 
   if (isLoading) {
     return (

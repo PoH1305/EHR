@@ -77,7 +77,15 @@ export const useUserStore = create<UserState & UserActions>()(
         set((state) => {
           state.role = role
         })
+        if (typeof window !== 'undefined') {
+          if (role) {
+            document.cookie = `medVault-user-role=${role}; path=/; max-age=86400; SameSite=Lax`
+          } else {
+            document.cookie = `medVault-user-role=; path=/; max-age=0`
+          }
+        }
       },
+
 
       initializeKeys: async () => {
         set((state) => {

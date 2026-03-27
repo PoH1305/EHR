@@ -15,7 +15,8 @@ import {
   Lock,
   Stethoscope,
   FlaskConical,
-  Paperclip
+  Paperclip,
+  BadgeCheck
 } from 'lucide-react'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { useConsentStore } from '@/store/useConsentStore'
@@ -250,7 +251,15 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                <ViewOnlyCard key={att.id || i} color="purple" icon={<Paperclip className="w-4 h-4 text-purple-400" />}>
                   <div className="flex items-start justify-between gap-2">
                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-white text-sm truncate">{att.fileName}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                           <p className="font-bold text-white text-sm truncate">{att.fileName}</p>
+                           {att.isVerified && (
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 shrink-0">
+                                 <BadgeCheck className="w-3 h-3 text-[#5B8DEF]" />
+                                 <span className="text-[8px] font-black text-[#5B8DEF] uppercase tracking-widest">Verified</span>
+                              </div>
+                           )}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                            <FileTypeBadge fileName={att.fileName} mimeType={att.fileType ?? undefined} />
                            <span className="text-[10px] text-white/30 uppercase tracking-widest">

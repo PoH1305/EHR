@@ -156,7 +156,7 @@ function RecordsPageContent() {
         title: attachment.fileName.replace(/\.[^/.]+$/, ''),
         subtitle: attachment.description || 'Uploaded Document',
         date: attachment.uploadedAt,
-        verified: false,
+        verified: attachment.isVerified || false,
         fileUrl: attachment.fileUrl,
         fileName: attachment.fileName,
         fileType: attachment.fileType,

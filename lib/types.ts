@@ -353,6 +353,7 @@ export interface PatientAttachment {
   uploadedAt: string
   category: 'LAB_REPORT' | 'PRESCRIPTION' | 'DISCHARGE_SUMMARY' | 'OTHER'
   description?: string | undefined
+  isVerified?: boolean
 }
 
 // ────────────────────────────────────────────────────────────────

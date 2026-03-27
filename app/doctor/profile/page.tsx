@@ -13,17 +13,20 @@ import {
   Settings
 } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
+import { useClinicalStore } from '@/store/useClinicalStore'
 import { useToast } from '@/store/useToast'
 import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/GlassCard'
 
 export default function DoctorProfilePage() {
   const { firebaseEmail, role, signOut } = useUserStore()
+  const { clearClinicalState } = useClinicalStore()
   const { toast } = useToast()
   const router = useRouter()
 
   const handleSignOut = async () => {
     try {
+      clearClinicalState()
       await signOut()
       router.push('/auth/doctor')
       toast("Signed out successfully", "success")

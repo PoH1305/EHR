@@ -188,6 +188,9 @@ export const useUserStore = create<UserState & UserActions>()(
           state.healthId = null
           state.lastActiveAt = null
         })
+        if (typeof window !== 'undefined') {
+          document.cookie = 'medVault-user-role=; path=/; max-age=0'
+        }
       },
 
       setFirebaseUser: (uid, email) => {

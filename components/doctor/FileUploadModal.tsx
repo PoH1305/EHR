@@ -54,7 +54,8 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
         fileUrl,
         uploadedAt: new Date().toISOString(),
         category,
-        description: description || undefined
+        description: description || undefined,
+        isVerified: true
       }
 
       // Use clinical store action - handles cloud upload and sync
@@ -66,8 +67,8 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
         type: 'RECORD_CREATED',
         timestamp: new Date().toISOString(),
         userId: firebaseUid || 'doctor',
-        description: `New document uploaded by Dr. ${firebaseEmail || 'Unknown'}: ${file.name}`,
-        metadata: { fileName: file.name, category, patientId }
+        description: `Verified document uploaded by Dr. ${firebaseEmail || 'Unknown'}: ${file.name}`,
+        metadata: { fileName: file.name, category, patientId, isVerified: true }
       }, patientId)
       
       toast("File uploaded successfully and synced to patient", "success")

@@ -56,6 +56,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       clinicalNotes,
       attachments,
       selectedPatientProfile,
+      addAuditEvent
    } = useClinicalStore()
 
    const { 
@@ -63,7 +64,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       loadAccessRequests 
    } = useConsentStore()
    
-   const { firebaseUid } = useUserStore()
+   const { firebaseUid, firebaseEmail } = useUserStore()
    const [backendRecords, setBackendRecords] = useState<any[]>([])
 
    const loadBackendRecords = async (pid: string) => {
@@ -78,15 +79,68 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       }
    }
 
+   // 1. Initial Access Log
    useEffect(() => {
-      if (patientId) {
+      if (patientId && firebaseUid) {
+         void addAuditEvent({
+            id: crypto.randomUUID(),
+            type: 'ACCESS',
+            timestamp: new Date().toISOString(),
+            userId: firebaseUid,
+            description: `Doctor (${firebaseEmail || 'Unknown'}) accessed your clinical records dashboard.`,
+            metadata: { doctorId: firebaseUid, patientId }
+         }, patientId)
          loadBackendRecords(patientId)
       }
-   }, [patientId])
+   }, [patientId, firebaseUid, firebaseEmail, addAuditEvent])
+
+   // 2. Tab Switch Log
+   useEffect(() => {
+      if (patientId && firebaseUid && activeTab) { // Use activeTab instead of subTab
+         void addAuditEvent({
+            id: crypto.randomUUID(),
+            type: 'RECORD_VIEWED',
+            timestamp: new Date().toISOString(),
+            userId: firebaseUid,
+            description: `Doctor viewed your ${activeTab} history.`,
+            metadata: { category: activeTab, doctorId: firebaseUid }
+         }, patientId)
+      }
+   }, [activeTab, patientId, firebaseUid, addAuditEvent])
+
+   const handleDownload = async (recordId: string, filename: string) => {
+      try {
+         // Log download activity
+         if (patientId && firebaseUid) {
+            void addAuditEvent({
+               id: crypto.randomUUID(),
+               type: 'EXPORT_DATA',
+               timestamp: new Date().toISOString(),
+               userId: firebaseUid,
+               description: `Doctor downloaded record: ${filename}`,
+               metadata: { recordId, filename, doctorId: firebaseUid }
+            }, patientId)
+         }
+
+         const response = await fetch(`http://localhost:8000/download/${recordId}`)
+         if (!response.ok) throw new Error('Download failed')
+         
+         const blob = await response.blob()
+         const url = window.URL.createObjectURL(blob)
+         const a = document.createElement('a')
+         a.href = url
+         a.download = filename
+         document.body.appendChild(a)
+         a.click()
+         window.URL.revokeObjectURL(url)
+         document.body.removeChild(a)
+      } catch (error) {
+         console.error('Download error:', error)
+         alert('Failed to download record')
+      }
+   }
 
    const hasListenedRef = useRef(false)
-
-
 
    useEffect(() => {
       if (firebaseUid && !hasListenedRef.current) {

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, FileText, CheckCircle2, Loader2, Save, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
+import { useUserStore } from '@/store/useUserStore'
 import type { ClinicalNote } from '@/lib/types'
 
 interface AddNoteModalProps {
@@ -24,6 +25,7 @@ export function AddNoteModal({ isOpen, onClose, patientId, patientName }: AddNot
   })
 
   const { addClinicalNote, addAuditEvent } = useClinicalStore()
+  const { firebaseUid, firebaseEmail } = useUserStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,8 +34,8 @@ export function AddNoteModal({ isOpen, onClose, patientId, patientName }: AddNot
     const note: ClinicalNote = {
       id: `note-${Date.now()}`,
       patientId,
-      doctorId: 'doc-001',
-      doctorName: 'Dr. Arjun Mehta',
+      doctorId: firebaseUid || 'doctor',
+      doctorName: `Dr. ${firebaseEmail?.split('@')[0] || 'Unknown'}`,
       timestamp: new Date().toISOString(),
       content: formData.content,
       type: formData.type,
@@ -43,15 +45,13 @@ export function AddNoteModal({ isOpen, onClose, patientId, patientName }: AddNot
     try {
       await addClinicalNote(note)
       await addAuditEvent({
-        id: `audit-note-${Date.now()}`,
+        id: crypto.randomUUID(),
         type: 'RECORD_CREATED',
         timestamp: new Date().toISOString(),
-        userId: 'doc-001',
-        description: `New clinical note added for ${patientName}`,
-        metadata: { noteType: formData.type, patientId },
-        hash: 'pending',
-        previousHash: 'pending'
-      })
+        userId: firebaseUid || 'doctor',
+        description: `New clinical note added by Dr. ${firebaseEmail || 'Unknown'}`,
+        metadata: { noteType: formData.type, patientId }
+      }, patientId)
       
       setStep('success')
     } catch (error) {

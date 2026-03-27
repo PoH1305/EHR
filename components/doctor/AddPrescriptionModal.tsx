@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Pill, CheckCircle2, Loader2 } from 'lucide-react'
 import { useClinicalStore } from '@/store/useClinicalStore'
+import { useUserStore } from '@/store/useUserStore'
 import type { MedicationRequest } from 'fhir/r4'
 
 interface AddPrescriptionModalProps {
@@ -25,6 +26,7 @@ export function AddPrescriptionModal({ isOpen, onClose, patientId, patientName }
   })
 
   const { addMedication, addAuditEvent } = useClinicalStore()
+  const { firebaseUid, firebaseEmail } = useUserStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,15 +55,13 @@ export function AddPrescriptionModal({ isOpen, onClose, patientId, patientName }
     try {
       await addMedication(patientId, medicationRequest)
       await addAuditEvent({
-        id: `audit-${Date.now()}`,
+        id: crypto.randomUUID(),
         type: 'RECORD_CREATED',
         timestamp: new Date().toISOString(),
-        userId: 'doc-001', // Mock doctor ID
-        description: `New prescription for ${formData.medication} added for ${patientName}`,
-        metadata: { medication: formData.medication, patientId },
-        hash: 'pending',
-        previousHash: 'pending'
-      })
+        userId: firebaseUid || 'doctor',
+        description: `New prescription for ${formData.medication} added by Dr. ${firebaseEmail || 'Unknown'}`,
+        metadata: { medication: formData.medication, patientId }
+      }, patientId)
       
       setStep('success')
     } catch (error) {

@@ -31,6 +31,7 @@ interface ClinicalState {
   auditEvents: AuditEvent[]
   isLoading: boolean
   isEmergencyMode: boolean
+  anomalies: any[] // AnomalyResult[]
   isMinimizationActive: boolean
   emergencyPatientId: string | null
   selectedPatientProfile: any | null
@@ -53,8 +54,9 @@ interface ClinicalActions {
   addMedicalImage: (image: MedicalImage) => Promise<void>
   addRiskAnalysis: (analysis: RiskAnalysis) => Promise<void>
   addAttachment: (attachment: PatientAttachment) => Promise<void>
-  addAuditEvent: (event: AuditEvent) => Promise<void>
-  activateEmergencyMode: (patientId: string) => void
+  addAuditEvent: (event: Omit<AuditEvent, 'hash' | 'previousHash'>, patientId?: string) => Promise<void>
+  setEmergencyMode: (active: boolean) => void
+  runAIAnomalyCheck: () => Promise<void>
   clearEmergencyMode: () => void
   clearClinicalState: () => void
   syncToCloud: (patientId?: string) => Promise<void>
@@ -81,6 +83,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       isLoading: false,
       isLoaded: false,
       isEmergencyMode: false,
+      anomalies: [],
       isMinimizationActive: true, // Default to true for Phase 10 demo
       emergencyPatientId: null,
       selectedPatientProfile: null,
@@ -175,7 +178,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             }
           }
 
-          const [vitals, conditions, medications, allergies, clinicalNotes, medicalImages, riskAnalyses, attachments] = await Promise.all([
+          const [vitals, conditions, medications, allergies, clinicalNotes, medicalImages, riskAnalyses, attachments, auditEvents] = await Promise.all([
             db.vitals.where('patientId').equals(patientId).toArray(),
             db.conditions.where('patientId').equals(patientId).toArray(),
             db.medications.where('patientId').equals(patientId).toArray(),
@@ -183,7 +186,8 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             db.clinical_notes.where('patientId').equals(patientId).toArray(),
             db.medical_images.where('patientId').equals(patientId).toArray(),
             db.risk_analysis.where('patientId').equals(patientId).toArray(),
-            db.patient_attachments.where('patientId').equals(patientId).toArray()
+            db.patient_attachments.where('patientId').equals(patientId).toArray(),
+            db.audit_log.where('userId').equals(patientId).toArray() // Note:userId might need to be patientId or a different filter
           ])
 
           const isMinimization = get().isMinimizationActive
@@ -209,8 +213,9 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                   state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.length === 0 || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
                   state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : []
                   state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : []
-                  state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
+                   state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
                   state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
+                  state.auditEvents = cloudData.auditEvents || []
                   state.riskAnalyses = cloudData.riskAnalyses || []
                   state.isLoading = false
                   state.isLoaded = true  // ← was missing: lets syncToCloud proceed after cloud load
@@ -242,6 +247,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               ? (isMinimization ? [] : medicalImages)
               : []
             state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (attachments as any[]) : []
+            state.auditEvents = (auditEvents as any[]).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             state.riskAnalyses = riskAnalyses
             state.isLoading = false
             state.isLoaded = true // Set safety flag
@@ -420,13 +426,29 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         void get().syncToCloud(finalAttachment.patientId)
       },
 
-      addAuditEvent: async (event: AuditEvent) => {
-        if (db) await db.audit_log.add(event)
+      addAuditEvent: async (event: Omit<AuditEvent, 'hash' | 'previousHash'>, patientId?: string) => {
+        const state = get()
+        const previousEvent = state.auditEvents[0]
+        const previousHash = previousEvent ? previousEvent.hash : '0000000000000000'
+        
+        const { sha256 } = await import('@/lib/crypto')
+        const sortedFields = JSON.stringify(event, Object.keys(event).sort())
+        const hash = await sha256(`${previousHash}:${sortedFields}`)
+        
+        const finalEvent: AuditEvent = {
+          ...event,
+          previousHash,
+          hash
+        }
+
+        if (db) await db.audit_log.add(finalEvent)
         set((state) => {
-          state.auditEvents.unshift(event)
+          state.auditEvents.unshift(finalEvent)
         })
-        // Audit log sync is less critical for the patient profile fallback
-        // but can be added if needed.
+        
+        if (patientId) {
+          void get().syncToCloud(patientId)
+        }
       },
 
       clearClinicalState: () => {
@@ -442,8 +464,33 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           state.clinicalNotes = []
           state.medicalImages = []
           state.riskAnalyses = []
+          state.anomalies = []
           state.lastUpdated = null
         })
+      },
+
+      setEmergencyMode: (active) => set({ isEmergencyMode: active }),
+      
+      runAIAnomalyCheck: async () => {
+        const { vitals } = get()
+        if (!vitals || vitals.length === 0) return
+
+        console.log('[ClinicalStore] Running AI Anomaly Check...')
+        try {
+          const response = await fetch('/api/ai/anomaly', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vitals })
+          })
+
+          if (response.ok) {
+            const { anomalies } = await response.json()
+            set({ anomalies })
+            console.log('[ClinicalStore] AI Anomalies detected:', anomalies.length)
+          }
+        } catch (error) {
+          console.error('[ClinicalStore] AI Anomaly Check failed:', error)
+        }
       },
 
       syncToCloud: async (explicitPatientId?: string) => {
@@ -481,9 +528,10 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                 immunizations: state.immunizations,
                 procedures: state.procedures,
                 clinicalNotes: state.clinicalNotes,
-                medicalImages: state.medicalImages,
+                 medicalImages: state.medicalImages,
                 riskAnalyses: state.riskAnalyses,
                 attachments: state.attachments,
+                auditEvents: state.auditEvents,
               },
               last_synced_at: new Date().toISOString()
             })

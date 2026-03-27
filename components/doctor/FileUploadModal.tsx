@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { db } from '@/lib/db'
 import { useToast } from '@/store/useToast'
 import { useClinicalStore } from '@/store/useClinicalStore'
+import { useUserStore } from '@/store/useUserStore'
 import type { PatientAttachment } from '@/lib/types'
 
 interface FileUploadModalProps {
@@ -21,7 +22,8 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
   const [category, setCategory] = useState<PatientAttachment['category']>('LAB_REPORT')
   const [description, setDescription] = useState('')
   const [isUploading, setIsUploading] = useState(false)
-  const { addAttachment } = useClinicalStore()
+  const { addAttachment, addAuditEvent } = useClinicalStore()
+  const { firebaseUid, firebaseEmail } = useUserStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +59,16 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
 
       // Use clinical store action - handles cloud upload and sync
       await addAttachment(attachment)
+      
+      // Log audit event
+      await addAuditEvent({
+        id: crypto.randomUUID(),
+        type: 'RECORD_CREATED',
+        timestamp: new Date().toISOString(),
+        userId: firebaseUid || 'doctor',
+        description: `New document uploaded by Dr. ${firebaseEmail || 'Unknown'}: ${file.name}`,
+        metadata: { fileName: file.name, category, patientId }
+      }, patientId)
       
       toast("File uploaded successfully and synced to patient", "success")
       setFile(null)

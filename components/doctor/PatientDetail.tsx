@@ -2,16 +2,23 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  ArrowLeft, 
-  Edit3, 
-  FileText, 
-  TrendingUp, 
-  AlertCircle, 
-  Loader2, 
-  Upload, 
+import {
+  ArrowLeft,
+  Edit3,
+  FileText,
+  TrendingUp,
+  AlertCircle,
+  Loader2,
+  Upload,
   Sparkles,
-  Plus
+  Plus,
+  ShieldAlert,
+  Clock,
+  ChevronRight,
+  Activity,
+  ShieldCheck,
+  Zap,
+  RefreshCcw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
@@ -20,6 +27,7 @@ import { AddNoteModal } from './AddNoteModal'
 import FileUploadModal from './FileUploadModal'
 import { ClinicalCoPilot } from './ClinicalCoPilot'
 import DoctorRecords from './DoctorRecords'
+import { AnomalyBanner } from './AnomalyBanner'
 
 interface PatientDetailProps {
   onBack: () => void
@@ -27,15 +35,18 @@ interface PatientDetailProps {
 }
 
 export default function PatientDetail({ onBack, patientId }: PatientDetailProps) {
-  const { 
-    vitals, 
+  const {
+    vitals,
     conditions,
-    loadClinicalData, 
+    allergies,
+    medications,
+    loadClinicalData,
     loadPatientMetadata,
     clearClinicalState,
     selectedPatientProfile,
-    isLoading, 
-    isEmergencyMode 
+    isLoading,
+    isEmergencyMode,
+    runAIAnomalyCheck
   } = useClinicalStore()
   const [activeTab, setActiveTab] = useState<'RECORDS' | 'COPILOT'>('RECORDS')
   const [showPrescribe, setShowPrescribe] = useState(false)
@@ -89,12 +100,22 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
               <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest">Immediate Life-Critical Access</p>
             </div>
           </div>
-          <button 
-            onClick={onBack}
-            className="px-6 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 active:scale-95 transition-all"
-          >
-            Exit Tactical
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => runAIAnomalyCheck()}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-6 py-2 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-600/30 transition-all disabled:opacity-50"
+            >
+              <Zap className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
+              {isLoading ? "Analyzing..." : "AI Intelligence"}
+            </button>
+            <button 
+              onClick={onBack}
+              className="px-6 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+            >
+              Exit Tactical
+            </button>
+          </div>
         </div>
 
         {/* Critical Patient Info */}
@@ -122,6 +143,9 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
               </div>
            </div>
         </div>
+
+        {/* AI Anomaly Analysis */}
+        <AnomalyBanner />
 
         {/* Life-Saving Intel Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -295,6 +319,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
                 <Sparkles className="w-4 h-4 text-[#5B8DEF]" />
                 <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Clinical Intelligence Analysis</h2>
              </div>
+             <AnomalyBanner />
              <ClinicalCoPilot patientId={patientId} patientName={selectedPatientProfile?.name || 'Patient'} />
           </div>
         ) : (

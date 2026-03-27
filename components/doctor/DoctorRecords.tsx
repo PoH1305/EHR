@@ -65,8 +65,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    
    const { firebaseUid } = useUserStore()
    const [backendRecords, setBackendRecords] = useState<any[]>([])
-   const [isUploading, setIsUploading] = useState(false)
-   const fileInputRef = useRef<HTMLInputElement>(null)
 
    const loadBackendRecords = async (pid: string) => {
       try {
@@ -80,38 +78,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       }
    }
 
-   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (!file || !patientId) return
-
-      setIsUploading(true)
-      try {
-         const formData = new FormData()
-         formData.append('file', file)
-         formData.append('user_id', patientId)
-         formData.append('role', 'doctor')
-
-         const response = await fetch('http://localhost:8000/upload', {
-            method: 'POST',
-            body: formData,
-         })
-
-         if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.detail || 'Upload failed')
-         }
-
-         await loadBackendRecords(patientId)
-         alert('Record uploaded successfully for patient!')
-      } catch (error: any) {
-         console.error('Doctor upload failed:', error)
-         alert(`Upload failed: ${error.message}`)
-      } finally {
-         setIsUploading(false)
-         if (fileInputRef.current) fileInputRef.current.value = ''
-      }
-   }
-
    useEffect(() => {
       if (patientId) {
          loadBackendRecords(patientId)
@@ -119,6 +85,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    }, [patientId])
 
    const hasListenedRef = useRef(false)
+
 
 
    useEffect(() => {
@@ -378,34 +345,10 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                Shared Clinical Data · Synchronized from MedVault
             </p>
          </div>
-
-         {/* Doctor Upload Action */}
-         <div className="fixed bottom-24 right-8 z-50">
-            <input 
-               type="file" 
-               ref={fileInputRef} 
-               onChange={handleUpload} 
-               className="hidden" 
-               accept=".pdf,.jpg,.jpeg,.png"
-            />
-            <button
-               onClick={() => fileInputRef.current?.click()}
-               disabled={isUploading}
-               className={cn(
-                  "w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-110 active:scale-95 transition-all",
-                  isUploading && "opacity-50 cursor-not-allowed"
-               )}
-            >
-               {isUploading ? (
-                  <Loader2 className="w-6 h-6 text-white animate-spin" />
-               ) : (
-                  <Paperclip className="w-6 h-6 text-white" />
-               )}
-            </button>
-         </div>
       </div>
    )
 }
+
 
 
 // Reusable card for a single read-only record

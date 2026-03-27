@@ -57,7 +57,8 @@ function PatientAuthContent() {
     updateLastActive, 
     patient, 
     _hasHydrated,
-    setFirebaseUser
+    setFirebaseUser,
+    setRole
   } = useUserStore()
 
   // Sync Firebase state with Zustand
@@ -65,9 +66,10 @@ function PatientAuthContent() {
     if (user) {
       setFirebaseUser(user.uid, user.email)
       setSessionState('AUTHENTICATED')
+      setRole('patient')
       updateLastActive()
     }
-  }, [user, setFirebaseUser, setSessionState, updateLastActive])
+  }, [user, setFirebaseUser, setSessionState, updateLastActive, setRole])
 
   // Navigation Logic
   useEffect(() => {

@@ -76,6 +76,11 @@ export const useUserStore = create<UserState & UserActions>()(
       setRole: (role: UserRole) => {
         set((state) => {
           state.role = role
+          // If switching to doctor, clear any patient-related state
+          if (role === 'doctor') {
+            state.patient = null
+            state.healthId = null
+          }
         })
         if (typeof window !== 'undefined') {
           if (role) {

@@ -152,11 +152,27 @@ function DoctorAuthContent() {
     }
   }
 
-  if (loading || (user && _hasHydrated)) {
+  if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="w-10 h-10 text-[#1A3A8F] animate-spin mb-4" />
         <p className="text-sm text-[#4A6075]">Verifying Clinical Credentials...</p>
+      </div>
+    )
+  }
+
+  if (user && _hasHydrated) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full border-[1.5px] border-[#1A3A8F] flex items-center justify-center text-[#1A3A8F] mb-6">
+            <Check className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-medium text-white mb-2">Authenticated</h2>
+          <p className="text-[10px] text-[#4A6075] tracking-widest uppercase mt-1 text-center">
+            {user.email}<br />Clinical Portal Active
+          </p>
+        </motion.div>
       </div>
     )
   }

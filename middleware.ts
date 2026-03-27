@@ -25,8 +25,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  if (isPatientRoute && userRole === 'doctor') {
-    return NextResponse.redirect(new URL('/patients', request.url))
+  // records and activity are patient-only
+  const isPatientOnly = pathname.startsWith('/records') || pathname.startsWith('/activity')
+  if (isPatientOnly && userRole === 'doctor') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   const response = NextResponse.next()

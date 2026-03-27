@@ -65,10 +65,19 @@ ALTER TABLE public.shared_secrets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.record_access_permissions ENABLE ROW LEVEL SECURITY;
 
 -- 4. Create Policies (Permissive for the anon role, secured by ID)
+DROP POLICY IF EXISTS "Allow anon read/write profile by ID" ON public.profiles;
 CREATE POLICY "Allow anon read/write profile by ID" ON public.profiles FOR ALL TO anon USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write clinical by ID" ON public.clinical_data;
 CREATE POLICY "Allow anon read/write clinical by ID" ON public.clinical_data FOR ALL TO anon USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write lookup" ON public.access_requests;
 CREATE POLICY "Allow anon read/write lookup" ON public.access_requests FOR ALL TO anon USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write secrets" ON public.shared_secrets;
 CREATE POLICY "Allow anon read/write secrets" ON public.shared_secrets FOR ALL TO anon USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write permissions" ON public.record_access_permissions;
 CREATE POLICY "Allow anon read/write permissions" ON public.record_access_permissions FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- 6. Enable Realtime
@@ -99,7 +108,11 @@ CREATE TABLE IF NOT EXISTS public.medical_records (
 );
 
 ALTER TABLE public.medical_records ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon read medical_records" ON public.medical_records;
 CREATE POLICY "Allow anon read medical_records" ON public.medical_records FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "Allow anon insert medical_records" ON public.medical_records;
 CREATE POLICY "Allow anon insert medical_records" ON public.medical_records FOR INSERT TO anon WITH CHECK (true);
 
 -- 9. Atomic Append Function (Fixes doctor overwrite bug)

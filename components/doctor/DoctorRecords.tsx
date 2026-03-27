@@ -181,8 +181,10 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
 
     // Filter attachments based on real-time permissions
     const filteredAttachments = attachments.filter(att => {
-       const recordId = att.storagePath || att.fileName
-       return hasPermission(recordId, 'view') || hasPermission(recordId, 'download')
+       const recordId = att.storagePath || att.id
+       // Safety: If the doctor is the uploader, allow view (fallback if permissions sync is slow)
+       const isUploader = att.doctorId === firebaseUid
+       return isUploader || hasPermission(recordId, 'view') || hasPermission(recordId, 'download')
     })
 
     const handleRestoreAccess = async () => {
@@ -242,9 +244,10 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
          case 'attachments':
             return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                   {filteredAttachments.length > 0 ? filteredAttachments.map((att: any, i) => {
-                      const canView = hasPermission(att.storagePath || att.fileName, 'view')
-                      const canDownload = hasPermission(att.storagePath || att.fileName, 'download')
+                    {filteredAttachments.length > 0 ? filteredAttachments.map((att: any, i) => {
+                      const recordId = att.storagePath || att.id
+                      const canView = att.doctorId === firebaseUid || hasPermission(recordId, 'view')
+                      const canDownload = att.doctorId === firebaseUid || hasPermission(recordId, 'download')
 
                       return (
                       <div key={att.id || i} className="bg-white/5 border border-white/10 p-5 rounded-[32px] group hover:bg-white/[0.08] transition-all relative overflow-hidden">
@@ -269,7 +272,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                             
                             <div className="flex gap-2 shrink-0">
                                <button 
-                                  onClick={() => handleAction(att.storagePath || att.fileName, 'view', att.fileName)}
+                                  onClick={() => handleAction(att.storagePath || att.id, 'view', att.fileName)}
                                   disabled={!canView}
                                   className={cn(
                                     "p-2.5 rounded-xl border transition-all",
@@ -282,7 +285,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                                   {canView ? <Activity className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                                </button>
                                <button 
-                                  onClick={() => handleAction(att.storagePath || att.fileName, 'download', att.fileName)}
+                                  onClick={() => handleAction(att.storagePath || att.id, 'download', att.fileName)}
                                   disabled={!canDownload}
                                   className={cn(
                                     "p-2.5 rounded-xl border transition-all",
@@ -312,7 +315,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                             <div className="mt-8 flex flex-col items-center">
                                <p className="text-[10px] text-white/40 mb-4 max-w-xs text-center uppercase tracking-widest font-bold leading-relaxed">
                                   You have an approved clinical link, but record-level permissions may be pending synchronization.
-                               </p>
+                                </p>
                                <button 
                                   onClick={handleRestoreAccess}
                                   className="px-6 py-3 rounded-2xl bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 text-[#5B8DEF] text-[10px] font-black uppercase tracking-widest hover:bg-[#5B8DEF]/20 transition-all flex items-center gap-2"
@@ -325,6 +328,98 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                       </div>
                    )}
                 </div>
+            )
+         case 'vitals':
+            return (
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {vitals.length > 0 ? vitals.map((v, i) => (
+                     <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-[32px]">
+                        <p className="text-[10px] uppercase font-bold text-white/20 tracking-widest mb-2">{v.type}</p>
+                        <div className="flex items-baseline gap-2">
+                           <span className="text-3xl font-black text-white tracking-tighter">{v.latestValue}</span>
+                           <span className="text-xs font-bold text-white/40">{v.unit}</span>
+                        </div>
+                        <p className="text-[9px] text-white/10 mt-4 uppercase tracking-widest font-bold">Recorded {v.readings?.[0]?.timestamp ? new Date(v.readings[0].timestamp).toLocaleString() : 'Recent'}</p>
+                     </div>
+                  )) : <div className="col-span-full"><EmptyState icon={<Activity className="w-8 h-8 text-white/10" />} label="No vitals recorded" /></div>}
+               </div>
+            )
+         case 'medications':
+            return (
+               <div className="space-y-4">
+                  {medications.length > 0 ? medications.map((m, i) => (
+                     <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-[32px] flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                              <Pill className="w-5 h-5 text-emerald-500" />
+                           </div>
+                           <div>
+                              <p className="font-bold text-white">{(m as any).medicationCodeableConcept?.text || 'Medication'}</p>
+                              <p className="text-xs text-white/40">{(m as any).dosageInstruction?.[0]?.text || 'No dosage info'}</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <span className="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-widest">{m.status}</span>
+                        </div>
+                     </div>
+                  )) : <EmptyState icon={<Pill className="w-8 h-8 text-white/10" />} label="No medications found" />}
+               </div>
+            )
+         case 'conditions':
+            return (
+               <div className="space-y-4">
+                  {conditions.length > 0 ? conditions.map((c, i) => (
+                     <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-[32px] flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                              <ClipboardList className="w-5 h-5 text-amber-500" />
+                           </div>
+                           <div>
+                              <p className="font-bold text-white">{c.code?.text || 'Condition'}</p>
+                              <p className="text-xs text-white/40 text-capitalize">{(c as any).clinicalStatus || 'Unknown status'}</p>
+                           </div>
+                        </div>
+                     </div>
+                  )) : <EmptyState icon={<ClipboardList className="w-8 h-8 text-white/10" />} label="No clinical conditions on file" />}
+               </div>
+            )
+         case 'allergies':
+            return (
+               <div className="space-y-4">
+                  {allergies.length > 0 ? allergies.map((a, i) => (
+                     <div key={i} className="bg-rose-500/5 border border-rose-500/10 p-6 rounded-[32px] flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
+                           <AlertCircle className="w-5 h-5 text-rose-500" />
+                        </div>
+                        <div>
+                           <p className="font-bold text-white">{a.code?.text || 'Allergy'}</p>
+                           <p className="text-xs text-rose-500/60 font-medium uppercase tracking-widest">{a.criticality || 'Normal'} Priority</p>
+                        </div>
+                     </div>
+                  )) : <EmptyState icon={<AlertCircle className="w-8 h-8 text-white/10" />} label="No allergies recorded" />}
+               </div>
+            )
+         case 'clinicalNotes':
+            return (
+               <div className="space-y-6">
+                  {clinicalNotes.length > 0 ? clinicalNotes.map((n, i) => (
+                     <div key={i} className="bg-[#111827]/40 border border-white/[0.05] p-8 rounded-[40px]">
+                        <div className="flex items-start gap-4">
+                           <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+                              <Edit3 className="w-5 h-5 text-white/40" />
+                           </div>
+                           <div>
+                              <p className="text-sm font-medium text-white/80 leading-relaxed italic">&quot;{n.content}&quot;</p>
+                              <div className="mt-4 flex items-center gap-3">
+                                 <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                                    {n.doctorName} · {new Date(n.timestamp).toLocaleDateString()}
+                                 </span>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  )) : <EmptyState icon={<Edit3 className="w-8 h-8 text-white/10" />} label="No clinical notes found" />}
+               </div>
             )
          default:
             return <div className="space-y-4"></div>

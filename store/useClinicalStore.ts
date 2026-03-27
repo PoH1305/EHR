@@ -246,8 +246,49 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           })
           clearTimeout(timeoutId)
 
+          // 3. Real-time "Pulse" Listener for Patients (to detect doctor uploads)
           if (role !== 'doctor' && supabase) {
             try {
+              const channelName = `clinical-pulse:${patientId}`
+              const existingChannel = supabase.channel(channelName)
+              await supabase.removeChannel(existingChannel)
+              
+              supabase
+                .channel(channelName)
+                .on('postgres_changes', {
+                  event: '*',
+                  schema: 'public',
+                  table: 'clinical_data',
+                  filter: `patient_id=eq.${patientId}`
+                }, (payload) => {
+                  console.log('[ClinicalPulse] Change detected in cloud vault, re-syncing...')
+                  const fetchAndMerge = async () => {
+                    const { data: updatedCloud } = await supabase
+                      .from('clinical_data')
+                      .select('data')
+                      .eq('patient_id', patientId)
+                      .maybeSingle()
+                    
+                    if (updatedCloud?.data?.attachments) {
+                      const newAtts: PatientAttachment[] = updatedCloud.data.attachments || []
+                      set((state) => {
+                        const localIds = new Set(state.attachments.map(a => a.id))
+                        const merged = newAtts.filter(a => !localIds.has(a.id))
+                        if (merged.length > 0) {
+                          console.log(`[ClinicalPulse] Merged ${merged.length} new cloud attachments`)
+                          state.attachments = [...state.attachments, ...merged]
+                          if (db) {
+                            merged.forEach(m => void db.patient_attachments.put(m))
+                          }
+                        }
+                      })
+                    }
+                  }
+                  void fetchAndMerge()
+                })
+                .subscribe()
+
+              // Initial merge on load
               const { data: cloudRec } = await supabase
                 .from('clinical_data')
                 .select('data')
@@ -256,14 +297,15 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
               if (cloudRec?.data?.attachments) {
                 const cloudAtts: PatientAttachment[] = cloudRec.data.attachments || []
-                const localIds = new Set(attachments.map((a: PatientAttachment) => a.id))
+                const currentAtts = get().attachments
+                const localIds = new Set(currentAtts.map((a: PatientAttachment) => a.id))
                 const newFromDoctor = cloudAtts.filter(a => !localIds.has(a.id))
 
                 if (newFromDoctor.length > 0) {
                   console.log(`[ClinicalStore] Merging ${newFromDoctor.length} doctor-uploaded file(s) from cloud`)
                   if (db) {
                     for (const att of newFromDoctor) {
-                      try { await db.patient_attachments.add(att) } catch { /* already exists */ }
+                      try { await db.patient_attachments.put(att) } catch { /* ignore */ }
                     }
                   }
                   set((state) => {
@@ -271,8 +313,8 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                   })
                 }
               }
-            } catch (mergeErr) {
-              console.warn('[ClinicalStore] Could not merge cloud attachments:', mergeErr)
+            } catch (pulseErr) {
+              console.warn('[ClinicalStore] Could not establish clinical pulse:', pulseErr)
             }
           }
 
@@ -284,6 +326,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       loadAuditLog: async (userId: string) => {
+        if (!db) return
         const events = await db.audit_log.where('userId').equals(userId).toArray()
         set((state) => {
           state.auditEvents = events.sort((a, b) => 
@@ -409,14 +452,31 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           state.medicalImages.unshift(finalImage)
         })
         void get().syncAtomic(finalImage.patientId, 'medicalImages', finalImage)
-
-        // Generate immediate view permission for doctors
+        
+        // NEW: Standardize uploader tracing and permissions
         const { role, firebaseUid } = useUserStore.getState()
-        if (role === 'doctor' && firebaseUid && storagePath && supabase) {
-           await supabase.from('record_access_permissions').insert([
-              { record_id: storagePath, patient_id: image.patientId, doctor_id: firebaseUid, permission_type: 'view', expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() },
-              { record_id: storagePath, patient_id: image.patientId, doctor_id: firebaseUid, permission_type: 'download', expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }
-           ])
+        if (role === 'doctor' && firebaseUid) {
+          finalImage.doctorId = firebaseUid
+          
+          if (storagePath && supabase) {
+            console.log('[ClinicalStore] Generating 7-day image permissions for doctor:', firebaseUid)
+            await supabase.from('record_access_permissions').insert([
+              { 
+                record_id: storagePath, 
+                patient_id: image.patientId, 
+                doctor_id: firebaseUid, 
+                permission_type: 'view', 
+                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
+              },
+              { 
+                record_id: storagePath, 
+                patient_id: image.patientId, 
+                doctor_id: firebaseUid, 
+                permission_type: 'download', 
+                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
+              }
+            ])
+          }
         }
       },
 
@@ -445,6 +505,11 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           }
         }
 
+        const { role, firebaseUid } = useUserStore.getState()
+        if (role === 'doctor' && firebaseUid) {
+          finalAttachment.doctorId = firebaseUid
+        }
+
         if (db) await db.patient_attachments.add(finalAttachment)
         set((state) => {
           state.attachments.unshift(finalAttachment)
@@ -452,7 +517,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         void get().syncAtomic(finalAttachment.patientId, 'attachments', finalAttachment)
 
         // NEW: Generate initial permissions for doctor-uploaded files
-        const { role, firebaseUid } = useUserStore.getState()
         if (role === 'doctor' && firebaseUid && storagePath && supabase) {
            console.log('[ClinicalStore] Generating 7-day permissions for new attachment:', storagePath)
            await supabase.from('record_access_permissions').insert([
@@ -517,62 +581,64 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      setEmergencyMode: (active) => set({ isEmergencyMode: active }),
+      setEmergencyMode: (active: boolean) => set({ isEmergencyMode: active }),
       
       syncToCloud: async (explicitPatientId?: string) => {
-        const { patient } = useUserStore.getState()
-        
-        if (!get().isLoaded && !explicitPatientId) {
-          console.warn('[ClinicalStore] Skipping sync: Store not loaded yet.')
-          return
-        }
+        const state = get()
+        if (!state.isLoaded) return
 
-        const { role } = useUserStore.getState()
-        if (role === 'doctor' && !explicitPatientId) {
-           console.warn('[ClinicalStore] Doctors should NOT perform full syncToCloud. Use syncAtomic instead.')
-           return
-        }
-
+        const patient = useUserStore.getState().patient
         const targetId = explicitPatientId || patient?.healthId
-        if (!targetId) {
-          console.warn('[ClinicalStore] Skipping sync: No target ID (healthId) found.')
-          return
-        }
+        if (!targetId) return
 
         try {
+          const { supabase } = await import('@/lib/supabase')
           if (!supabase) return
 
-          const state = get()
+          // ATOMIC MERGE PROTECTION: Fetch latest cloud state before uploading
+          const { data: existing } = await supabase
+            .from('clinical_data')
+            .select('data')
+            .eq('patient_id', targetId)
+            .maybeSingle()
+          
+          const cloudAttachments = existing?.data?.attachments || []
+          const localAttachments = state.attachments
+          
+          // Merge logic: prefer local but keep cloud items not in local
+          const localIds = new Set(localAttachments.map(a => a.id))
+          const attachmentsToKeep = [...localAttachments, ...cloudAttachments.filter((a: any) => !localIds.has(a.id))]
+
+          const clinicalPayload = {
+            vitals: state.vitals,
+            conditions: state.conditions,
+            medications: state.medications,
+            allergies: state.allergies,
+            observations: state.observations,
+            diagnosticReports: state.diagnosticReports,
+            immunizations: state.immunizations,
+            procedures: state.procedures,
+            clinicalNotes: state.clinicalNotes,
+            medicalImages: state.medicalImages,
+            attachments: attachmentsToKeep, // Merged
+            riskAnalyses: state.riskAnalyses,
+            auditEvents: state.auditEvents,
+          }
+
           const { error } = await supabase
             .from('clinical_data')
             .upsert({
               patient_id: targetId,
-              data: {
-                vitals: state.vitals,
-                conditions: state.conditions,
-                medications: state.medications,
-                allergies: state.allergies,
-                observations: state.observations,
-                diagnosticReports: state.diagnosticReports,
-                immunizations: state.immunizations,
-                procedures: state.procedures,
-                clinicalNotes: state.clinicalNotes,
-                medicalImages: state.medicalImages,
-                riskAnalyses: state.riskAnalyses,
-                attachments: state.attachments,
-                auditEvents: state.auditEvents,
-              },
+              data: clinicalPayload,
               last_synced_at: new Date().toISOString()
             })
 
-          if (error) {
-            console.error('[ClinicalStore] Supabase Upsert Error details:', error.message, error.details, error.hint)
-            throw error
-          }
+          if (error) throw error
           
           set((state) => {
             state.lastUpdated = new Date().toISOString()
           })
+          console.log('[ClinicalStore] Cloud sync completed (with atomic merging)')
         } catch (error) {
           console.error('[ClinicalStore] Supabase Sync Error:', error)
           throw error

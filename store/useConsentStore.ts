@@ -130,32 +130,39 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
             const { supabase } = await import('@/lib/supabase')
             const clinicalData = (await import('./useClinicalStore')).useClinicalStore.getState()
             
-            // Collect all shareable records (currently focus on DiagnosticReports/Attachments)
+            // Collect all shareable records (DiagnosticReports, Attachments, MedicalImages)
             const reports = clinicalData.diagnosticReports || []
+            const attachments = clinicalData.attachments || []
+            const images = clinicalData.medicalImages || []
             
-            if (supabase && reports.length > 0) {
-              const permissions = reports.map(report => ({
-                record_id: report.storagePath || report.id,
-                patient_id: request.patientId,
-                doctor_id: request.recipientId,
-                permission_type: 'view',
-                expires_at: newToken.expiresAt,
-                is_revoked: false
-              }))
-
-              // Also add download permissions if specifically requested or by default for now
-              const downloadPermissions = reports.map(report => ({
-                record_id: report.storagePath || report.id,
-                patient_id: request.patientId,
-                doctor_id: request.recipientId,
-                permission_type: 'download',
-                expires_at: newToken.expiresAt,
-                is_revoked: false
-              }))
+            const allRecords = [...reports, ...attachments, ...images]
+            
+                        if (supabase && allRecords.length > 0) {
+                          const permissions = allRecords.flatMap(record => {
+                            const recordId = record.storagePath || record.id
+                             return [
+                               {
+                                 record_id: recordId,
+                                 patient_id: request.patientId,
+                                 doctor_id: request.recipientId,
+                                 permission_type: 'view',
+                                 expires_at: newToken.expiresAt,
+                                 is_revoked: false
+                               },
+                               {
+                                 record_id: recordId,
+                                 patient_id: request.patientId,
+                                 doctor_id: request.recipientId,
+                                 permission_type: 'download',
+                                 expires_at: newToken.expiresAt,
+                                 is_revoked: false
+                               }
+                             ]
+                          })
 
               const { error: permError } = await supabase
                 .from('record_access_permissions')
-                .insert([...permissions, ...downloadPermissions])
+                .upsert(permissions, { onConflict: 'doctor_id,patient_id,record_id,permission_type' })
                 
               if (permError) console.error('Record permissions sync failed:', permError)
               else console.log('Synchronized record permissions for doctor:', request.recipientId)

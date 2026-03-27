@@ -309,6 +309,7 @@ export interface ClinicalNote {
   timestamp: string
   content: string
   type: 'PROGRESS_NOTE' | 'CONSULT_NOTE' | 'EMERGENCY_NOTE'
+  authorRole?: string
   tags?: string[]
 }
 
@@ -355,6 +356,7 @@ export interface PatientAttachment {
   category: 'LAB_REPORT' | 'PRESCRIPTION' | 'DISCHARGE_SUMMARY' | 'OTHER'
   description?: string | undefined
   isVerified?: boolean
+  doctorId?: string // Track uploader
 }
 
 // ────────────────────────────────────────────────────────────────

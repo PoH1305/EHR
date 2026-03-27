@@ -130,3 +130,18 @@ ON public.medical_records FOR INSERT
 TO anon
 WITH CHECK (true);
 
+-- 9. Atomic Append Function (Fixes doctor overwrite bug)
+CREATE OR REPLACE FUNCTION append_clinical_data(p_patient_id TEXT, p_key TEXT, p_value JSONB)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO public.clinical_data (patient_id, data, last_synced_at)
+  VALUES (p_patient_id, jsonb_build_object(p_key, jsonb_build_array(p_value)), NOW())
+  ON CONFLICT (patient_id) DO UPDATE
+  SET data = jsonb_set(
+    public.clinical_data.data, 
+    ARRAY[p_key], 
+    COALESCE(public.clinical_data.data->p_key, '[]'::jsonb) || p_value
+  ),
+  last_synced_at = NOW();
+END;
+$$ LANGUAGE plpgsql;

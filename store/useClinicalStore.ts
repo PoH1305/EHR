@@ -59,6 +59,7 @@ interface ClinicalActions {
   clearEmergencyMode: () => void
   clearClinicalState: () => void
   syncToCloud: (patientId?: string) => Promise<void>
+  syncAtomic: (patientId: string, key: string, value: any) => Promise<void>
   loadSharedClinicalData: (tokenHash: string, handshakeKey: string) => Promise<void>
 }
 
@@ -82,7 +83,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       isLoading: false,
       isLoaded: false,
       isEmergencyMode: false,
-      isMinimizationActive: true, // Default to true for Phase 10 demo
+      isMinimizationActive: true, 
       emergencyPatientId: null,
       selectedPatientProfile: null,
       lastUpdated: null,
@@ -105,11 +106,9 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       loadPatientMetadata: async (patientId: string) => {
         if (!db) return
         try {
-          // Check local Dexie first
           let profile = await db.patient_profiles.get(patientId)
           
           if (!profile) {
-            // Check Supabase (formerly Firestore)
             const { supabase } = await import('@/lib/supabase')
             if (supabase) {
               const { data, error } = await supabase
@@ -137,16 +136,13 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       loadClinicalData: async (patientId: string) => {
         if (typeof window === 'undefined' || !db) return
         
-        // Skip if already loading — prevents duplicate parallel calls
         if (get().isLoading) {
           console.log('[ClinicalStore] Skipping duplicate loadClinicalData call for:', patientId)
           return
         }
         
-        // Reset stale state before loading new patient
         set((state) => { state.isLoading = true; state.isLoaded = false })
         
-        // Safety timeout to prevent permanent loading hangs
         const timeoutId = setTimeout(() => {
           if (get().isLoading) {
             console.warn('[ClinicalStore] loadClinicalData timed out after 10s')
@@ -160,7 +156,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           
           let sharedCats: string[] | null = null
           
-          // 1. If Doctor, find the APPROVED access request to get shared categories
           if (role === 'doctor' && firebaseUid && supabase) {
             const { data: accessData } = await supabase
               .from('access_requests')
@@ -185,12 +180,11 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             db.medical_images.where('patientId').equals(patientId).toArray(),
             db.risk_analysis.where('patientId').equals(patientId).toArray(),
             db.patient_attachments.where('patientId').equals(patientId).toArray(),
-            db.audit_log.where('userId').equals(patientId).toArray() // Note:userId might need to be patientId or a different filter
+            db.audit_log.where('userId').equals(patientId).toArray()
           ])
 
           const isMinimization = get().isMinimizationActive
 
-          // Fallback: If local is empty, try Cloud (Supabase)
           if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
             console.log('[ClinicalStore] Local storage empty, checking Cloud (Supabase)...')
             
@@ -208,15 +202,15 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                 set((state) => {
                   state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : []
                   state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : []
-                  state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.length === 0 || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
+                  state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
                   state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : []
                   state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : []
-                   state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
+                  state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
                   state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
                   state.auditEvents = cloudData.auditEvents || []
                   state.riskAnalyses = cloudData.riskAnalyses || []
                   state.isLoading = false
-                  state.isLoaded = true  // ← was missing: lets syncToCloud proceed after cloud load
+                  state.isLoaded = true
                   state.lastUpdated = data.last_synced_at
                 })
                 clearTimeout(timeoutId)
@@ -231,7 +225,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               : []
             state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions'))
               ? (isMinimization 
-                  ? conditions.filter(c => typeof c.clinicalStatus === 'string' ? c.clinicalStatus === 'active' : (c.clinicalStatus as any)?.coding?.[0]?.code === 'active') // eslint-disable-line @typescript-eslint/no-explicit-any
+                  ? conditions.filter(c => typeof c.clinicalStatus === 'string' ? c.clinicalStatus === 'active' : (c.clinicalStatus as any)?.coding?.[0]?.code === 'active')
                   : conditions)
               : []
             state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications'))
@@ -248,13 +242,11 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             state.auditEvents = (auditEvents as any[]).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             state.riskAnalyses = riskAnalyses
             state.isLoading = false
-            state.isLoaded = true // Set safety flag
+            state.isLoaded = true
             state.lastUpdated = new Date().toISOString()
           })
           clearTimeout(timeoutId)
 
-          // --- PATIENT ROLE: Merge doctor-uploaded attachments from Supabase ---
-          // Doctor may have uploaded files to clinical_data that aren't in patient's local Dexie
           if (role !== 'doctor' && supabase) {
             try {
               const { data: cloudRec } = await supabase
@@ -301,13 +293,43 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
+      /**
+       * HELPER: Atomically appends a record to the cloud if the current user is a doctor.
+       * If user is a patient, use the default full-state syncToCloud (Dexie is master).
+       */
+      syncAtomic: async (patientId: string, key: string, value: any) => {
+        const { role } = useUserStore.getState()
+        if (role === 'doctor') {
+          try {
+            const { supabase } = await import('@/lib/supabase')
+            if (!supabase) return
+            
+            console.log(`[ClinicalStore] Syncing atomicaly: ${key} for patient ${patientId}`)
+            const { error } = await supabase.rpc('append_clinical_data', {
+              p_patient_id: patientId,
+              p_key: key,
+              p_value: value
+            })
+            
+            if (error) {
+              console.error(`[ClinicalStore] Atomic Sync (RPC) Error:`, error)
+              throw error
+            }
+          } catch (err) {
+            console.error('[ClinicalStore] Failed atomic sync:', err)
+          }
+        } else {
+          void get().syncToCloud(patientId)
+        }
+      },
+
       addVital: async (patientId: string, vital: VitalSeries) => {
         const vitalWithId = { ...vital, patientId }
         if (db) await db.vitals.add(vitalWithId)
         set((state) => {
           state.vitals.push(vital)
         })
-        void get().syncToCloud(patientId)
+        void get().syncAtomic(patientId, 'vitals', vital)
       },
 
       addCondition: async (patientId: string, condition: Condition) => {
@@ -316,7 +338,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.conditions.push(condition)
         })
-        void get().syncToCloud(patientId)
+        void get().syncAtomic(patientId, 'conditions', condition)
       },
 
       addMedication: async (patientId: string, medication: MedicationRequest) => {
@@ -325,7 +347,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.medications.push(medication)
         })
-        void get().syncToCloud(patientId)
+        void get().syncAtomic(patientId, 'medications', medication)
       },
 
       addObservation: async (patientId: string, observation: any) => {
@@ -334,7 +356,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.observations.push(observation)
         })
-        void get().syncToCloud(patientId)
+        void get().syncAtomic(patientId, 'observations', observation)
       },
 
       addDiagnosticReport: async (patientId: string, report: any) => {
@@ -343,7 +365,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.diagnosticReports.push(report)
         })
-        void get().syncToCloud(patientId)
+        void get().syncAtomic(patientId, 'diagnosticReports', report)
       },
 
       addImmunization: async (patientId: string, immunization: any) => {
@@ -352,7 +374,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.immunizations.push(immunization)
         })
-        void get().syncToCloud(patientId)
+        void get().syncAtomic(patientId, 'immunizations', immunization)
       },
 
       addProcedure: async (patientId: string, procedure: any) => {
@@ -361,7 +383,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.procedures.push(procedure)
         })
-        void get().syncToCloud(patientId)
+        void get().syncAtomic(patientId, 'procedures', procedure)
       },
 
       addClinicalNote: async (note: ClinicalNote) => {
@@ -369,13 +391,12 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.clinicalNotes.unshift(note)
         })
-        void get().syncToCloud(note.patientId)
+        void get().syncAtomic(note.patientId, 'clinicalNotes', note)
       },
 
       addMedicalImage: async (image: MedicalImage) => {
         let finalImage = { ...image }
         
-        // Upload to Cloud if it's a local blob
         if (image.imageUrl.startsWith('blob:') || image.imageUrl.startsWith('data:')) {
           try {
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
@@ -391,7 +412,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.medicalImages.unshift(finalImage)
         })
-        void get().syncToCloud(finalImage.patientId)
+        void get().syncAtomic(finalImage.patientId, 'medicalImages', finalImage)
       },
 
       addRiskAnalysis: async (analysis: RiskAnalysis) => {
@@ -399,13 +420,12 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.riskAnalyses.unshift(analysis)
         })
-        void get().syncToCloud(analysis.patientId)
+        void get().syncAtomic(analysis.patientId, 'riskAnalyses', analysis)
       },
 
       addAttachment: async (attachment: PatientAttachment) => {
         let finalAttachment = { ...attachment }
 
-        // Upload to Cloud if it's a local blob
         if (attachment.fileUrl.startsWith('blob:') || attachment.fileUrl.startsWith('data:')) {
           try {
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
@@ -421,7 +441,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => {
           state.attachments.unshift(finalAttachment)
         })
-        void get().syncToCloud(finalAttachment.patientId)
+        void get().syncAtomic(finalAttachment.patientId, 'attachments', finalAttachment)
       },
 
       addAuditEvent: async (event: Omit<AuditEvent, 'hash' | 'previousHash'>, patientId?: string) => {
@@ -445,7 +465,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
         
         if (patientId) {
-          void get().syncToCloud(patientId)
+          void get().syncAtomic(patientId, 'auditEvents', finalEvent)
         }
       },
 
@@ -463,6 +483,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           state.medicalImages = []
           state.riskAnalyses = []
           state.lastUpdated = null
+          state.isLoaded = false
         })
       },
 
@@ -471,13 +492,17 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       syncToCloud: async (explicitPatientId?: string) => {
         const { patient, firebaseUid } = useUserStore.getState()
         
-        // Safety lock: Don't sync if store isn't loaded yet (prevents blanking cloud data)
         if (!get().isLoaded && !explicitPatientId) {
           console.warn('[ClinicalStore] Skipping sync: Store not loaded yet.')
           return
         }
 
-        // UNIFIED KEY: We always use the healthId (EHI ID) for clinical data shards
+        const { role } = useUserStore.getState()
+        if (role === 'doctor' && !explicitPatientId) {
+           console.warn('[ClinicalStore] Doctors should NOT perform full syncToCloud. Use syncAtomic instead.')
+           return
+        }
+
         const targetId = explicitPatientId || patient?.healthId
         if (!targetId) {
           console.warn('[ClinicalStore] Skipping sync: No target ID (healthId) found.')
@@ -503,7 +528,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                 immunizations: state.immunizations,
                 procedures: state.procedures,
                 clinicalNotes: state.clinicalNotes,
-                 medicalImages: state.medicalImages,
+                medicalImages: state.medicalImages,
                 riskAnalyses: state.riskAnalyses,
                 attachments: state.attachments,
                 auditEvents: state.auditEvents,
@@ -543,8 +568,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
           if (data && data.bundle) {
             const encryptedBundle = data.bundle
-            
-            // Decrypt the bundle using the handshakeKey
             const { decryptBundle } = await import('@/lib/crypto')
             const bundle = await decryptBundle(encryptedBundle, handshakeKey)
 

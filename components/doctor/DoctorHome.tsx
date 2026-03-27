@@ -120,7 +120,7 @@ export default function DoctorHome() {
         <div className="space-y-3">
            {[
              { time: "09:30", name: "Scheduled Consultation", reason: "Follow-up", status: "PENDING", theme: "bg-[#1A3A8F] text-white" },
-             { time: "11:30", name: "Urgent Review", reason: "AI Flagged Anomaly", status: "URGENT", theme: "bg-red-600/10 text-red-500 border border-red-500/20" },
+             { time: "11:30", name: "Urgent Review", reason: "Recent Clinical Notes", status: "URGENT", theme: "bg-red-600/10 text-red-500 border border-red-500/20" },
            ].map((round, j) => (
               <motion.div
                 key={round.name}

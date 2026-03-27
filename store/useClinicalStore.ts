@@ -31,7 +31,6 @@ interface ClinicalState {
   auditEvents: AuditEvent[]
   isLoading: boolean
   isEmergencyMode: boolean
-  anomalies: any[] // AnomalyResult[]
   isMinimizationActive: boolean
   emergencyPatientId: string | null
   selectedPatientProfile: any | null
@@ -56,7 +55,6 @@ interface ClinicalActions {
   addAttachment: (attachment: PatientAttachment) => Promise<void>
   addAuditEvent: (event: Omit<AuditEvent, 'hash' | 'previousHash'>, patientId?: string) => Promise<void>
   setEmergencyMode: (active: boolean) => void
-  runAIAnomalyCheck: () => Promise<void>
   clearEmergencyMode: () => void
   clearClinicalState: () => void
   syncToCloud: (patientId?: string) => Promise<void>
@@ -83,7 +81,6 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       isLoading: false,
       isLoaded: false,
       isEmergencyMode: false,
-      anomalies: [],
       isMinimizationActive: true, // Default to true for Phase 10 demo
       emergencyPatientId: null,
       selectedPatientProfile: null,
@@ -464,35 +461,12 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           state.clinicalNotes = []
           state.medicalImages = []
           state.riskAnalyses = []
-          state.anomalies = []
           state.lastUpdated = null
         })
       },
 
       setEmergencyMode: (active) => set({ isEmergencyMode: active }),
       
-      runAIAnomalyCheck: async () => {
-        const { vitals } = get()
-        if (!vitals || vitals.length === 0) return
-
-        console.log('[ClinicalStore] Running AI Anomaly Check...')
-        try {
-          const response = await fetch('/api/ai/anomaly', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vitals })
-          })
-
-          if (response.ok) {
-            const { anomalies } = await response.json()
-            set({ anomalies })
-            console.log('[ClinicalStore] AI Anomalies detected:', anomalies.length)
-          }
-        } catch (error) {
-          console.error('[ClinicalStore] AI Anomaly Check failed:', error)
-        }
-      },
-
       syncToCloud: async (explicitPatientId?: string) => {
         const { patient, firebaseUid } = useUserStore.getState()
         

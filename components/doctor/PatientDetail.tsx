@@ -16,18 +16,14 @@ import {
   Clock,
   ChevronRight,
   Activity,
-  ShieldCheck,
-  Zap,
-  RefreshCcw
+  ShieldCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { AddPrescriptionModal } from './AddPrescriptionModal'
 import { AddNoteModal } from './AddNoteModal'
 import FileUploadModal from './FileUploadModal'
-import { ClinicalCoPilot } from './ClinicalCoPilot'
 import DoctorRecords from './DoctorRecords'
-import { AnomalyBanner } from './AnomalyBanner'
 
 interface PatientDetailProps {
   onBack: () => void
@@ -45,10 +41,8 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
     clearClinicalState,
     selectedPatientProfile,
     isLoading,
-    isEmergencyMode,
-    runAIAnomalyCheck
+    isEmergencyMode
   } = useClinicalStore()
-  const [activeTab, setActiveTab] = useState<'RECORDS' | 'COPILOT'>('RECORDS')
   const [showPrescribe, setShowPrescribe] = useState(false)
   const [showNote, setShowNote] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
@@ -102,14 +96,6 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
           </div>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => runAIAnomalyCheck()}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-6 py-2 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-600/30 transition-all disabled:opacity-50"
-            >
-              <Zap className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
-              {isLoading ? "Analyzing..." : "AI Intelligence"}
-            </button>
-            <button 
               onClick={onBack}
               className="px-6 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 active:scale-95 transition-all"
             >
@@ -143,9 +129,6 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
               </div>
            </div>
         </div>
-
-        {/* AI Anomaly Analysis */}
-        <AnomalyBanner />
 
         {/* Life-Saving Intel Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -283,50 +266,19 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
           </div>
         </div>
         
-         <div className="flex gap-2 overflow-x-auto pb-8 -mb-8 no-scrollbar scroll-smooth relative z-40">
-            <button 
-              onClick={() => setActiveTab('RECORDS')}
-              className={cn(
-                "flex-none px-6 py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group",
-                activeTab === 'RECORDS' 
-                  ? "bg-[#5B8DEF]/20 text-white border border-[#5B8DEF]/40 shadow-lg shadow-[#5B8DEF]/10" 
-                  : "bg-white/5 text-white/40 border border-transparent hover:bg-white/10"
-              )}
+         <div className="flex gap-2 pb-8 -mb-8 no-scrollbar scroll-smooth relative z-40">
+            <div 
+              className="flex-none px-6 py-4 rounded-2xl flex items-center justify-center gap-3 bg-[#5B8DEF]/20 text-white border border-[#5B8DEF]/40 shadow-lg shadow-[#5B8DEF]/10" 
             >
-               <FileText className={cn("w-4 h-4", activeTab === 'RECORDS' ? "text-[#5B8DEF]" : "text-white/40")} />
-               <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">Records</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('COPILOT')}
-              className={cn(
-                "flex-none px-6 py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group",
-                activeTab === 'COPILOT' 
-                  ? "bg-white/10 text-white border border-white/20 shadow-lg shadow-white/5" 
-                  : "bg-white/5 text-white/40 border border-transparent hover:bg-white/10"
-              )}
-            >
-               <Sparkles className={cn("w-4 h-4", activeTab === 'COPILOT' ? "text-[#5B8DEF]" : "text-white/40")} />
-               <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">Copilot</span>
-            </button>
+               <FileText className="w-4 h-4 text-[#5B8DEF]" />
+               <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">Clinical Records</span>
+            </div>
          </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="animate-in fade-in duration-700">
-        {activeTab === 'COPILOT' ? (
-          <div className="space-y-6">
-             <div className="flex items-center gap-2 ml-1">
-                <Sparkles className="w-4 h-4 text-[#5B8DEF]" />
-                <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Clinical Intelligence Analysis</h2>
-             </div>
-             <AnomalyBanner />
-             <ClinicalCoPilot patientId={patientId} patientName={selectedPatientProfile?.name || 'Patient'} />
-          </div>
-        ) : (
-          <div className="max-w-4xl">
-             <DoctorRecords patientId={patientId} />
-          </div>
-        )}
+      <div className="animate-in fade-in duration-700 max-w-4xl">
+         <DoctorRecords patientId={patientId} />
       </div>
 
       {/* Floating Action Button (FAB) */}

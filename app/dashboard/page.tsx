@@ -14,10 +14,6 @@ import type { ConsentTokenRequest, ConsentToken } from '@/lib/types'
 import { EmergencyAccessNotification } from '@/components/patient/EmergencyAccessNotification'
 import { AccessCenterModal } from '@/components/patient/AccessCenterModal'
 
-import dynamic from 'next/dynamic'
-
-const DoctorHome = dynamic(() => import('@/components/doctor/DoctorHome'), { ssr: false })
-
 export default function DashboardPage() {
   const { patient, initializeKeys, role } = useUserStore()
   const { loadTokens, activeTokens, revokeToken, accessRequests } = useConsentStore()
@@ -46,14 +42,6 @@ export default function DashboardPage() {
     
     void init()
   }, [patient?.id, patient?.healthId, loadClinicalData, loadAuditLog, loadTokens, initializeKeys])
-
-  if (role === 'doctor') {
-    return (
-      <div className="w-full">
-        <DoctorHome />
-      </div>
-    )
-  }
 
   if (!patient) {
     return (

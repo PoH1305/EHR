@@ -19,12 +19,14 @@ export function middleware(request: NextRequest) {
 
   // Simulation: If no role/session but access protected, redirect (in production)
   // For this demo, we'll focus on role mismatch
+  // Simulation: If no role/session but access protected, redirect (in production)
+  // For this demo, we'll focus on role mismatch
   if (isDoctorRoute && userRole === 'patient') {
-    return new NextResponse('403 Unauthorized: Patients cannot access doctor dashboard', { status: 403 })
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   if (isPatientRoute && userRole === 'doctor') {
-    return new NextResponse('403 Unauthorized: Doctors cannot access patient dashboard directly', { status: 403 })
+    return NextResponse.redirect(new URL('/patients', request.url))
   }
 
   const response = NextResponse.next()

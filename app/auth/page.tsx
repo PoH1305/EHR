@@ -13,8 +13,9 @@ export default function SplashPage() {
     const timer = setTimeout(() => {
       // If they are fully authenticated or locked, send them inside
       // AppGate will immediately lock them if they aren't verified yet
-      if (sessionState === 'AUTHENTICATED' || sessionState === 'LOCKED') {
-        router.replace('/dashboard')
+      if (sessionState === 'AUTHENTICATED') {
+        const role = useUserStore.getState().role
+        router.replace(role === 'doctor' ? '/patients' : '/dashboard')
       } else if (useUserStore.getState().role) {
         // If role is already known, skip role selection and go to login
         router.replace(`/auth/${useUserStore.getState().role}`)

@@ -180,19 +180,24 @@ export const useUserStore = create<UserState & UserActions>()(
         }
       },
 
-      signOut: () => {
+      signOut: async () => {
+        try {
+          const { auth } = await import('@/lib/firebase')
+          if (auth) await auth.signOut()
+        } catch (e) {
+          console.error('[UserStore] Firebase signout failed:', e)
+        }
+
         set((state) => {
           state.role = null
-          state.patient = null
-          state.dataKey = null
-          state.publicKey = null
-          state.privateKey = null
           state.sessionState = 'UNAUTHENTICATED'
           state.firebaseUid = null
           state.firebaseEmail = null
-          state.healthId = null
           state.lastActiveAt = null
+          // Note: we keep 'patient' and 'healthId' to allow "Continue where you left off"
+          // the middleware and auth guards will still block access until re-authentication
         })
+
         if (typeof window !== 'undefined') {
           document.cookie = 'medVault-user-role=; path=/; max-age=0'
         }

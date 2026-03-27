@@ -34,7 +34,7 @@ function RecordsPageContent() {
 
   const hasLoadedRef = useRef(false)
 
-  useEffect(() => {
+   useEffect(() => {
     setMounted(true)
     if (patient?.healthId && !hasLoadedRef.current) {
       hasLoadedRef.current = true
@@ -52,26 +52,6 @@ function RecordsPageContent() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, patient?.healthId]) // intentionally omit store functions
-
-  const [backendRecords, setBackendRecords] = useState<any[]>([])
-
-  const loadBackendRecords = async (healthId: string) => {
-    try {
-      const response = await fetch(`http://localhost:8000/records/${healthId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setBackendRecords(data)
-      }
-    } catch (error) {
-      console.error('Failed to load backend records:', error)
-    }
-  }
-
-  useEffect(() => {
-    if (patient?.healthId) {
-      loadBackendRecords(patient.healthId)
-    }
-  }, [patient?.healthId])
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -176,22 +156,8 @@ function RecordsPageContent() {
       })
     }
 
-    for (const record of backendRecords) {
-      records.push({
-        id: record.id,
-        resourceType: 'DiagnosticReport',
-        title: record.filename.replace(/\.[^/.]+$/, ''),
-        subtitle: 'Medical Record (Verified)',
-        date: record.uploaded_at,
-        verified: true,
-        fileUrl: `http://localhost:8000/download/${record.id}`,
-        fileName: record.filename,
-        fileType: record.file_type,
-      })
-    }
-
     return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [attachments, conditions, medications, allergies, backendRecords])
+  }, [attachments, conditions, medications, allergies])
 
 
   const filteredRecords = useMemo(() => {

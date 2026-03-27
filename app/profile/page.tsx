@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Shield, Lock, Link2, Download, Trash2, Save, LayoutDashboard, Monitor, Sun, Moon, AlertTriangle } from 'lucide-react'
+import { User, Shield, Lock, Link2, Download, Trash2, Save, LayoutDashboard, Monitor, Sun, Moon, AlertTriangle, LogOut } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,7 @@ export default function ProfilePage() {
     patient, 
     updatePatient,
     deleteAccount,
+    signOut
   } = useUserStore()
   const { theme, setTheme } = useTheme()
   const profile = patient
@@ -58,6 +59,16 @@ export default function ProfilePage() {
     } catch {
       alert('Failed to delete account. Please try again.')
       setIsDeleting(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      router.replace('/auth/patient')
+    } catch (error) {
+      console.error('Sign out failed:', error)
+      alert('Failed to sign out. Please try again.')
     }
   }
 
@@ -286,18 +297,25 @@ export default function ProfilePage() {
 
       {/* Danger Zone */}
       <GlassCard className="border-red-500/10">
-        <h3 className="text-sm font-semibold text-red-400/60 mb-4">Danger Zone</h3>
-        <div className="flex gap-3">
+        <h3 className="text-sm font-semibold text-red-400/60 mb-4">Account Operations</h3>
+        <div className="flex flex-wrap gap-3">
+          <button 
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground/5 text-sm text-foreground/50 hover:text-foreground/70 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
           <button 
             onClick={handleExportData}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground/5 text-sm text-foreground/50 hover:text-foreground/70 transition-colors"
           >
             <Download className="w-4 h-4" />
-            Export All Data
+            Export Data
           </button>
           <button 
             onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 text-sm text-red-400/60 hover:text-red-400 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 text-sm text-red-400/60 hover:text-red-400 transition-colors ml-auto"
           >
             <Trash2 className="w-4 h-4" />
             Delete Account

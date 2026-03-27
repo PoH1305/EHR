@@ -28,7 +28,7 @@ export default function DoctorProfilePage() {
     try {
       clearClinicalState()
       await signOut()
-      router.push('/auth/role')
+      router.push('/auth/doctor')
       toast("Signed out successfully", "success")
     } catch (error) {
       toast("Failed to sign out", "error")
@@ -56,7 +56,7 @@ export default function DoctorProfilePage() {
         <div className="absolute -inset-0.5 bg-gradient-to-r from-[#1A3A8F] to-[#5B8DEF] rounded-[40px] blur opacity-10 group-hover:opacity-20 transition duration-500" />
         <GlassCard className="p-8 flex flex-col items-center text-center gap-6 relative overflow-hidden">
            <div className="w-24 h-24 rounded-[32px] bg-[#1A3A8F] flex items-center justify-center border-4 border-white/10 text-white font-black text-3xl shadow-2xl">
-              {firebaseEmail ? firebaseEmail[0].toUpperCase() : 'D'}
+              {firebaseEmail?.[0]?.toUpperCase() || 'D'}
            </div>
            <div>
               <h2 className="text-2xl font-black text-white tracking-tight">

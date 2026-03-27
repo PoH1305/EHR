@@ -66,19 +66,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    } = useConsentStore()
    
    const { firebaseUid, firebaseEmail } = useUserStore()
-   const [backendRecords, setBackendRecords] = useState<any[]>([])
-
-   const loadBackendRecords = async (pid: string) => {
-      try {
-         const response = await fetch(`http://localhost:8000/records/${pid}`)
-         if (response.ok) {
-            const data = await response.json()
-            setBackendRecords(data)
-         }
-      } catch (error) {
-         console.error('Failed to load backend records:', error)
-      }
-   }
 
    // 1. Initial Access Log
    useEffect(() => {
@@ -91,7 +78,6 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
             description: `Doctor (${firebaseEmail || 'Unknown'}) accessed your clinical records dashboard.`,
             metadata: { doctorId: firebaseUid, patientId }
          }, patientId)
-         loadBackendRecords(patientId)
       }
    }, [patientId, firebaseUid, firebaseEmail, addAuditEvent])
 
@@ -109,7 +95,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       }
    }, [activeTab, patientId, firebaseUid, addAuditEvent])
 
-   const handleDownload = async (recordId: string, filename: string) => {
+   const handleDownload = async (fileUrl: string, filename: string) => {
       try {
          // Log download activity
          if (patientId && firebaseUid) {
@@ -119,21 +105,17 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                timestamp: new Date().toISOString(),
                userId: firebaseUid,
                description: `Doctor downloaded record: ${filename}`,
-               metadata: { recordId, filename, doctorId: firebaseUid }
+               metadata: { fileUrl, filename, doctorId: firebaseUid }
             }, patientId)
          }
 
-         const response = await fetch(`http://localhost:8000/download/${recordId}`)
-         if (!response.ok) throw new Error('Download failed')
-         
-         const blob = await response.blob()
-         const url = window.URL.createObjectURL(blob)
+         // In our Supabase architecture, we just open the public URL or create a link
          const a = document.createElement('a')
-         a.href = url
+         a.href = fileUrl
          a.download = filename
+         a.target = '_blank'
          document.body.appendChild(a)
          a.click()
-         window.URL.revokeObjectURL(url)
          document.body.removeChild(a)
       } catch (error) {
          console.error('Download error:', error)
@@ -234,18 +216,9 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
             )) : <EmptyState icon={<Activity className="w-8 h-8 text-white/10" />} label="No vitals shared" />
 
          case 'attachments':
-            const allAttachments = [
-               ...attachments.map(att => ({ ...att, source: 'local' })),
-               ...backendRecords.map(rec => ({
-                  id: rec.id,
-                  fileName: rec.filename,
-                  fileType: rec.file_type,
-                  fileSize: 0, // Not stored in DB currently, but could be
-                  uploadedAt: rec.uploaded_at,
-                  category: 'LAB_REPORT',
-                  source: 'backend'
-               }))
-            ].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+            // attachments from store are already either local (if primary user) 
+            // or cloud-synced (if viewing a patient as a doctor)
+            const allAttachments = attachments.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
 
             return allAttachments.length > 0 ? allAttachments.map((att: any, i) => (
                <ViewOnlyCard key={att.id || i} color="purple" icon={<Paperclip className="w-4 h-4 text-purple-400" />}>
@@ -265,40 +238,15 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                            <span className="text-[10px] text-white/30 uppercase tracking-widest">
                               {att.category?.replace('_', ' ')} {att.fileSize > 0 ? `· ${(att.fileSize / 1024).toFixed(1)} KB` : ''}
                            </span>
-                           {att.source === 'backend' && (
-                              <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-widest">Server</span>
-                           )}
                         </div>
                      </div>
-                     <a 
-                        href={att.source === 'backend' ? `http://localhost:8000/download/${att.id}` : '#'} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className={cn(
-                           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border shrink-0 transition-colors",
-                           att.source === 'backend' 
-                              ? "bg-primary/10 border-primary/20 hover:bg-primary/20" 
-                              : "bg-purple-500/10 border-purple-500/20"
-                        )}
-                        onClick={(e) => {
-                           if (att.source !== 'backend') {
-                              e.preventDefault()
-                              alert('Local-only files cannot be downloaded directly. Please wait for sync.')
-                           }
-                        }}
+                     <button 
+                        onClick={() => handleDownload(att.fileUrl, att.fileName)}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#5B8DEF]/20 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 shrink-0 transition-colors"
                      >
-                        {att.source === 'backend' ? (
-                           <>
-                              <Activity className="w-3 h-3 text-primary" />
-                              <span className="text-[9px] font-black text-primary uppercase tracking-widest">Download</span>
-                           </>
-                        ) : (
-                           <>
-                              <Eye className="w-3 h-3 text-purple-400" />
-                              <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">View Only</span>
-                           </>
-                        )}
-                     </a>
+                        <Activity className="w-3 h-3 text-[#5B8DEF]" />
+                        <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Download</span>
+                     </button>
                   </div>
                   <p className="text-[9px] text-white/15 mt-3 font-bold uppercase tracking-widest">
                      Uploaded {new Date(att.uploadedAt).toLocaleDateString()}

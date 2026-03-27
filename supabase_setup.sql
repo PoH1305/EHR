@@ -54,7 +54,8 @@ CREATE TABLE public.record_access_permissions (
   granted_at TIMESTAMPTZ DEFAULT NOW(),
   expires_at TIMESTAMPTZ NOT NULL,
   is_revoked BOOLEAN DEFAULT FALSE,
-  metadata JSONB DEFAULT '{}'
+  metadata JSONB DEFAULT '{}',
+  UNIQUE(doctor_id, patient_id, record_id, permission_type)
 );
 
 -- 3. Enable RLS (Row Level Security)

@@ -124,6 +124,46 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
 
           await db.consent_tokens.add(newToken)
 
+          // Step D: GRANT RECORD-LEVEL PERMISSIONS (New Security Layer Sync)
+          // Automatically grant view/download permissions for all relevant files
+          try {
+            const { supabase } = await import('@/lib/supabase')
+            const clinicalData = (await import('./useClinicalStore')).useClinicalStore.getState()
+            
+            // Collect all shareable records (currently focus on DiagnosticReports/Attachments)
+            const reports = clinicalData.diagnosticReports || []
+            
+            if (supabase && reports.length > 0) {
+              const permissions = reports.map(report => ({
+                record_id: report.storagePath || report.id,
+                patient_id: request.patientId,
+                doctor_id: request.recipientId,
+                permission_type: 'view',
+                expires_at: newToken.expiresAt,
+                is_revoked: false
+              }))
+
+              // Also add download permissions if specifically requested or by default for now
+              const downloadPermissions = reports.map(report => ({
+                record_id: report.storagePath || report.id,
+                patient_id: request.patientId,
+                doctor_id: request.recipientId,
+                permission_type: 'download',
+                expires_at: newToken.expiresAt,
+                is_revoked: false
+              }))
+
+              const { error: permError } = await supabase
+                .from('record_access_permissions')
+                .insert([...permissions, ...downloadPermissions])
+                
+              if (permError) console.error('Record permissions sync failed:', permError)
+              else console.log('Synchronized record permissions for doctor:', request.recipientId)
+            }
+          } catch (err) {
+            console.error('Record-level permission auto-grant failed:', err)
+          }
+
           set((state) => {
             state.activeTokens.unshift(newToken)
             state.isGenerating = false
@@ -168,6 +208,23 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
             })
             
             await revokeConsentToken(tokenId, reason, tokenToRevoke.patientId)
+
+            // Step E: REVOKE RECORD-LEVEL PERMISSIONS (New Security Layer Sync)
+            try {
+              const { supabase } = await import('@/lib/supabase')
+              if (supabase) {
+                const { error: revError } = await supabase
+                  .from('record_access_permissions')
+                  .update({ is_revoked: true })
+                  .eq('doctor_id', tokenToRevoke.recipientId)
+                  .eq('patient_id', tokenToRevoke.patientId)
+                
+                if (revError) console.error('Record-level revocation sync failed:', revError)
+                else console.log('Revoked all record permissions for doctor:', tokenToRevoke.recipientId)
+              }
+            } catch (err) {
+              console.error('Record-level revocation failed:', err)
+            }
 
             set((state) => {
               state.isRevoking = false

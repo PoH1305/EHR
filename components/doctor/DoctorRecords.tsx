@@ -179,11 +179,63 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       sharedCats.length === 0 || sharedCats.includes(cat.key)
    )
 
-   // Filter attachments based on real-time permissions
-   const filteredAttachments = attachments.filter(att => {
-      const recordId = att.storagePath || att.fileName
-      return hasPermission(recordId, 'view') || hasPermission(recordId, 'download')
-   })
+    // Filter attachments based on real-time permissions
+    const filteredAttachments = attachments.filter(att => {
+       const recordId = att.storagePath || att.fileName
+       return hasPermission(recordId, 'view') || hasPermission(recordId, 'download')
+    })
+
+    const handleRestoreAccess = async () => {
+       if (!firebaseUid || !patientId || !approvedRequest) return
+       
+       setIsPermissionsLoading(true)
+       try {
+          const expiresAt = approvedRequest.metadata?.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          
+          const reports = attachments || []
+          if (reports.length > 0) {
+             const permissions = reports.flatMap(report => [
+                {
+                   record_id: report.storagePath || report.id,
+                   patient_id: patientId,
+                   doctor_id: firebaseUid,
+                   permission_type: 'view',
+                   expires_at: expiresAt,
+                   is_revoked: false
+                },
+                {
+                   record_id: report.storagePath || report.id,
+                   patient_id: patientId,
+                   doctor_id: firebaseUid,
+                   permission_type: 'download',
+                   expires_at: expiresAt,
+                   is_revoked: false
+                }
+             ])
+
+             const { error: permError } = await supabase
+                .from('record_access_permissions')
+                .upsert(permissions, { onConflict: 'doctor_id,patient_id,record_id,permission_type' })
+                
+             if (permError) throw permError
+             
+             // Refresh local permissions state
+             const { data } = await supabase
+                .from('record_access_permissions')
+                .select('record_id, permission_type, is_revoked, expires_at')
+                .eq('doctor_id', firebaseUid)
+                .eq('patient_id', patientId)
+             
+             if (data) setPermissions(data)
+             alert('Access restored! You can now view all shared records.')
+          }
+       } catch (err) {
+          console.error('Failed to restore access:', err)
+          alert('Failed to restore access. Please ask the patient to re-grant permission.')
+       } finally {
+          setIsPermissionsLoading(false)
+       }
+    }
 
    const renderContent = () => {
       switch (activeTab) {
@@ -251,9 +303,26 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                          </div>
                       </div>
                    )}) : (
-                     <div className="col-span-full">
-                        <EmptyState icon={<FlaskConical className="w-8 h-8 text-white/10" />} label="No clinical records available for this patient" />
-                     </div>
+                      <div className="col-span-full">
+                         <EmptyState 
+                            icon={<FlaskConical className="w-8 h-8 text-white/10" />} 
+                            label="No clinical records available for this patient" 
+                         />
+                         {approvedRequest && (
+                            <div className="mt-8 flex flex-col items-center">
+                               <p className="text-[10px] text-white/40 mb-4 max-w-xs text-center uppercase tracking-widest font-bold leading-relaxed">
+                                  You have an approved clinical link, but record-level permissions may be pending synchronization.
+                               </p>
+                               <button 
+                                  onClick={handleRestoreAccess}
+                                  className="px-6 py-3 rounded-2xl bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 text-[#5B8DEF] text-[10px] font-black uppercase tracking-widest hover:bg-[#5B8DEF]/20 transition-all flex items-center gap-2"
+                               >
+                                  <ShieldCheck className="w-4 h-4" />
+                                  Restore Patient Files Visibility
+                               </button>
+                            </div>
+                         )}
+                      </div>
                    )}
                 </div>
             )

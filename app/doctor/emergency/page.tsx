@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { QRScanScreen } from '@/components/doctor/QRScanScreen'
 import { EmergencyDataViewer } from '@/components/doctor/EmergencyDataViewer'
 import { TemporaryRecordForm } from '@/components/doctor/TemporaryRecordForm'
 import { EmergencyTimerBar } from '@/components/doctor/EmergencyTimerBar'
 import { ConsentExpiredOverlay } from '@/components/doctor/ConsentExpiredOverlay'
-import { ShieldAlert, Fingerprint, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { ShieldAlert, Fingerprint, CheckCircle2, ArrowLeft, Search } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { extractEmergencyProfile } from '@/lib/emergencyProfile'
 import { createTemporaryRecord } from '@/lib/temporaryId'
@@ -136,12 +135,59 @@ export default function DoctorEmergencyPage() {
       <AnimatePresence mode="wait">
         
         {step === 'SCAN' && (
-          <QRScanScreen 
+          <motion.div
             key="scan"
-            onScanSuccess={handleScanSuccess}
-            onCreateTemporary={handleCreateTemp}
-          />
-        )}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="p-6 pt-20 max-w-md mx-auto"
+          >
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-full text-center">
+                <div className="flex flex-col items-center justify-center mb-12">
+                    <ShieldAlert className="w-12 h-12 text-red-500 mb-6" />
+                    <h1 className="text-2xl font-bold text-white mb-2">Emergency Protocol</h1>
+                    <p className="text-sm text-white/40 mb-8">Manual bypass for critical care when patient is incapacitated.</p>
+                    
+                    <div className="space-y-4 w-full">
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                        <input 
+                          type="text"
+                          value={targetId}
+                          onChange={(e) => setTargetId(e.target.value.toUpperCase())}
+                          placeholder="ENTER PATIENT EHI ID..."
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm text-white font-mono tracking-widest focus:outline-none focus:border-red-500/50 transition-all"
+                        />
+                      </div>
+                      
+                      <button 
+                        onClick={() => targetId.length >= 10 && setStep('CONFIRM')}
+                        disabled={targetId.length < 10}
+                        className="w-full py-4 rounded-2xl bg-red-600 text-white font-bold uppercase tracking-widest shadow-lg shadow-red-600/20 disabled:opacity-30 transition-all"
+                      >
+                        Identify Patient
+                      </button>
+                      
+                      <div className="flex items-center gap-4 py-4">
+                        <div className="h-px bg-white/5 flex-1" />
+                        <span className="text-[10px] font-bold text-white/10 uppercase tracking-widest">or</span>
+                        <div className="h-px bg-white/5 flex-1" />
+                      </div>
+
+                      <button 
+                        onClick={handleCreateTemp}
+                        className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                      >
+                        Create Temporary ID
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )
+        }
 
         {step === 'CONFIRM' && (
           <motion.div 

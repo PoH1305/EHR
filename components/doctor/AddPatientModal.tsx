@@ -18,7 +18,6 @@ import { useConsentStore } from '@/store/useConsentStore'
 import { DoctorSpecialty, type AccessRequest } from '@/lib/types'
 import { cn, autoFormatEHI } from '@/lib/utils'
 import { createPortal } from 'react-dom'
-import QRScanner from '@/components/QRScanner'
 import { db } from '@/lib/db'
 import type { PatientProfile } from '@/lib/types'
 
@@ -28,7 +27,7 @@ interface AddPatientModalProps {
 }
 
 export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProps) {
-  const [step, setStep] = useState<'method' | 'scan' | 'id' | 'success'>('method')
+  const [step, setStep] = useState<'id' | 'success'>('id')
   const [patientId, setPatientId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -95,7 +94,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
   useEffect(() => {
     if (!isOpen) {
       const timer = setTimeout(() => {
-        setStep('method')
+        setStep('id')
         setPatientId('')
         setIsSubmitting(false)
       }, 300)
@@ -150,18 +149,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     }
   }
 
-  const handleScanSuccess = (decodedText: string) => {
-    const result = parseEHILink(decodedText)
-    if (result) {
-      const formatted = autoFormatEHI(result.healthId)
-      setPatientId(formatted)
-      // Delay transition to allow QR scanner to clean up DOM safely
-      setTimeout(() => setStep('id'), 100)
-    } else {
-      setPatientId(autoFormatEHI(decodedText))
-      setTimeout(() => setStep('id'), 100)
-    }
-  }
+
 
   if (!mounted || !isOpen) return null
 
@@ -190,76 +178,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
 
         <div className="p-8">
           <AnimatePresence mode="wait">
-            {step === 'method' && (
-              <motion.div
-                key="method"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-8"
-              >
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setStep('scan')}
-                    className="p-6 rounded-2xl bg-[#1A3A8F]/10 border border-[#1A3A8F]/20 hover:bg-[#1A3A8F]/20 transition-all flex flex-col items-center gap-3 group"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-[#1A3A8F]/20 flex items-center justify-center border border-[#1A3A8F]/30 group-hover:scale-110 transition-transform">
-                      <QrCode className="w-6 h-6 text-[#5B8DEF]" />
-                    </div>
-                    <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Scan Card</span>
-                  </button>
-                  <button
-                    onClick={() => setStep('id')}
-                    className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex flex-col items-center gap-3 group"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
-                      <Clipboard className="w-6 h-6 text-white/40" />
-                    </div>
-                    <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">EHI ID</span>
-                  </button>
-                </div>
 
-                {recentRequests.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Recent Activity</h3>
-                    <div className="space-y-2">
-                      {recentRequests.map(req => (
-                        <div key={req.id} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[11px] font-bold text-white/80">{req.patientId}</span>
-                            <span className="text-[9px] text-white/20">{new Date(req.requestedAt).toLocaleDateString()}</span>
-                          </div>
-                          <span className={cn(
-                            "text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest",
-                            req.status === 'PENDING' ? "bg-amber-500/10 text-amber-500" :
-                            req.status === 'APPROVED' ? "bg-green-500/10 text-green-500" :
-                            "bg-red-500/10 text-red-500"
-                          )}>
-                            {req.status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {step === 'scan' && (
-              <motion.div
-                key="scan"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="flex flex-col items-center"
-              >
-                <div className="w-full">
-                  <QRScanner onScanSuccess={handleScanSuccess} qrbox={200} />
-                </div>
-                <p className="mt-8 text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] text-center">Scan patient health identity card</p>
-                <button onClick={() => setStep('method')} className="mt-8 text-xs text-white/20 font-bold uppercase tracking-widest hover:text-white/40 transition-colors">Cancel</button>
-              </motion.div>
-            )}
 
             {step === 'id' && (
               <motion.div
@@ -338,7 +257,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Request Secure Access"}
                 </button>
-                <button onClick={() => setStep('method')} className="w-full text-xs text-white/20 font-bold uppercase tracking-widest hover:text-white/40 transition-colors" disabled={isSubmitting}>Back</button>
+                <button onClick={onClose} className="w-full text-xs text-white/20 font-bold uppercase tracking-widest hover:text-white/40 transition-colors" disabled={isSubmitting}>Cancel</button>
               </motion.div>
             )}
 

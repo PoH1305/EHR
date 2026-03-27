@@ -200,33 +200,7 @@ export default function ProfilePage() {
       </GlassCard>
 
 
-      {/* Security Section */}
-      <GlassCard>
-        <h3 className="text-sm font-semibold text-foreground/60 mb-4 flex items-center gap-2">
-          <Shield className="w-4 h-4" /> Security
-        </h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground/70 tracking-wide">Authentication</p>
-              <p className="text-[10px] text-foreground/30 mt-0.5">Verified via OTP</p>
-            </div>
-            <span className="px-3 py-1.5 rounded-xl bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest border border-green-500/20 flex items-center gap-1.5">
-              <Shield className="w-3 h-3" />
-              Verified
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground/70">Encryption Keys</p>
-              <p className="text-[10px] text-foreground/30 mt-0.5">AES-256 + RSA-2048</p>
-            </div>
-            <span className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-[10px] font-medium">
-              Active
-            </span>
-          </div>
-        </div>
-      </GlassCard>
+
 
       {/* Dashboard Preferences */}
       <GlassCard>
@@ -308,27 +282,7 @@ export default function ProfilePage() {
         </div>
       </GlassCard>
 
-      {/* Connected EHR Systems */}
-      <GlassCard>
-        <h3 className="text-sm font-semibold text-foreground/60 mb-4 flex items-center gap-2">
-          <Link2 className="w-4 h-4" /> Connected EHR Systems
-        </h3>
-        <div className="space-y-3">
-          {Object.entries(SUPPORTED_EHR_SYSTEMS).map(([key, system]) => (
-            <div key={key} className="flex items-center justify-between p-3 rounded-xl bg-foreground/[0.02]">
-              <div>
-                <p className="text-sm text-foreground/70">{system.name}</p>
-                <p className="text-[10px] text-foreground/25">
-                  {system.clientId ? 'Configured' : 'Not configured'}
-                </p>
-              </div>
-              <button className="px-3 py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground/50 hover:text-foreground/70 transition-colors">
-                Connect
-              </button>
-            </div>
-          ))}
-        </div>
-      </GlassCard>
+
 
       {/* Danger Zone */}
       <GlassCard className="border-red-500/10">

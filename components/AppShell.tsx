@@ -157,58 +157,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       
       {/* Header */}
       <header className={cn(
-        "fixed top-0 left-0 right-0 z-50 border-b h-16 flex items-center justify-between px-5 transition-all duration-700",
+        "fixed top-0 left-0 right-0 z-50 border-b h-16 transition-all duration-700",
         isEmergencyMode 
           ? "bg-red-950/20 border-red-500/20 backdrop-blur-xl" 
           : isDoctor 
             ? "bg-[#0d1117]/80 backdrop-blur-md border-white/[0.05]" 
             : "glass-card !bg-surface/80 dark:!bg-transparent border-foreground/10 shadow-sm dark:shadow-none"
       )}>
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-700",
-            isEmergencyMode ? "bg-red-600 shadow-red-500/20" : 
-            isDoctor ? "bg-[#1A3A8F]" : "bg-gradient-to-br from-primary to-secondary"
-          )}>
-            {isEmergencyMode ? <AlertTriangle className="w-5 h-5 text-white" /> : <span className="text-white font-black text-xs tracking-tighter pointer-events-none">EHI</span>}
-          </div>
-        </Link>
+        <div className="max-w-4xl mx-auto h-full flex items-center justify-between px-5">
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-700",
+              isEmergencyMode ? "bg-red-600 shadow-red-500/20" : 
+              isDoctor ? "bg-[#1A3A8F]" : "bg-gradient-to-br from-primary to-secondary"
+            )}>
+              {isEmergencyMode ? <AlertTriangle className="w-5 h-5 text-white" /> : <span className="text-white font-black text-xs tracking-tighter pointer-events-none">EHI</span>}
+            </div>
+          </Link>
 
-        <div className="flex items-center gap-4">
-          {isDoctor && !isEmergencyMode && (
-             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05]">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] whitespace-nowrap">Clinical Node Active</span>
-             </div>
-          )}
-          
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center transition-all border",
-              isEmergencyMode ? "bg-red-500/10 border-red-500/20 text-red-500" :
-              isDoctor 
-                ? "bg-transparent border-white/20 text-white/60 hover:border-white/40 hover:text-white" 
-                : "bg-foreground/[0.08] border-foreground/5 text-foreground/40 hover:bg-foreground/10 hover:text-foreground/60"
+          <div className="flex items-center gap-4">
+            {isDoctor && !isEmergencyMode && (
+               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05]">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] whitespace-nowrap">Clinical Node Active</span>
+               </div>
             )}
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
-          {isDoctor && !isEmergencyMode && (
+            
             <button
-              onClick={() => setIsEmergencyOpen(true)}
-              className="px-4 h-10 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-red-500/5"
+              onClick={() => setCommandPaletteOpen(true)}
+              className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center transition-all border",
+                isEmergencyMode ? "bg-red-500/10 border-red-500/20 text-red-500" :
+                isDoctor 
+                  ? "bg-transparent border-white/20 text-white/60 hover:border-white/40 hover:text-white" 
+                  : "bg-foreground/[0.08] border-foreground/5 text-foreground/40 hover:bg-foreground/10 hover:text-foreground/60"
+              )}
             >
-              <AlertTriangle className="w-3 h-3 group-hover:animate-pulse" />
-              <span className="hidden sm:inline">Emergency Protocol</span>
-              <span className="sm:hidden">Protocol</span>
+              <Search className="w-4 h-4" />
             </button>
-          )}
 
-          {isDoctor && !isEmergencyMode && (
-            <div className="w-4" /> 
-          )}
+            {isDoctor && !isEmergencyMode && (
+              <button
+                onClick={() => setIsEmergencyOpen(true)}
+                className="px-4 h-10 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-red-500/5"
+              >
+                <AlertTriangle className="w-3 h-3 group-hover:animate-pulse" />
+                <span className="hidden sm:inline">Emergency Protocol</span>
+                <span className="sm:hidden">Protocol</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -289,7 +287,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       ) : (
         <nav className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 border-t h-20 flex items-center justify-around px-4 pb-safe",
+          "fixed bottom-0 left-0 right-0 z-30 border-t h-20 flex items-center justify-around px-4 pb-safe transition-all",
+          "md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:w-fit md:px-4 md:py-2 md:rounded-[32px] md:border md:shadow-2xl md:h-20 md:mx-auto md:bg-white/80 md:dark:bg-slate-900/80 md:backdrop-blur-xl",
           "glass-card border-foreground/10"
         )}>
           {navItems.map((item) => {
@@ -303,7 +302,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   isActive ? "text-primary active" : "text-foreground/40"
                 )}
               >
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors">
+                <div className={cn(
+                  "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                  isActive && "md:bg-primary/10"
+                )}>
                   <item.icon className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-medium tracking-wide uppercase">{item.label}</span>

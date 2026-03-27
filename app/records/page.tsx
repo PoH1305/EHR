@@ -80,24 +80,25 @@ function RecordsPageContent() {
     setIsUploading(true)
     
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('user_id', patient.healthId)
-      formData.append('role', 'patient')
-
-      const response = await fetch('http://localhost:8000/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Upload failed')
+      // 1. Create a local temporary URL for the file
+      const localUrl = URL.createObjectURL(file)
+      
+      // 2. Prepare the attachment record
+      const attachment: any = {
+        id: crypto.randomUUID(),
+        patientId: patient.healthId,
+        fileUrl: localUrl,
+        fileName: file.name,
+        fileType: file.type,
+        uploadedAt: new Date().toISOString(),
+        description: 'Uploaded via MedVault Patient App',
+        isVerified: false
       }
 
-      // Refresh list dynamically
-      await loadBackendRecords(patient.healthId)
-      alert('File uploaded successfully!')
+      // 3. Use ClinicalStore to handle cloud upload and state sync
+      await addAttachment(attachment)
+      
+      alert('File uploaded successfully! It is now being synced to your secure cloud storage.')
     } catch (error: any) {
       console.error('File upload failed:', error)
       alert(`Upload failed: ${error.message}`)

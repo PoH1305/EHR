@@ -11,7 +11,8 @@ import {
   QrCode, 
   Clipboard, 
   CheckCircle2, 
-  User 
+  User,
+  AlertCircle
 } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useConsentStore } from '@/store/useConsentStore'
@@ -129,25 +130,32 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     await new Promise(r => setTimeout(r, 1000))
     
     const { patient: doctorProfile } = useUserStore.getState()
+    const normalizedPatientId = patientId.trim().toUpperCase()
     
-    await createAccessRequest(
-      patientId, 
-      firebaseUid || 'doc-unknown', 
-      doctorProfile?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
-      (doctorProfile as any)?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER, 
-      'Clinical Health Network',
-      reason, // New field
-      foundPatient?.name || undefined,
-      selectedCategories
-    )
-    
-    setIsSubmitting(false)
-    setStep('success')
-    
-    // Refresh recent
-    if (db) {
-      db.access_requests.orderBy('requestedAt').reverse().limit(3).toArray()
-        .then(setRecentRequests)
+    try {
+      await createAccessRequest(
+        normalizedPatientId, 
+        firebaseUid || 'doc-unknown', 
+        doctorProfile?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
+        (doctorProfile as any)?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER, 
+        'Clinical Health Network',
+        reason,
+        foundPatient?.name || undefined,
+        selectedCategories
+      )
+      
+      setIsSubmitting(false)
+      setStep('success')
+      
+      // Refresh recent
+      if (db) {
+        db.access_requests.orderBy('requestedAt').reverse().limit(3).toArray()
+          .then(setRecentRequests)
+      }
+    } catch (err) {
+      console.error('[AddPatientModal] Submission failed:', err)
+      setIsSubmitting(false)
+      // Error is already in store.syncError
     }
   }
 
@@ -260,6 +268,18 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                       placeholder="e.g., Routine checkup, Follow-up consultation, Emergency review..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-[#1A3A8F] transition-all min-h-[80px] resize-none"
                     />
+                  </div>
+                )}
+
+                {useConsentStore.getState().syncError && (
+                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 mb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Sync Failed</span>
+                    </div>
+                    <p className="text-[10px] text-red-400/80 leading-relaxed max-h-[40px] overflow-hidden">
+                      {useConsentStore.getState().syncError}
+                    </p>
                   </div>
                 )}
 

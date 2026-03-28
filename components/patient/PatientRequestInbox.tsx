@@ -14,7 +14,7 @@ export function PatientRequestInbox() {
   const [selectedCats, setSelectedCats] = React.useState<Record<string, string[]>>({})
 
   useEffect(() => {
-    const effectiveId = patient?.healthId || healthId
+    const effectiveId = (patient?.healthId || healthId)?.trim().toUpperCase()
     if (effectiveId) {
       console.log(`[PatientRequestInbox] Fetching requests for healthId: ${effectiveId}`)
       loadAccessRequests(effectiveId, false)

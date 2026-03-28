@@ -25,6 +25,7 @@ interface ConsentState {
   isLoading: boolean
   pendingRevocationId: string | null
   activeListenerId: string | null
+  syncError: string | null
 }
 
 interface ConsentActions {
@@ -53,6 +54,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       activeListenerId: null,
       sharedCategories: [],
       pendingRevocationId: null,
+      syncError: null,
 
       // Actions
       loadTokens: async () => {
@@ -294,9 +296,12 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               })
             if (syncError) throw syncError
           }
+          set({ syncError: null })
         } catch (err: any) {
-          console.error('[ConsentStore] Access request sync failed:', err?.message || err)
-          if (err?.details) console.error('[ConsentStore] Error details:', err.details, err.hint)
+          const errMsg = err?.message || JSON.stringify(err)
+          console.error('[ConsentStore] Access request sync failed:', errMsg)
+          set({ syncError: errMsg })
+          throw err // Propagate to UI
         }
       },
 

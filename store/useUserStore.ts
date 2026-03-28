@@ -334,6 +334,24 @@ export const useUserStore = create<UserState & UserActions>()(
               state.doctor = docProfile
               state.role = 'doctor'
             })
+            return
+          }
+
+          // Fallback to Firestore if not found in Supabase
+          console.log('[UserStore] Doctor profile not in Supabase, checking Firestore...')
+          const { db_firestore } = await import('@/lib/firebase')
+          const { doc, getDoc } = await import('firebase/firestore')
+          
+          if (db_firestore) {
+            const docRef = doc(db_firestore, 'doctors', id)
+            const docSnap = await getDoc(docRef)
+            
+            if (docSnap.exists()) {
+              const docData = docSnap.data() as DoctorProfile
+              console.log('[UserStore] Migrating doctor profile from Firestore to Supabase')
+              // This will trigger syncProfileToCloud() automatically via setDoctor
+              get().setDoctor(docData)
+            }
           }
         } catch (error) {
           console.error('[UserStore] Failed to fetch doctor profile:', error)

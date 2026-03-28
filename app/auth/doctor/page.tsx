@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { Check, Mail, Lock, LogIn, Loader2, Shield, AlertTriangle, Stethoscope } from 'lucide-react'
-import { DoctorSpecialty } from '@/lib/types'
+import { DoctorSpecialty, DoctorProfile } from '@/lib/types'
 
 function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
   return (
@@ -60,7 +60,9 @@ function DoctorAuthContent() {
     updateLastActive, 
     _hasHydrated,
     setFirebaseUser,
-    setRole
+    setRole,
+    fetchDoctorProfile,
+    setDoctor
   } = useUserStore()
 
   // Sync Firebase state with Zustand
@@ -70,8 +72,10 @@ function DoctorAuthContent() {
       setSessionState('AUTHENTICATED')
       setRole('doctor')
       updateLastActive()
+      // NEW: Trigger profile fetch/migration on login
+      void fetchDoctorProfile(user.uid)
     }
-  }, [user, setFirebaseUser, setSessionState, updateLastActive, setRole])
+  }, [user, setFirebaseUser, setSessionState, updateLastActive, setRole, fetchDoctorProfile])
 
   // Navigation Logic
   useEffect(() => {
@@ -139,16 +143,22 @@ function DoctorAuthContent() {
         const docSnap = await getDoc(docRef)
         
         if (!docSnap.exists()) {
-          await setDoc(docRef, {
+          const docData = {
             id: gUser.uid,
-            name: gUser.displayName || gUser.email?.split('@')[0],
-            email: gUser.email,
+            name: gUser.displayName || gUser.email?.split('@')[0] || 'Medical Practitioner',
+            email: gUser.email || '',
             licenseNumber: 'PENDING',
-            specialty: 'General Practitioner',
+            specialty: 'General Practitioner' as DoctorSpecialty,
             isVerified: false,
             createdAt: new Date().toISOString(),
             lastActiveAt: new Date().toISOString()
-          })
+          }
+          await setDoc(docRef, docData)
+          setDoctor(docData)
+        } else {
+          // If exists, load it
+          const docData = docSnap.data() as DoctorProfile
+          setDoctor(docData)
         }
       }
     } catch (err: any) {

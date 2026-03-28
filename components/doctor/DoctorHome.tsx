@@ -16,7 +16,7 @@ import { useUserStore } from '@/store/useUserStore'
 
 export default function DoctorHome() {
   const { priorityQueue, runClinicalTriage, isSuspicious, lastAnomaly, checkSecurityPulse } = useAgentStore()
-  const { firebaseEmail, firebaseUid, setIsAddPatientOpen } = useUserStore()
+  const { firebaseEmail, firebaseUid, setIsAddPatientOpen, doctor, fetchDoctorProfile } = useUserStore()
   const { accessRequests, loadAccessRequests } = useConsentStore()
   const [isPrivacyMode] = useState(false)
   const router = useRouter()
@@ -40,9 +40,11 @@ export default function DoctorHome() {
     // 2. Setup real-time listeners (async, non-blocking)
     loadAccessRequests(firebaseUid, true)
     
-    // 3. Heavy triage (once on change of user)
-    runClinicalTriage()
-  }, [firebaseUid]) // Only re-run when user changes
+    // 4. Load doctor profile
+    if (!doctor) {
+      void fetchDoctorProfile(firebaseUid)
+    }
+  }, [firebaseUid, doctor]) // Only re-run when user changes
 
   // Derived stats from store (reactive)
   useEffect(() => {
@@ -82,7 +84,7 @@ export default function DoctorHome() {
       <div className="flex items-center justify-between">
         <div>
            <h1 className="text-4xl font-black text-white tracking-tight">Good morning.</h1>
-           <p className="text-sm text-white/30 font-medium mt-1">{firebaseEmail?.split('@')[0] || 'Dr. Practitioner'}</p>
+           <p className="text-sm text-white/30 font-medium mt-1">{doctor?.name || firebaseEmail?.split('@')[0] || 'Dr. Practitioner'}</p>
         </div>
         <div className="flex items-center gap-4">
            <button 

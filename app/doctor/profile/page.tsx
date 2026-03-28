@@ -19,10 +19,16 @@ import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/GlassCard'
 
 export default function DoctorProfilePage() {
-  const { firebaseEmail, role, signOut } = useUserStore()
+  const { firebaseEmail, firebaseUid, role, doctor, signOut, fetchDoctorProfile } = useUserStore()
   const { clearClinicalState } = useClinicalStore()
   const { toast } = useToast()
   const router = useRouter()
+
+  React.useEffect(() => {
+    if (firebaseUid && !doctor) {
+      void fetchDoctorProfile(firebaseUid)
+    }
+  }, [firebaseUid, doctor, fetchDoctorProfile])
 
   const handleSignOut = async () => {
     try {
@@ -56,11 +62,11 @@ export default function DoctorProfilePage() {
         <div className="absolute -inset-0.5 bg-gradient-to-r from-[#1A3A8F] to-[#5B8DEF] rounded-[40px] blur opacity-10 group-hover:opacity-20 transition duration-500" />
         <GlassCard className="p-8 flex flex-col items-center text-center gap-6 relative overflow-hidden">
            <div className="w-24 h-24 rounded-[32px] bg-[#1A3A8F] flex items-center justify-center border-4 border-white/10 text-white font-black text-3xl shadow-2xl">
-              {firebaseEmail?.[0]?.toUpperCase() || 'D'}
+              {doctor?.name?.[0]?.toUpperCase() || firebaseEmail?.[0]?.toUpperCase() || 'D'}
            </div>
            <div>
               <h2 className="text-2xl font-black text-white tracking-tight">
-                {firebaseEmail?.split('@')[0] || 'Medical Practitioner'}
+                {doctor?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner'}
               </h2>
               <div className="flex items-center justify-center gap-2 mt-2 text-white/40">
                  <BadgeCheck className="w-4 h-4 text-[#5B8DEF]" />
@@ -80,7 +86,7 @@ export default function DoctorProfilePage() {
             </div>
             <div className="flex-1">
                <p className="text-[10px] uppercase font-bold text-white/20 tracking-wider">Clinical Email</p>
-               <p className="text-sm font-bold text-white">{firebaseEmail}</p>
+               <p className="text-sm font-bold text-white">{doctor?.email || firebaseEmail}</p>
             </div>
          </GlassCard>
 
@@ -90,9 +96,11 @@ export default function DoctorProfilePage() {
             </div>
             <div className="flex-1">
                <p className="text-[10px] uppercase font-bold text-white/20 tracking-wider">License Number</p>
-               <p className="text-sm font-bold text-white font-mono">DMC-88291-EXP</p>
+               <p className="text-sm font-bold text-white font-mono">{doctor?.licenseNumber || 'PENDING'}</p>
             </div>
-            <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-500 text-[8px] font-black uppercase tracking-widest">Active</span>
+            <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-500 text-[8px] font-black uppercase tracking-widest">
+               {doctor?.licenseNumber && doctor.licenseNumber !== 'PENDING' ? 'Active' : 'Verification Pending'}
+            </span>
          </GlassCard>
 
          <GlassCard className="p-5 flex items-center gap-5">
@@ -101,7 +109,7 @@ export default function DoctorProfilePage() {
             </div>
             <div className="flex-1">
                <p className="text-[10px] uppercase font-bold text-white/20 tracking-wider">Specialization</p>
-               <p className="text-sm font-bold text-white">General Cardiology</p>
+               <p className="text-sm font-bold text-white">{doctor?.specialty || 'General Practitioner'}</p>
             </div>
          </GlassCard>
       </div>

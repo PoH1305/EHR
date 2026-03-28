@@ -97,16 +97,22 @@ function DoctorAuthContent() {
         const { doc, setDoc } = await import('firebase/firestore')
         
         if (db_firestore) {
-          await setDoc(doc(db_firestore, 'doctors', newUser.uid), {
+          const docData = {
             id: newUser.uid,
-            name: email.split('@')[0], // Primitive name fallback
-            email: newUser.email,
+            name: email.split('@')[0] || 'Medical Practitioner', // Primitive name fallback
+            email: newUser.email || email,
             licenseNumber: license,
-            specialty: specialty,
+            specialty: specialty as DoctorSpecialty,
             isVerified: false,
             createdAt: new Date().toISOString(),
             lastActiveAt: new Date().toISOString()
-          })
+          }
+          
+          await setDoc(doc(db_firestore, 'doctors', newUser.uid), docData)
+          
+          // NEW: Sync to Supabase via UserStore
+          const { setDoctor } = useUserStore.getState()
+          setDoctor(docData)
         }
       } else {
         await signInWithEmailAndPassword(auth!, email, password)

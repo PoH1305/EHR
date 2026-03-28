@@ -8,7 +8,7 @@
 import { create } from 'zustand'
 import { devtools, persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import type { PatientProfile } from '@/lib/types'
+import type { PatientProfile, DoctorProfile } from '@/lib/types'
 
 export type SessionState = 'UNAUTHENTICATED' | 'AUTHENTICATED'
 export type UserRole = 'patient' | 'doctor' | null
@@ -26,6 +26,7 @@ interface UserState {
   healthId: string | null
   firebaseUid: string | null
   firebaseEmail: string | null
+  doctor: DoctorProfile | null
   isAddPatientOpen: boolean
   isProfileRestoring: boolean
   _hasHydrated: boolean
@@ -36,6 +37,7 @@ interface UserActions {
   initializeKeys: () => Promise<void>
   setPatient: (profile: PatientProfile) => void
   setFirebaseUser: (uid: string | null, email: string | null) => void
+  setDoctor: (profile: DoctorProfile) => void
   setIsAddPatientOpen: (val: boolean) => void
   signOut: () => void
   setSessionState: (state: SessionState) => void
@@ -46,6 +48,7 @@ interface UserActions {
   setHasHydrated: (val: boolean) => void
   syncProfileToCloud: () => Promise<void>
   fetchProfileFromCloud: () => Promise<void>
+  fetchDoctorProfile: (id: string) => Promise<void>
   checkHealthIdUnique: (healthId: string) => Promise<boolean>
 }
 
@@ -68,6 +71,7 @@ export const useUserStore = create<UserState & UserActions>()(
       healthId: null,
       firebaseUid: null,
       firebaseEmail: null,
+      doctor: null,
       isAddPatientOpen: false,
       isProfileRestoring: false,
       _hasHydrated: false,
@@ -80,6 +84,8 @@ export const useUserStore = create<UserState & UserActions>()(
           if (role === 'doctor') {
             state.patient = null
             state.healthId = null
+          } else if (role === 'patient') {
+            state.doctor = null
           }
         })
         if (typeof window !== 'undefined') {
@@ -193,6 +199,7 @@ export const useUserStore = create<UserState & UserActions>()(
           state.sessionState = 'UNAUTHENTICATED'
           state.firebaseUid = null
           state.firebaseEmail = null
+          state.doctor = null
           state.lastActiveAt = null
           // Note: we keep 'patient' and 'healthId' to allow "Continue where you left off"
           // the middleware and auth guards will still block access until re-authentication
@@ -208,6 +215,13 @@ export const useUserStore = create<UserState & UserActions>()(
           state.firebaseUid = uid
           state.firebaseEmail = email
         })
+      },
+      
+      setDoctor: (profile) => {
+        set((state) => {
+          state.doctor = profile
+        })
+        void get().syncProfileToCloud()
       },
 
       setIsAddPatientOpen: (val) => {
@@ -242,17 +256,20 @@ export const useUserStore = create<UserState & UserActions>()(
         set({ _hasHydrated: val })
       },
       syncProfileToCloud: async () => {
-        const { patient, firebaseUid } = get()
-        if (!patient || !firebaseUid) return
+        const { patient, firebaseUid, role, doctor } = get()
+        if (!firebaseUid) return
+        if (role === 'patient' && !patient) return
+        if (role === 'doctor' && !doctor) return
 
         try {
           const { supabase } = await import('@/lib/supabase')
-          const { data, error } = await supabase
+          if (!supabase) return
+          const { error } = await supabase
             .from('profiles')
             .upsert({
               id: firebaseUid,
-              health_id: patient.healthId,
-              data: patient
+              health_id: patient?.healthId || `DOC-${firebaseUid}`,
+              data: role === 'doctor' ? doctor : patient
             })
 
           if (error) throw error
@@ -298,6 +315,28 @@ export const useUserStore = create<UserState & UserActions>()(
           console.error('[UserStore] Cloud profile restoration failed:', error)
         } finally {
           set((state) => { state.isProfileRestoring = false })
+        }
+      },
+      fetchDoctorProfile: async (id: string) => {
+        try {
+          const { supabase } = await import('@/lib/supabase')
+          if (!supabase) return
+          
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('data')
+            .eq('id', id)
+            .maybeSingle()
+          
+          if (!error && data && data.data) {
+            const docProfile = data.data as DoctorProfile
+            set((state) => {
+              state.doctor = docProfile
+              state.role = 'doctor'
+            })
+          }
+        } catch (error) {
+          console.error('[UserStore] Failed to fetch doctor profile:', error)
         }
       },
       checkHealthIdUnique: async (healthId: string) => {
@@ -368,6 +407,7 @@ export const useUserStore = create<UserState & UserActions>()(
         healthId: state.healthId,
         firebaseUid: state.firebaseUid,
         firebaseEmail: state.firebaseEmail,
+        doctor: state.doctor,
         sessionState: state.sessionState,
       }) 
     }

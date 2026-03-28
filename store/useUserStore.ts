@@ -150,7 +150,22 @@ export const useUserStore = create<UserState & UserActions>()(
         if (!db || !firebaseUid) return
 
         try {
-          // 1. Backend Deletion (Cross-platform)
+          // 1. Client-side Firestore Deletion (Authenticated)
+          if (role === 'doctor') {
+            const { db_firestore } = await import('@/lib/firebase')
+            const { doc, deleteDoc } = await import('firebase/firestore')
+            if (db_firestore) {
+              const docRef = doc(db_firestore, 'doctors', firebaseUid)
+              try {
+                await deleteDoc(docRef)
+                console.log('[UserStore] Firestore doctor profile erased')
+              } catch (fsError) {
+                console.warn('[UserStore] Firestore erasure failed (likely non-existent doc):', fsError)
+              }
+            }
+          }
+
+          // 2. Backend Deletion (Cross-platform cleanup)
           const response = await fetch('/api/auth/delete-account', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -196,6 +211,12 @@ export const useUserStore = create<UserState & UserActions>()(
           })
 
           console.log('[UserStore] Clinical identity completely erased')
+          
+          // 4. Final Logout & Redirect
+          await get().signOut()
+          if (typeof window !== 'undefined') {
+            window.location.href = '/'
+          }
         } catch (error) {
           console.error('[UserStore] Failed to delete account:', error)
           throw error

@@ -53,13 +53,7 @@ export async function POST(request: Request) {
       // but we log it for the developer.
     }
 
-    // 4. Delete from Firestore
-    if (db_firestore) {
-      const docRef = doc(db_firestore, 'doctors', uid)
-      await deleteDoc(docRef)
-    }
-
-    return NextResponse.json({ success: true, message: 'Doctor clinical identity erased across all systems' })
+    return NextResponse.json({ success: true, message: 'Supabase clinical identity erased. Firestore erasure handled by client.' })
 
   } catch (error: any) {
     console.error('[DeleteAccount] Global failure:', error)

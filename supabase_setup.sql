@@ -32,6 +32,7 @@ CREATE TABLE public.access_requests (
   status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'DENIED')),
   patient_name TEXT,
   doctor_specialty TEXT,
+  reason TEXT,
   shared_categories TEXT[] DEFAULT '{}',
   metadata JSONB DEFAULT '{}'
 );

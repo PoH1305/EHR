@@ -102,6 +102,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     }
   }, [isOpen])
 
+  const [reason, setReason] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([
     'vitals', 'conditions', 'medications', 'allergies', 'clinicalNotes', 'attachments'
   ])
@@ -135,6 +136,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
       doctorProfile?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
       (doctorProfile as any)?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER, 
       'Clinical Health Network',
+      reason, // New field
       foundPatient?.name || undefined,
       selectedCategories
     )
@@ -247,6 +249,17 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                          </button>
                        ))}
                     </div>
+                  </div>
+                )}
+                {foundPatient && (
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Reason for Request</label>
+                    <textarea
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="e.g., Routine checkup, Follow-up consultation, Emergency review..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-[#1A3A8F] transition-all min-h-[80px] resize-none"
+                    />
                   </div>
                 )}
 

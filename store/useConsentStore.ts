@@ -32,8 +32,8 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, patientName?: string | null, sharedCategories?: string[]) => Promise<void>
-  requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, patientName?: string | null) => Promise<void>
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, reason?: string, patientName?: string | null, sharedCategories?: string[]) => Promise<void>
+  requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, reason?: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
@@ -250,7 +250,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, patientName, sharedCategories = []) => {
+      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, reason, patientName, sharedCategories = []) => {
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
@@ -262,6 +262,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           status: 'PENDING',
           patientName: patientName || null,
           sharedCategories,
+          reason: reason || null,
           metadata: {}
         }
         
@@ -287,6 +288,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 requested_at: newReq.requestedAt,
                 status: newReq.status,
                 patient_name: newReq.patientName,
+                reason: newReq.reason,
                 shared_categories: newReq.sharedCategories,
                 metadata: newReq.metadata
               })
@@ -298,7 +300,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      requestFileAccess: async (patientId, doctorId, doctorName, doctorSpecialty, organization, fileId, fileName, patientName) => {
+      requestFileAccess: async (patientId, doctorId, doctorName, doctorSpecialty, organization, fileId, fileName, reason, patientName) => {
         const newReq: AccessRequest = {
           id: `req-file-${Date.now()}`,
           doctorId,
@@ -310,6 +312,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           status: 'PENDING',
           patientName: patientName || null,
           sharedCategories: ['attachments'],
+          reason: reason || null,
           metadata: { fileId, fileName, type: 'FILE_ACCESS' }
         }
         
@@ -335,6 +338,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 requested_at: newReq.requestedAt,
                 status: newReq.status,
                 patient_name: newReq.patientName,
+                reason: newReq.reason,
                 shared_categories: newReq.sharedCategories,
                 metadata: newReq.metadata
               })
@@ -382,6 +386,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               requestedAt: d.requested_at,
               status: d.status as any,
               patientName: d.patient_name,
+              reason: d.reason,
               sharedCategories: d.shared_categories || [],
               metadata: d.metadata || {}
             }))

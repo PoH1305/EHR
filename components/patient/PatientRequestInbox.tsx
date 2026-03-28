@@ -101,6 +101,16 @@ export function PatientRequestInbox() {
                       </div>
                     </div>
                     
+                    {req.reason && (
+                      <div className="mt-4 p-3 rounded-2xl bg-[#0F172A] border border-white/5 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <p className="text-[9px] font-black text-blue-400/60 uppercase tracking-[0.2em] mb-1.5 relative z-10">Clinical Intent</p>
+                        <p className="text-[11px] text-white/80 leading-relaxed font-medium relative z-10 italic">
+                          "{req.reason}"
+                        </p>
+                      </div>
+                    )}
+                    
                     {/* Category Selection */}
                     <div className="mt-4 pt-4 border-t border-white/5">
                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-3">Share categories:</p>

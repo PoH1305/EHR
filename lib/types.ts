@@ -492,5 +492,6 @@ export interface AccessRequest {
   status: 'PENDING' | 'APPROVED' | 'DENIED'
   patientName?: string | null
   sharedCategories: string[]
+  reason?: string | null
   metadata?: Record<string, any>
 }

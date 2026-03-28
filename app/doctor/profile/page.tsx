@@ -10,7 +10,8 @@ import {
   LogOut, 
   Shield, 
   ChevronRight,
-  Settings
+  Settings,
+  Trash2
 } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useClinicalStore } from '@/store/useClinicalStore'
@@ -19,7 +20,7 @@ import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/GlassCard'
 
 export default function DoctorProfilePage() {
-  const { firebaseEmail, firebaseUid, role, doctor, signOut, fetchDoctorProfile } = useUserStore()
+  const { firebaseEmail, firebaseUid, role, doctor, signOut, fetchDoctorProfile, deleteAccount } = useUserStore()
   const { clearClinicalState } = useClinicalStore()
   const { toast } = useToast()
   const router = useRouter()
@@ -38,6 +39,23 @@ export default function DoctorProfilePage() {
       toast("Signed out successfully", "success")
     } catch (error) {
       toast("Failed to sign out", "error")
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "CRITICAL: This will permanently erase your clinical identity, including your license details, professional profile, and all access permissions. This action cannot be undone. Are you absolutely sure?"
+    )
+
+    if (!confirmed) return
+
+    try {
+      toast("Erasing clinical identity...", "info")
+      await deleteAccount()
+      router.push('/auth/role')
+      toast("Account deleted successfully", "success")
+    } catch (error: any) {
+      toast(error.message || "Failed to delete account", "error")
     }
   }
 
@@ -137,14 +155,32 @@ export default function DoctorProfilePage() {
            onClick={handleSignOut}
            className="w-full text-left group"
          >
-            <GlassCard className="p-5 flex items-center justify-between group-hover:bg-red-500/10 transition-all border-red-500/0 group-hover:border-red-500/20">
+            <GlassCard className="p-5 flex items-center justify-between group-hover:bg-white/[0.05] transition-all border-white/0 group-hover:border-white/10">
                <div className="flex items-center gap-5">
-                  <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-white/40">
                      <LogOut className="w-4 h-4" />
                   </div>
                   <div>
-                     <p className="text-sm font-bold text-red-500">Sign Out</p>
-                     <p className="text-[10px] text-red-500/40 font-medium">Terminate Clinical Session</p>
+                     <p className="text-sm font-bold text-white">Sign Out</p>
+                     <p className="text-[10px] text-white/20 font-medium tracking-wider uppercase">Terminate Session</p>
+                  </div>
+               </div>
+               <ChevronRight className="w-4 h-4 text-white/10" />
+            </GlassCard>
+         </button>
+
+         <button 
+           onClick={handleDeleteAccount}
+           className="w-full text-left group mt-4"
+         >
+            <GlassCard className="p-5 flex items-center justify-between group-hover:bg-red-500/10 transition-all border-red-500/0 group-hover:border-red-500/20">
+               <div className="flex items-center gap-5">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                     <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                     <p className="text-sm font-bold text-red-500">Delete Clinical Identity</p>
+                     <p className="text-[10px] text-red-500/40 font-medium tracking-wider uppercase">Permanent Data Erasure</p>
                   </div>
                </div>
                <ChevronRight className="w-4 h-4 text-red-500/20" />

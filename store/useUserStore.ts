@@ -146,10 +146,23 @@ export const useUserStore = create<UserState & UserActions>()(
 
       deleteAccount: async () => {
         const { db } = await import('@/lib/db')
-        if (!db) return
+        const { firebaseUid, role } = get()
+        if (!db || !firebaseUid) return
 
         try {
-          // Clear all tables
+          // 1. Backend Deletion (Cross-platform)
+          const response = await fetch('/api/auth/delete-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: firebaseUid, role })
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Failed to erase clinical identity from cloud')
+          }
+
+          // 2. Clear Local IndexedDB tables
           await Promise.all([
             db.patient_profiles.clear(),
             db.vitals.clear(),
@@ -170,18 +183,21 @@ export const useUserStore = create<UserState & UserActions>()(
             db.temporary_records.clear()
           ])
 
-          // Reset local state
+          // 3. Reset local store state
           set((state) => {
             state.patient = null
+            state.doctor = null
             state.sessionState = 'UNAUTHENTICATED'
-            state.role = 'patient'
+            state.role = role === 'doctor' ? 'doctor' : 'patient' // Keep role context for redirect if needed
             state.lastActiveAt = Date.now()
             state.firebaseUid = null
             state.firebaseEmail = null
             state.healthId = null
           })
+
+          console.log('[UserStore] Clinical identity completely erased')
         } catch (error) {
-          console.error('Failed to delete account:', error)
+          console.error('[UserStore] Failed to delete account:', error)
           throw error
         }
       },

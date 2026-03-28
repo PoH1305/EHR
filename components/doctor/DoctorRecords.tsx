@@ -35,13 +35,15 @@ interface Permission {
   expires_at: string
 }
 
-const VIEW_ONLY_CATEGORIES = [
-  { key: 'attachments', label: 'Records', icon: FileText, color: 'purple' },
-  { key: 'vitals', label: 'Vitals', icon: Activity, color: 'blue' },
+const ALL_CATEGORIES = [
+  { key: 'attachments', label: 'Reports', icon: FileText, color: 'purple' },
+  { key: 'vital_signs', label: 'Vitals', icon: Activity, color: 'blue' },
   { key: 'medications', label: 'Medications', icon: Pill, color: 'emerald' },
-  { key: 'conditions', label: 'Conditions', icon: ClipboardList, color: 'amber' },
+  { key: 'diagnosis_history', label: 'Conditions', icon: ClipboardList, color: 'amber' },
   { key: 'allergies', label: 'Allergies', icon: AlertCircle, color: 'rose' },
-  { key: 'clinicalNotes', label: 'Notes', icon: Edit3, color: 'indigo' },
+  { key: 'doctor_notes', label: 'Notes', icon: Edit3, color: 'indigo' },
+  { key: 'radiology_reports', label: 'Imaging', icon: FlaskConical, color: 'cyan' },
+  { key: 'lab_reports', label: 'Lab Reports', icon: Activity, color: 'emerald' }
 ]
 
 export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
@@ -61,8 +63,23 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       addAuditEvent
    } = useClinicalStore()
 
-   const { accessRequests } = useConsentStore()
-   const { firebaseUid, firebaseEmail } = useUserStore()
+    const { firebaseUid, firebaseEmail } = useUserStore()
+    const { accessRequests, loadAccessRequests } = useConsentStore()
+
+    // 0. Load Access Request for this patient
+    useEffect(() => {
+       if (firebaseUid && patientId) {
+          loadAccessRequests(firebaseUid, true)
+       }
+    }, [firebaseUid, patientId, loadAccessRequests])
+
+    const currentRequest = accessRequests.find(r => r.patientId === patientId && r.status === 'APPROVED')
+    const allowedCategories = currentRequest?.sharedCategories || []
+    const canDownloadPolicy = currentRequest?.permissionType === 'download'
+
+    const filteredCategories = ALL_CATEGORIES.filter(cat => 
+        allowedCategories.includes(cat.key) || cat.key === 'attachments'
+    )
 
    // 1. Initial Access Log
    useEffect(() => {
@@ -172,12 +189,9 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    const approvedRequest = accessRequests.find(r => 
       r.patientId === patientId && r.status === 'APPROVED'
    )
-   const sharedCats: string[] = approvedRequest?.sharedCategories || []
 
-   // Only show tabs for categories that were approved
-   const visibleTabs = VIEW_ONLY_CATEGORIES.filter(cat => 
-      sharedCats.length === 0 || sharedCats.includes(cat.key)
-   )
+    // Only show tabs for categories that were approved
+    const visibleTabs = filteredCategories
 
     // Filter attachments based on real-time permissions
     const filteredAttachments = attachments.filter(att => {
@@ -247,7 +261,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                     {filteredAttachments.length > 0 ? filteredAttachments.map((att: any, i) => {
                       const recordId = att.storagePath || att.id
                       const canView = att.doctorId === firebaseUid || hasPermission(recordId, 'view')
-                      const canDownload = att.doctorId === firebaseUid || hasPermission(recordId, 'download')
+                      const canDownload = (att.doctorId === firebaseUid || hasPermission(recordId, 'download')) && canDownloadPolicy
 
                       return (
                       <div key={att.id || i} className="bg-white/5 border border-white/10 p-5 rounded-[32px] group hover:bg-white/[0.08] transition-all relative overflow-hidden">
@@ -329,7 +343,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                    )}
                 </div>
             )
-         case 'vitals':
+         case 'vital_signs':
             return (
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {vitals.length > 0 ? vitals.map((v, i) => (
@@ -365,7 +379,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                   )) : <EmptyState icon={<Pill className="w-8 h-8 text-white/10" />} label="No medications found" />}
                </div>
             )
-         case 'conditions':
+         case 'diagnosis_history':
             return (
                <div className="space-y-4">
                   {conditions.length > 0 ? conditions.map((c, i) => (
@@ -399,7 +413,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                   )) : <EmptyState icon={<AlertCircle className="w-8 h-8 text-white/10" />} label="No allergies recorded" />}
                </div>
             )
-         case 'clinicalNotes':
+         case 'doctor_notes':
             return (
                <div className="space-y-6">
                   {clinicalNotes.length > 0 ? clinicalNotes.map((n, i) => (

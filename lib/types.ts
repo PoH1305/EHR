@@ -493,5 +493,8 @@ export interface AccessRequest {
   patientName?: string | null
   sharedCategories: string[]
   reason?: string | null
+  doctorRole?: string | null // New: AI-suggested or selected role
+  permissionType?: 'view' | 'download' // New: View vs Download
+  expiresAt?: string | null // New: Request-level expiry
   metadata?: Record<string, any>
 }

@@ -32,10 +32,10 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, reason?: string, patientName?: string | null, sharedCategories?: string[], doctorRole?: string | null) => Promise<void>
-  requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, reason?: string, patientName?: string | null, doctorRole?: string | null) => Promise<void>
+  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, reason?: string, patientName?: string | null, sharedCategories?: string[]) => Promise<void>
+  requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, reason?: string, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
-  respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[], permissionType?: 'view' | 'download', expiresAt?: string | null) => Promise<void>
+  respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
 }
 
@@ -250,9 +250,9 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, reason, patientName, sharedCategories, doctorRole) => {
+      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, reason, patientName, sharedCategories = []) => {
         const newReq: AccessRequest = {
-          id: crypto.randomUUID(),
+          id: `req-${Date.now()}`,
           doctorId,
           doctorName,
           doctorSpecialty,
@@ -261,10 +261,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
           patientName: patientName || null,
+          sharedCategories,
           reason: reason || null,
-          sharedCategories: sharedCategories || [],
-          doctorRole: doctorRole || null,
-          permissionType: 'view', // Default
           metadata: {}
         }
         
@@ -292,9 +290,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 patient_name: newReq.patientName,
                 reason: newReq.reason,
                 shared_categories: newReq.sharedCategories,
-                metadata: newReq.metadata,
-                doctor_role: newReq.doctorRole,
-                permission_type: newReq.permissionType
+                metadata: newReq.metadata
               })
             if (syncError) throw syncError
           }
@@ -304,9 +300,9 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      requestFileAccess: async (patientId, doctorId, doctorName, doctorSpecialty, organization, fileId, fileName, reason, patientName, doctorRole) => {
+      requestFileAccess: async (patientId, doctorId, doctorName, doctorSpecialty, organization, fileId, fileName, reason, patientName) => {
         const newReq: AccessRequest = {
-          id: crypto.randomUUID(),
+          id: `req-file-${Date.now()}`,
           doctorId,
           doctorName,
           doctorSpecialty,
@@ -315,11 +311,9 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
           patientName: patientName || null,
+          sharedCategories: ['attachments'],
           reason: reason || null,
-          sharedCategories: [],
-          doctorRole: doctorRole || null,
-          permissionType: 'view',
-          metadata: { fileId, fileName, isFileRequest: true }
+          metadata: { fileId, fileName, type: 'FILE_ACCESS' }
         }
         
         set((state) => {
@@ -346,9 +340,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 patient_name: newReq.patientName,
                 reason: newReq.reason,
                 shared_categories: newReq.sharedCategories,
-                metadata: newReq.metadata,
-                doctor_role: newReq.doctorRole,
-                permission_type: newReq.permissionType
+                metadata: newReq.metadata
               })
             if (syncError) throw syncError
           }
@@ -378,28 +370,25 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
             // 1. Initial Fetch
             const { data, error } = await supabase
               .from('access_requests')
-              .select('id, doctor_id, doctor_name, doctor_specialty, organization, patient_id, requested_at, status, patient_name, reason, doctor_role, permission_type, expires_at, shared_categories, metadata')
+              .select('*')
               .eq(field, uid)
               .order('requested_at', { ascending: false })
 
             if (error) throw error
 
-            const formatted: AccessRequest[] = (data || []).map(item => ({
-              id: item.id,
-              doctorId: item.doctor_id,
-              doctorName: item.doctor_name,
-              doctorSpecialty: item.doctor_specialty as DoctorSpecialty,
-              organization: item.organization,
-              patientId: item.patient_id,
-              requestedAt: item.requested_at,
-              status: item.status as any,
-              patientName: item.patient_name,
-              reason: item.reason,
-              doctorRole: item.doctor_role,
-              permissionType: item.permission_type,
-              expiresAt: item.expires_at,
-              sharedCategories: item.shared_categories || [],
-              metadata: item.metadata || {}
+            const formatted: AccessRequest[] = (data || []).map(d => ({
+              id: d.id,
+              doctorId: d.doctor_id,
+              doctorName: d.doctor_name,
+              doctorSpecialty: d.doctor_specialty as DoctorSpecialty,
+              organization: d.organization,
+              patientId: d.patient_id,
+              requestedAt: d.requested_at,
+              status: d.status as any,
+              patientName: d.patient_name,
+              reason: d.reason,
+              sharedCategories: d.shared_categories || [],
+              metadata: d.metadata || {}
             }))
 
             set((state) => {
@@ -435,38 +424,44 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         fetchRequests()
       },
 
-      respondToAccessRequest: async (requestId, approved, categories, permissionType, expiresAt) => {
-        set((state) => { state.isLoading = true })
+      respondToAccessRequest: async (requestId, approved, categories = []) => {
+        const status = approved ? 'APPROVED' : 'DENIED'
+        const patientName = approved ? useUserStore.getState().patient?.name || null : null
+        
+        set((state) => {
+          const req = state.accessRequests.find(r => r.id === requestId)
+          if (req) {
+            req.status = status
+            req.sharedCategories = approved ? categories : []
+            if (patientName) req.patientName = patientName
+          }
+        })
+        
+        // 1. Local Update
+        if (typeof window !== 'undefined' && db) {
+          void db.access_requests.update(requestId, { 
+            status, 
+            sharedCategories: approved ? categories : [],
+            patientName: patientName || null
+          })
+        }
+
+        // 2. Supabase Update
         try {
           const { supabase } = await import('@/lib/supabase')
-          if (!supabase) throw new Error('Supabase not available')
-
-          const { error } = await supabase
-            .from('access_requests')
-            .update({ 
-               status: approved ? 'APPROVED' : 'DENIED',
-               shared_categories: categories || [],
-               permission_type: permissionType || 'view',
-               expires_at: expiresAt || null
-            })
-            .eq('id', requestId)
-          
-          if (error) throw error
-
-          // Update local state
-          set((state) => {
-            const req = state.accessRequests.find(r => r.id === requestId)
-            if (req) {
-              req.status = approved ? 'APPROVED' : 'DENIED'
-              req.sharedCategories = categories || []
-              req.permissionType = permissionType || 'view'
-              req.expiresAt = expiresAt || null
-            }
-            state.isLoading = false
-          })
+          if (supabase) {
+            const { error: updateError } = await supabase
+              .from('access_requests')
+              .update({ 
+                status, 
+                shared_categories: approved ? categories : [],
+                patient_name: patientName 
+              })
+              .eq('id', requestId)
+            if (updateError) throw updateError
+          }
         } catch (err) {
           console.error('Supabase response sync failed:', err)
-          set((state) => { state.isLoading = false })
         }
       },
 

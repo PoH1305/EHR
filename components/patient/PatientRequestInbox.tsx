@@ -12,67 +12,28 @@ export function PatientRequestInbox() {
   const { accessRequests, loadAccessRequests, respondToAccessRequest, isLoading } = useConsentStore()
   const { healthId, patient } = useUserStore()
   const [selectedCats, setSelectedCats] = React.useState<Record<string, string[]>>({})
-  const [selectedPerms, setSelectedPerms] = React.useState<Record<string, 'view' | 'download'>>({})
-  const [selectedExpiries, setSelectedExpiries] = React.useState<Record<string, number>>({})
-  const [suggestedConfigs, setSuggestedConfigs] = React.useState<Record<string, any>>({})
-  const [isFetchingSuggestions, setIsFetchingSuggestions] = React.useState<Record<string, boolean>>({})
-
-  const fetchSuggestion = React.useCallback(async (reqId: string, role: string, reason: string) => {
-    if (suggestedConfigs[reqId] || isFetchingSuggestions[reqId]) return
-    
-    setIsFetchingSuggestions(prev => ({ ...prev, [reqId]: true }))
-    try {
-      const res = await fetch('/api/clinical/suggest-minimization', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, reason })
-      })
-      const data = await res.json()
-      if (data.suggestion) {
-        setSuggestedConfigs(prev => ({ ...prev, [reqId]: data.suggestion }))
-        
-        // Auto-apply suggestions
-        setSelectedCats(prev => ({ ...prev, [reqId]: data.suggestion.allowed_sections }))
-        setSelectedPerms(prev => ({ ...prev, [reqId]: data.suggestion.permission_type }))
-        setSelectedExpiries(prev => ({ ...prev, [reqId]: data.suggestion.time_duration_hours }))
-      }
-    } catch (err) {
-      console.error('[PatientRequestInbox] Fetch suggestion failed:', err)
-    } finally {
-      setIsFetchingSuggestions(prev => ({ ...prev, [reqId]: false }))
-    }
-  }, [suggestedConfigs, isFetchingSuggestions])
 
   useEffect(() => {
     const effectiveId = patient?.healthId || healthId
     if (effectiveId) {
+      console.log(`[PatientRequestInbox] Fetching requests for healthId: ${effectiveId}`)
       loadAccessRequests(effectiveId, false)
     }
   }, [healthId, patient?.healthId, loadAccessRequests])
 
-  // Trigger suggestions for new pending requests
-  useEffect(() => {
-    const pending = accessRequests.filter(r => r.status === 'PENDING')
-    pending.forEach(req => {
-      if (req.doctorRole && req.reason && !suggestedConfigs[req.id]) {
-        void fetchSuggestion(req.id, req.doctorRole, req.reason)
-      }
-    })
-  }, [accessRequests, fetchSuggestion, suggestedConfigs])
-
   const categories = [
-    { id: 'vital_signs', label: 'Vitals' },
-    { id: 'diagnosis_history', label: 'Conditions' },
+    { id: 'vitals', label: 'Vitals' },
+    { id: 'conditions', label: 'Conditions' },
     { id: 'medications', label: 'Medications' },
     { id: 'allergies', label: 'Allergies' },
-    { id: 'doctor_notes', label: 'Clinical Notes' },
-    { id: 'radiology_reports', label: 'Imaging' },
-    { id: 'lab_reports', label: 'Lab Reports' }
+    { id: 'clinicalNotes', label: 'Notes' },
+    { id: 'medicalImages', label: 'Images' },
+    { id: 'attachments', label: 'Reports' }
   ]
 
   const toggleCategory = (requestId: string, catId: string) => {
     setSelectedCats(prev => {
-      const current = prev[requestId] || []
+      const current = prev[requestId] || categories.map(c => c.id)
       const next = current.includes(catId)
         ? current.filter(c => c !== catId)
         : [...current, catId]
@@ -103,11 +64,7 @@ export function PatientRequestInbox() {
         <div className="space-y-3">
           <AnimatePresence>
             {pendingRequests.map((req) => {
-              const selected = selectedCats[req.id] || []
-              const permType = selectedPerms[req.id] || 'view'
-              const duration = selectedExpiries[req.id] || 24
-              const isSuggested = !!suggestedConfigs[req.id]
-              const isSyncing = isFetchingSuggestions[req.id]
+              const selected = selectedCats[req.id] || categories.map(c => c.id)
               
               return (
                 <motion.div
@@ -123,16 +80,8 @@ export function PatientRequestInbox() {
                           <Shield className="w-5 h-5 text-blue-400" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                             <h4 className="text-sm font-bold text-white tracking-tight">{req.doctorName}</h4>
-                             {isSuggested && (
-                               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30">
-                                 <Loader2 className={cn("w-2 h-2 text-blue-400", isSyncing && "animate-spin")} />
-                                 <span className="text-[7px] font-black text-blue-400 uppercase tracking-widest">AI Suggested</span>
-                               </div>
-                             )}
-                          </div>
-                          <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">{req.doctorRole || req.organization}</p>
+                          <h4 className="text-sm font-bold text-white tracking-tight">{req.doctorName}</h4>
+                          <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">{req.organization}</p>
                         </div>
                       </div>
                       
@@ -144,10 +93,7 @@ export function PatientRequestInbox() {
                           <X className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            const expiryStr = new Date(Date.now() + duration * 60 * 60 * 1000).toISOString()
-                            void respondToAccessRequest(req.id, true, selected, permType, expiryStr)
-                          }}
+                          onClick={() => void respondToAccessRequest(req.id, true, selected)}
                           className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center border border-green-500/30 hover:bg-green-500/30 transition-all text-green-500 shadow-lg shadow-green-500/10"
                         >
                           <Check className="w-5 h-5" />
@@ -164,64 +110,26 @@ export function PatientRequestInbox() {
                         </p>
                       </div>
                     )}
-
-                    {/* AI Configuration Engine */}
-                    <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
-                      {/* Permission & Expiry */}
-                       <div className="flex items-center justify-between gap-4">
-                          <div className="flex-1 space-y-2">
-                             <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Permission Level</label>
-                             <div className="flex p-0.5 rounded-lg bg-white/5 border border-white/5">
-                                <button 
-                                  onClick={() => setSelectedPerms(prev => ({ ...prev, [req.id]: 'view' }))}
-                                  className={cn("flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all", permType === 'view' ? "bg-blue-500/20 text-blue-400" : "text-white/20")}
-                                >
-                                  View Only
-                                </button>
-                                <button 
-                                  onClick={() => setSelectedPerms(prev => ({ ...prev, [req.id]: 'download' }))}
-                                  className={cn("flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all", permType === 'download' ? "bg-emerald-500/20 text-emerald-400" : "text-white/20")}
-                                >
-                                  Download
-                                </button>
-                             </div>
-                          </div>
-                          <div className="flex-1 space-y-2">
-                             <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Stay Logged In For</label>
-                             <select 
-                               value={duration}
-                               onChange={(e) => setSelectedExpiries(prev => ({ ...prev, [req.id]: parseInt(e.target.value) }))}
-                               className="w-full bg-white/5 border border-white/5 rounded-lg py-1.5 px-3 text-[10px] font-bold text-white/60 focus:outline-none"
-                             >
-                                <option value={1} className="bg-[#080D16]">1 Hour</option>
-                                <option value={12} className="bg-[#080D16]">12 Hours</option>
-                                <option value={24} className="bg-[#080D16]">24 Hours</option>
-                                <option value={72} className="bg-[#080D16]">72 Hours</option>
-                                <option value={168} className="bg-[#080D16]">1 Week</option>
-                             </select>
-                          </div>
+                    
+                    {/* Category Selection */}
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                       <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-3">Share categories:</p>
+                       <div className="flex flex-wrap gap-2">
+                          {categories.map(cat => (
+                            <button
+                              key={cat.id}
+                              onClick={() => toggleCategory(req.id, cat.id)}
+                              className={cn(
+                                "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border",
+                                selected.includes(cat.id)
+                                  ? "bg-blue-500/20 border-blue-500/30 text-blue-400"
+                                  : "bg-white/5 border-white/5 text-white/20"
+                              )}
+                            >
+                              {cat.label}
+                            </button>
+                          ))}
                        </div>
-
-                      {/* Category Selection */}
-                      <div className="space-y-3">
-                         <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Share categories:</p>
-                         <div className="flex flex-wrap gap-2">
-                            {categories.map(cat => (
-                              <button
-                                key={cat.id}
-                                onClick={() => toggleCategory(req.id, cat.id)}
-                                className={cn(
-                                  "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border",
-                                  selected.includes(cat.id)
-                                    ? "bg-blue-500/20 border-blue-500/30 text-blue-400"
-                                    : "bg-white/5 border-white/5 text-white/20"
-                                )}
-                              >
-                                {cat.label}
-                              </button>
-                            ))}
-                         </div>
-                      </div>
                     </div>
 
                     <div className="mt-4 pt-3 flex items-center justify-between opacity-30 italic">

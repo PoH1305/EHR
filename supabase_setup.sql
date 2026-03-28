@@ -32,10 +32,7 @@ CREATE TABLE public.access_requests (
   status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'DENIED')),
   patient_name TEXT,
   doctor_specialty TEXT,
-  doctor_role TEXT, -- New: AI-suggested or selected role
   reason TEXT,
-  permission_type TEXT DEFAULT 'view' CHECK (permission_type IN ('view', 'download')), -- New: View vs Download
-  expires_at TIMESTAMPTZ, -- New: Specific expiry for the request duration
   shared_categories TEXT[] DEFAULT '{}',
   metadata JSONB DEFAULT '{}'
 );

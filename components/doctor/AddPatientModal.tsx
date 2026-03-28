@@ -102,29 +102,10 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     }
   }, [isOpen])
 
-  const [reason, setReason] = useState('Routine Checkup')
-  const [doctorRole, setDoctorRole] = useState('General Physician')
+  const [reason, setReason] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([
     'vitals', 'conditions', 'medications', 'allergies', 'clinicalNotes', 'attachments'
   ])
-
-  const roles = [
-    'General Physician',
-    'Cardiologist',
-    'Neurologist',
-    'Radiologist',
-    'Orthopedic',
-    'Emergency Doctor'
-  ]
-
-  const reasons = [
-    'Routine Checkup',
-    'Emergency',
-    'Follow-up',
-    'Surgery Consultation',
-    'Medication Review',
-    'Lab Review'
-  ]
 
   const categories = [
     { id: 'vitals', label: 'Vitals', icon: Sparkles },
@@ -155,10 +136,9 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
       doctorProfile?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
       (doctorProfile as any)?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER, 
       'Clinical Health Network',
-      reason, 
+      reason, // New field
       foundPatient?.name || undefined,
-      selectedCategories,
-      doctorRole // New field
+      selectedCategories
     )
     
     setIsSubmitting(false)
@@ -272,28 +252,14 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                   </div>
                 )}
                 {foundPatient && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Your Role for this Request</label>
-                      <select
-                        value={doctorRole}
-                        onChange={(e) => setDoctorRole(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                      >
-                        {roles.map(r => <option key={r} value={r} className="bg-[#080D16] text-white py-2">{r}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Reason for Access</label>
-                      <select
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                      >
-                        {reasons.map(r => <option key={r} value={r} className="bg-[#080D16] text-white py-2">{r}</option>)}
-                      </select>
-                    </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Reason for Request</label>
+                    <textarea
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="e.g., Routine checkup, Follow-up consultation, Emergency review..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-[#1A3A8F] transition-all min-h-[80px] resize-none"
+                    />
                   </div>
                 )}
 

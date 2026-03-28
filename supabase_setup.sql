@@ -113,8 +113,8 @@ ALTER TABLE public.medical_records ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow anon read medical_records" ON public.medical_records;
 CREATE POLICY "Allow anon read medical_records" ON public.medical_records FOR SELECT TO anon USING (true);
 
-DROP POLICY IF EXISTS "Allow anon insert medical_records" ON public.medical_records;
-CREATE POLICY "Allow anon insert medical_records" ON public.medical_records FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow anon delete medical_records" ON public.medical_records;
+CREATE POLICY "Allow anon delete medical_records" ON public.medical_records FOR DELETE TO anon USING (true);
 
 -- 9. Atomic Append Function (Fixes doctor overwrite bug)
 CREATE OR REPLACE FUNCTION append_clinical_data(p_patient_id TEXT, p_key TEXT, p_value JSONB)

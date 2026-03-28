@@ -22,7 +22,8 @@ export async function POST(request: Request) {
       .eq('id', uid)
 
     if (profileError) {
-      console.warn('[DeleteAccount] Supabase Profile deletion warning:', profileError)
+      console.error('[DeleteAccount] Supabase Profile deletion failed:', profileError)
+      return NextResponse.json({ error: `Failed to delete Supabase profile: ${profileError.message}` }, { status: 500 })
     }
 
     // 2. Delete Permissions & Access Requests
@@ -46,7 +47,11 @@ export async function POST(request: Request) {
       .delete()
       .eq('user_id', uid)
 
-    if (auditError) console.warn('[DeleteAccount] Supabase Audit deletion warning:', auditError)
+    if (auditError) {
+      console.warn('[DeleteAccount] Supabase Audit deletion warning (likely RLS):', auditError)
+      // We don't hard-fail on audit log deletion as it might be restricted by policy, 
+      // but we log it for the developer.
+    }
 
     // 4. Delete from Firestore
     if (db_firestore) {

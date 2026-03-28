@@ -148,7 +148,7 @@ function DoctorAuthContent() {
             name: gUser.displayName || gUser.email?.split('@')[0] || 'Medical Practitioner',
             email: gUser.email || '',
             licenseNumber: 'PENDING',
-            specialty: 'General Practitioner' as DoctorSpecialty,
+            specialty: DoctorSpecialty.GENERAL_PRACTITIONER,
             isVerified: false,
             createdAt: new Date().toISOString(),
             lastActiveAt: new Date().toISOString()

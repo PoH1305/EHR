@@ -236,6 +236,7 @@ export const useUserStore = create<UserState & UserActions>()(
       setDoctor: (profile) => {
         set((state) => {
           state.doctor = profile
+          state.role = 'doctor' // Ensure role is set for correct cloud sync
         })
         void get().syncProfileToCloud()
       },
@@ -280,12 +281,22 @@ export const useUserStore = create<UserState & UserActions>()(
         try {
           const { supabase } = await import('@/lib/supabase')
           if (!supabase) return
+          
+          // Determine data and healthId based on role
+          const targetRole = role || (doctor ? 'doctor' : (patient ? 'patient' : null))
+          if (!targetRole) return
+
+          const syncData = targetRole === 'doctor' ? doctor : patient
+          const syncHealthId = targetRole === 'doctor' ? `DOC-${firebaseUid}` : patient?.healthId
+
+          if (!syncData) return
+
           const { error } = await supabase
             .from('profiles')
             .upsert({
               id: firebaseUid,
-              health_id: patient?.healthId || `DOC-${firebaseUid}`,
-              data: role === 'doctor' ? doctor : patient
+              health_id: syncHealthId,
+              data: syncData
             })
 
           if (error) throw error

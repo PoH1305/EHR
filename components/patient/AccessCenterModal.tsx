@@ -168,6 +168,15 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                             </div>
                           </div>
                           
+                          {req.reason && (
+                            <div className="p-3 rounded-2xl bg-white/5 border border-white/5 mt-2">
+                              <p className="text-[8px] font-black text-blue-400/60 uppercase tracking-[0.2em] mb-1 relative z-10">Clinical Intent</p>
+                              <p className="text-[10px] text-white/70 leading-relaxed font-medium relative z-10 italic truncate">
+                                "{req.reason}"
+                              </p>
+                            </div>
+                          )}
+                          
                           <div className="flex gap-2 shrink-0">
                              <button 
                                onClick={() => respondToAccessRequest(req.id, false)}
@@ -236,6 +245,14 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              You are about to establish a clinical link with <span className="text-white">Dr. {acceptingRequest.doctorName}</span>. 
                              This provider will be able to access your records within the scope you define.
                            </p>
+                           {acceptingRequest.reason && (
+                              <div className="p-4 rounded-2xl bg-white/5 border border-white/5 mt-4">
+                                <p className="text-[9px] font-black text-blue-400/60 uppercase tracking-[0.2em] mb-1.5 relative z-10">Stated Intent</p>
+                                <p className="text-sm text-white/90 leading-relaxed font-medium relative z-10 italic">
+                                  "{acceptingRequest.reason}"
+                                </p>
+                              </div>
+                            )}
                          </div>
                           <div className="p-6 rounded-[32px] bg-blue-500/5 border border-blue-500/10 flex items-center gap-4">
                             <ShieldAlert className="w-8 h-8 text-blue-400" />

@@ -11,7 +11,6 @@ import { HealthIdentityCard } from '@/components/HealthIdentityCard'
 import { ConsentTokenCard } from '@/components/ConsentTokenCard'
 import { AISummaryModal } from '@/components/AISummaryModal'
 import type { ConsentTokenRequest, ConsentToken } from '@/lib/types'
-import { EmergencyAccessNotification } from '@/components/patient/EmergencyAccessNotification'
 import { AccessCenterModal } from '@/components/patient/AccessCenterModal'
 
 import dynamic from 'next/dynamic'
@@ -73,16 +72,9 @@ export default function DashboardPage() {
     await generateToken(request)
   }
 
-  const latestEmergency = auditEvents.find(e => e.type === 'EMERGENCY_ACCESS_TRIGGERED')
-
   return (
     <div className="space-y-6">
-      {latestEmergency && (
-        <EmergencyAccessNotification 
-          date={new Date(latestEmergency.timestamp).toLocaleDateString()}
-          time={new Date(latestEmergency.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        />
-      )}
+
 
 
 

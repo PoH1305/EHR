@@ -40,8 +40,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
     loadPatientMetadata,
     clearClinicalState,
     selectedPatientProfile,
-    isLoading,
-    isEmergencyMode
+    isLoading
   } = useClinicalStore()
   const [showPrescribe, setShowPrescribe] = useState(false)
   const [showNote, setShowNote] = useState(false)
@@ -75,128 +74,6 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
            <div className="text-center space-y-2">
               <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">Synchronizing Clinical Node</p>
               <p className="text-[8px] text-white/10 uppercase tracking-widest">Waiting for decentralized handshake...</p>
-           </div>
-        </div>
-      </div>
-    )
-  }
-  if (isEmergencyMode) {
-    return (
-      <div className="animate-in fade-in duration-700 pb-24 space-y-8">
-        {/* Tactical Header */}
-        <div className="flex items-center justify-between sticky top-0 z-50 bg-red-950/40 backdrop-blur-xl py-4 -mx-4 px-4 border-b border-red-500/20">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/20 animate-pulse">
-              <AlertCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-white uppercase tracking-tighter">Emergency Tactical View</h1>
-              <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest">Immediate Life-Critical Access</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={onBack}
-              className="px-6 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 active:scale-95 transition-all"
-            >
-              Exit Tactical
-            </button>
-          </div>
-        </div>
-
-        {/* Critical Patient Info */}
-        <div className="bg-red-950/10 border border-red-500/20 p-8 rounded-[40px] flex items-center gap-8 relative overflow-hidden">
-           <div className="w-24 h-24 rounded-[32px] bg-red-600 flex items-center justify-center text-3xl font-black text-white shadow-2xl">
-              {selectedPatientProfile?.name?.[0] || 'P'}
-           </div>
-           <div>
-              <h2 className="text-4xl font-black text-white tracking-tighter" data-privacy="true">{selectedPatientProfile?.name || 'Patient'}</h2>
-              <div className="flex items-center gap-4 mt-2">
-                 <span className="text-xs font-bold text-red-500 uppercase tracking-widest">
-                   {selectedPatientProfile?.age || '??'}{selectedPatientProfile?.gender?.[0]?.toUpperCase() || ''} • {selectedPatientProfile?.bloodGroup || 'UNK'} • {selectedPatientProfile?.location || 'Emergency'}
-                 </span>
-                 <div className="w-1 h-1 rounded-full bg-red-500 opacity-20" />
-                 <span className="text-xs font-mono text-red-500/60 uppercase">Protocol 9-Alpha Active</span>
-              </div>
-           </div>
-           <div className="absolute top-0 right-0 p-8">
-              <div className="flex flex-col items-end">
-                 <span className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Guardian Pulse</span>
-                 <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-xs font-bold text-white uppercase tracking-widest">Secure Access</span>
-                 </div>
-              </div>
-           </div>
-        </div>
-
-        {/* Life-Saving Intel Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-           {/* Focus 1: Critical Vitals */}
-           <div className="md:col-span-8 space-y-6">
-              <h3 className="text-[10px] uppercase tracking-[0.4em] font-bold text-red-500/40 ml-1">Live Telemetry</h3>
-              <div className="grid grid-cols-2 gap-4">
-                 {vitals.map((v) => (
-                    <div key={v.type} className="bg-red-500/5 border border-red-500/10 p-8 rounded-[36px] relative overflow-hidden group">
-                       <p className="text-[10px] uppercase font-bold text-red-500/40 tracking-widest mb-2">{v.type}</p>
-                       <div className="flex items-baseline gap-2">
-                          <span className="text-5xl font-black text-white tracking-tighter">{v.latestValue}</span>
-                          <span className="text-xs font-bold text-red-500/40">{v.unit}</span>
-                       </div>
-                       <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                          <TrendingUp className="w-12 h-12 text-red-500" />
-                       </div>
-                    </div>
-                 ))}
-              </div>
-           </div>
-
-           {/* Focus 2: Blockers (Allergies/Medications) */}
-           <div className="md:col-span-4 space-y-6">
-              <h3 className="text-[10px] uppercase tracking-[0.4em] font-bold text-red-500/40 ml-1">Critical Blockers</h3>
-              <div className="space-y-4">
-                 <div className="bg-red-600/10 border border-red-600/20 p-6 rounded-[32px] space-y-3 animate-pulse">
-                    <div className="flex items-center gap-2">
-                       <AlertCircle className="w-4 h-4 text-red-600" />
-                       <span className="text-xs font-black text-red-600 uppercase tracking-widest">Severe Allergies</span>
-                    </div>
-                    <p className="text-lg font-black text-white tracking-tight">Penicillin, Peanuts</p>
-                 </div>
-
-                 <div className="bg-white/5 border border-white/10 p-6 rounded-[32px] space-y-3">
-                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Active Medications</span>
-                    <ul className="space-y-2">
-                       <li className="text-xs font-medium text-white/60 flex items-center gap-2">
-                          <div className="w-1 h-1 rounded-full bg-red-500" />
-                          Telmisartan 40mg
-                       </li>
-                       <li className="text-xs font-medium text-white/60 flex items-center gap-2">
-                          <div className="w-1 h-1 rounded-full bg-red-500" />
-                          Metformin 500mg
-                       </li>
-                    </ul>
-                 </div>
-              </div>
-           </div>
-        </div>
-
-        {/* Focused Clinical Context */}
-        <div className="space-y-6">
-           <h3 className="text-[10px] uppercase tracking-[0.4em] font-bold text-red-500/40 ml-1">Recent Context</h3>
-           <div className="bg-[#111827]/40 border border-white/[0.05] p-8 rounded-[40px] relative">
-              <div className="flex items-start gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5 text-white/40" />
-                 </div>
-                 <div className="flex-1">
-                    <p className="text-sm font-medium text-white/80 leading-relaxed italic">
-                       &quot;Patient has a history of hypertensive crisis. Avoid NSAIDs if possible. Last discharge summary notes significant renal sensitivity.&quot;
-                    </p>
-                    <div className="mt-4 flex items-center gap-3">
-                       <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Source: Discharge Summary (2024)</span>
-                    </div>
-                 </div>
-              </div>
            </div>
         </div>
       </div>

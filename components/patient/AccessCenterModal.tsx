@@ -54,8 +54,18 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
   const [acceptStep, setAcceptStep] = useState(0)
   const [acceptTtl, setAcceptTtl] = useState(3600)
   const [acceptCats, setAcceptCats] = useState<string[]>([])
+  const [acceptMonths, setAcceptMonths] = useState<number | null>(null)
+  const [allowSensitive, setAllowSensitive] = useState<string[]>([])
   const [acceptPurpose, setAcceptPurpose] = useState('Treatment')
   const [isAccepting, setIsAccepting] = useState(false)
+
+  // Initialize defaults based on specialty
+  useEffect(() => {
+    if (acceptingRequest) {
+      const config = SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]
+      setAcceptMonths(config?.maxHistoryMonths ?? null)
+    }
+  }, [acceptingRequest])
 
   const categories = [
     { id: 'vitals', label: 'Vitals' },
@@ -261,110 +271,96 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                           </span>
                         </button>
                          <div className="flex gap-1 shrink-0">
-                            {[0, 1, 2, 3, 4, 5, 6].map(s => (
+                            {[0, 1, 2, 3, 4, 5].map(s => (
                               <div key={s} className={cn(
-                                "w-5 h-1 rounded-full transition-all duration-500",
+                                "w-6 h-1 rounded-full transition-all duration-500",
                                 acceptStep >= s ? "bg-emerald-500" : "bg-white/5"
                               )} />
                             ))}
                          </div>
                      </div>
 
-                      {acceptStep === 0 && (
+                       {acceptStep === 0 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                           <div className="text-center space-y-1 py-4">
+                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 1/6</p>
                             <h3 className="text-2xl font-bold text-white tracking-tight">Establish clinical link</h3>
-                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 1/7</p>
                           </div>
 
-                          {/* MAIN DOCTOR IDENTITY CARD */}
                           {(() => {
-                            const trust = getTrustData(acceptingRequest.doctorName, acceptingRequest.metadata)
                             const bio = getDoctorBio(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
-                            const regId = (acceptingRequest.metadata as any)?.regId || `MCI-2019-0${Math.floor(Math.random() * 90000) + 10000}`
+                            const regId = (acceptingRequest.metadata as any)?.regId || `MCI-2019-04821`
                             
                             return (
-                              <div className="space-y-4 text-center">
-                                <div className="p-8 rounded-[32px] bg-[#0a120e] border border-emerald-500/20 relative overflow-hidden transition-all duration-1000">
-                                  <div className="flex flex-col items-center relative z-10">
-                                    {/* Avatar */}
-                                    <div className="w-20 h-20 rounded-full bg-[#13271d] border border-emerald-500/20 flex items-center justify-center mb-6">
-                                      <User className="w-8 h-8 text-emerald-500/70" />
+                              <div className="space-y-4">
+                                <div className="p-8 rounded-[40px] bg-[#0a120e] border border-emerald-500/20 relative overflow-hidden text-left">
+                                  <div className="absolute top-8 right-8 text-right">
+                                     <div className="text-white text-3xl font-bold tracking-tighter">94</div>
+                                     <div className="text-[9px] font-black text-emerald-500 uppercase tracking-widest opacity-80">TRUST</div>
+                                  </div>
+
+                                  <div className="flex items-center gap-6 mb-8">
+                                    <div className="w-16 h-16 rounded-full bg-[#13271d] border border-emerald-500/20 flex items-center justify-center">
+                                      <User className="w-7 h-7 text-emerald-500" />
                                     </div>
-
-                                    <h4 className="text-2xl font-bold text-white tracking-tight mb-0.5">
-                                      Dr. {acceptingRequest.doctorName}
-                                    </h4>
-                                    <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest mb-1.5 whitespace-nowrap">
-                                      {acceptingRequest.doctorSpecialty}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-6 whitespace-nowrap">
-                                      {acceptingRequest.organization} · {regId}
-                                    </p>
-
-                                    <div className="w-full h-px bg-white/5 mb-6" />
-
-                                    {/* ABOUT */}
-                                    <div className="w-full text-left space-y-2 mb-6">
-                                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">ABOUT</p>
-                                      <p className="text-[13px] text-slate-300 leading-relaxed font-semibold italic opacity-90">
-                                        "{bio}"
+                                    <div>
+                                      <h4 className="text-xl font-bold text-white tracking-tight border-none outline-none">
+                                        Dr. {acceptingRequest.doctorName}
+                                      </h4>
+                                      <p className="text-[11px] font-bold text-emerald-400/80 uppercase tracking-wider">
+                                        {acceptingRequest.doctorSpecialty} · {acceptingRequest.organization}
                                       </p>
                                     </div>
+                                  </div>
 
-                                    <div className="w-full h-px bg-white/5 mb-6" />
+                                  <div className="w-full h-[2px] bg-white/5 mb-8 relative">
+                                     <div className="absolute top-0 left-0 h-full w-[85%] bg-emerald-500/20" />
+                                  </div>
 
-                                    {/* CLINICAL INTENT */}
-                                    <div className="w-full text-left space-y-2 mb-8">
-                                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">CLINICAL INTENT</p>
-                                      <p className="text-[13px] text-emerald-400/90 font-bold">
-                                        {acceptingRequest.reason || "General cardiac review and consultation"}
-                                      </p>
+                                  <p className="text-[13px] text-emerald-400/90 leading-relaxed font-bold italic mb-10 pr-6">
+                                    "{bio}"
+                                  </p>
+
+                                  <div className="grid grid-cols-2 gap-y-6 gap-x-12 mb-10">
+                                    <div className="space-y-1">
+                                      <p className="text-[9px] font-black text-emerald-500/40 uppercase tracking-widest">LICENSE</p>
+                                      <p className="text-sm font-bold text-emerald-100">{regId}</p>
                                     </div>
-
-                                    {/* TRUST SCORE UI */}
-                                    <div className="w-full space-y-4">
-                                      <div className="flex items-baseline justify-center gap-1.5">
-                                        <span className="text-5xl font-bold text-white tracking-tighter">{trust.score}</span>
-                                        <span className="text-sm font-bold text-emerald-500/50">/100 trust score</span>
-                                      </div>
-                                      
-                                      {/* PROGRESS BAR */}
-                                      <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div 
-                                          className="h-full bg-emerald-400 transition-all duration-1000 ease-out"
-                                          style={{ width: `${trust.score}%` }}
-                                        />
-                                      </div>
+                                    <div className="space-y-1">
+                                      <p className="text-[9px] font-black text-emerald-500/40 uppercase tracking-widest">NETWORK</p>
+                                      <p className="text-sm font-bold text-emerald-100">Clinical Health</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <p className="text-[9px] font-black text-emerald-500/40 uppercase tracking-widest">INTENT</p>
+                                      <p className="text-sm font-bold text-emerald-100">{acceptingRequest.reason || "Clinical Review"}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <p className="text-[9px] font-black text-emerald-500/40 uppercase tracking-widest">STATUS</p>
+                                      <p className="text-sm font-bold text-emerald-100 flex items-center gap-1.5">Trusted link <Check className="w-3.5 h-3.5" /></p>
                                     </div>
                                   </div>
-                                </div>
 
-                                {/* SECONDARY VAULT PROTECTION CARD */}
-                                <div className="p-5 rounded-[24px] bg-[#0a120e] border border-white/5 flex items-center gap-4">
-                                  <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                                    <Shield className="w-6 h-6 text-emerald-500" />
-                                  </div>
-                                  <div className="text-left">
-                                    <p className="text-[11px] font-black text-white uppercase tracking-widest">VAULT PROTECTION ACTIVE</p>
-                                    <p className="text-[10px] text-emerald-400/60 font-bold tracking-tight">
-                                      4-layer data minimization will apply automatically
+                                  <div className="p-4 py-5 rounded-[24px] bg-emerald-500/10 border border-emerald-500/10 flex items-center gap-4">
+                                    <Shield className="w-5 h-5 text-emerald-500/60" />
+                                    <p className="text-[11px] text-emerald-400 font-bold leading-tight">
+                                      4-layer data minimization applies automatically on access
                                     </p>
                                   </div>
                                 </div>
                               </div>
                             )
                           })()}
-                                                    <div className="flex flex-col gap-4 mt-4">
+                          
+                          <div className="flex flex-col gap-4 mt-6">
                             <button 
                               onClick={() => setAcceptStep(1)}
-                              className="w-full py-5 rounded-[20px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2 shadow-xl"
+                              className="w-full py-5 rounded-[24px] bg-[#54c392] text-black font-black uppercase tracking-widest text-xs hover:bg-[#46a87d] transition-all flex items-center justify-center gap-2 shadow-xl"
                             >
                                Configure access scope <ChevronRight className="w-4 h-4" />
                             </button>
                             <button 
                               onClick={() => respondToAccessRequest(acceptingRequest.id, false).then(() => setAcceptingRequest(null))}
-                              className="w-full py-2 text-[#e55039] text-[11px] font-black uppercase tracking-[0.2em] hover:opacity-70 transition-all"
+                              className="w-full py-2 text-[#e55039] text-[11px] font-bold uppercase tracking-[0.1em] transition-all"
                             >
                               Decline & block provider
                             </button>
@@ -376,7 +372,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                           <div className="text-center space-y-1 py-4">
                              <h3 className="text-xl font-bold text-white tracking-tight">Access Purpose & Duration</h3>
-                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 2/7</p>
+                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 2/6</p>
                           </div>
                          
                          <div className="space-y-3">
@@ -428,22 +424,32 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              <div className="w-16 h-16 rounded-[24px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                                <Clock className="w-8 h-8 text-emerald-500" />
                              </div>
-                             <h3 className="text-xl font-bold text-white tracking-tight">Temporal Security Pulse</h3>
-                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em]">VERIFICATION · PHASE 3/7</p>
+                             <h3 className="text-xl font-bold text-white tracking-tight">Temporal Security Window</h3>
+                             <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-[0.2em]">VERIFICATION · PHASE 3/6</p>
                            </div>
 
                            <div className="p-8 rounded-[32px] bg-[#0a120e] border border-emerald-500/20 text-center relative overflow-hidden">
-                             <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full" />
-                             <p className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-widest">Active Verification Window</p>
-                             <div className="flex items-center justify-center gap-3 mb-6">
-                               <div className="px-5 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                                 <span className="text-lg font-black text-white">{SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]?.maxHistoryMonths || '∞'}</span>
-                                 <span className="text-[10px] font-bold text-emerald-500 ml-2 uppercase">Months</span>
-                               </div>
+                             <p className="text-xs text-slate-400 font-medium mb-8 uppercase tracking-widest">Select history limit</p>
+                             
+                             <div className="grid grid-cols-2 gap-3 mb-8">
+                               {[6, 12, 24, 48, null].map(m => (
+                                 <button
+                                   key={m === null ? 'all' : m}
+                                   onClick={() => setAcceptMonths(m)}
+                                   className={cn(
+                                     "py-4 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1",
+                                     acceptMonths === m ? "bg-emerald-500 border-emerald-500 text-black" : "bg-white/5 border-transparent text-slate-500"
+                                   )}
+                                 >
+                                    <span className="text-lg font-black">{m === null ? '∞' : m}</span>
+                                    <span className="text-[8px] font-black uppercase tracking-widest">{m === null ? 'Unlimited' : 'Months'}</span>
+                                 </button>
+                               ))}
                              </div>
+
                              <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
-                               Only records from the last **{SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]?.maxHistoryMonths || 'unlimited'} months** will be visible to the provider. 
-                               Stale clinical data is automatically shielded.
+                               Only records from the last **{acceptMonths || 'unlimited'} months** will be visible. 
+                               Stale clinical data is automatically shielded from discovery.
                              </p>
                            </div>
 
@@ -451,7 +457,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              onClick={() => setAcceptStep(3)}
                              className="w-full py-5 rounded-[20px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
                            >
-                              Next Layer: Semantic Lock <ChevronRight className="w-4 h-4" />
+                              Next Layer: Privacy Shield <ChevronRight className="w-4 h-4" />
                            </button>
                         </div>
                       )}
@@ -459,26 +465,43 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                       {acceptStep === 3 && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                            <div className="text-center space-y-2">
-                             <div className="w-16 h-16 rounded-[24px] bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-4">
-                               <Activity className="w-8 h-8 text-blue-500" />
+                             <div className="w-16 h-16 rounded-[24px] bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+                               <ShieldAlert className="w-8 h-8 text-red-500" />
                              </div>
-                             <h3 className="text-xl font-bold text-white tracking-tight">Semantic Context Lock</h3>
-                             <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.2em]">VERIFICATION · PHASE 4/7</p>
+                             <h3 className="text-xl font-bold text-white tracking-tight">Sensitivity Filter</h3>
+                             <p className="text-[10px] text-red-400 font-black uppercase tracking-[0.2em]">VERIFICATION · PHASE 4/6</p>
                            </div>
 
-                           <div className="p-8 rounded-[32px] bg-[#0a120e] border border-blue-500/20 text-center relative overflow-hidden">
-                             <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full" />
-                             <p className="text-xs text-slate-400 font-medium mb-4 uppercase tracking-widest">Enforced Specialty Keywords</p>
-                             <div className="flex flex-wrap justify-center gap-2 mb-6">
-                               {SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]?.allowedKeywords.slice(0, 8).map(k => (
-                                 <span key={k} className="px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/10 text-[9px] font-black text-blue-400 uppercase tracking-tighter">
-                                   {k}
-                                 </span>
-                               ))}
+                           <div className="p-8 rounded-[32px] bg-[#0a120e] border border-red-500/20 text-center relative overflow-hidden">
+                             <p className="text-xs text-slate-400 font-medium mb-6 uppercase tracking-widest">Unblock Sensitive Domains</p>
+                             <div className="grid grid-cols-3 gap-3 mb-8">
+                               {[
+                                 { id: 'psychiatric', label: 'Psychiatric' },
+                                 { id: 'genetic', label: 'Genetic' },
+                                 { id: 'reproductive', label: 'Reproductive' }
+                               ].map(d => {
+                                 const isAllowed = allowSensitive.includes(d.id)
+                                 return (
+                                   <button 
+                                     key={d.id} 
+                                     onClick={() => setAllowSensitive(prev => isAllowed ? prev.filter(x => x !== d.id) : [...prev, d.id])}
+                                     className="flex flex-col items-center gap-3 group"
+                                   >
+                                     <div className={cn(
+                                       "w-14 h-14 rounded-2xl border flex items-center justify-center transition-all",
+                                       isAllowed ? "bg-emerald-500 border-emerald-500" : "bg-red-500/10 border-red-500/20"
+                                     )}>
+                                       <Shield className={cn("w-6 h-6", isAllowed ? "text-black" : "text-red-500/60")} />
+                                     </div>
+                                     <span className={cn("text-[9px] font-black uppercase tracking-tighter transition-colors", isAllowed ? "text-emerald-400" : "text-slate-500")}>
+                                       {d.label}
+                                     </span>
+                                   </button>
+                                 )
+                               })}
                              </div>
                              <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
-                               Records without these clinical markers will be **redacted automatically**. 
-                               This ensures Dr. {acceptingRequest.doctorName} only sees relevant conditions.
+                               These domains are **locked by default**. Toggling them ON allows Dr. {acceptingRequest.doctorName} to view relevant sensitive records.
                              </p>
                            </div>
 
@@ -486,170 +509,140 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              onClick={() => setAcceptStep(4)}
                              className="w-full py-5 rounded-[20px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
                            >
-                              Next Layer: Privacy Shield <ChevronRight className="w-4 h-4" />
-                           </button>
-                        </div>
-                      )}
-
-                      {acceptStep === 4 && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                           <div className="text-center space-y-2">
-                             <div className="w-16 h-16 rounded-[24px] bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
-                               <ShieldAlert className="w-8 h-8 text-red-500" />
-                             </div>
-                             <h3 className="text-xl font-bold text-white tracking-tight">Automated Sensitivity Shield</h3>
-                             <p className="text-[10px] text-red-400 font-black uppercase tracking-[0.2em]">VERIFICATION · PHASE 5/7</p>
-                           </div>
-
-                           <div className="p-8 rounded-[32px] bg-[#0a120e] border border-red-500/20 text-center relative overflow-hidden">
-                             <div className="absolute -top-12 -left-12 w-32 h-32 bg-red-500/5 blur-3xl rounded-full" />
-                             <p className="text-xs text-slate-400 font-medium mb-6 uppercase tracking-widest">Hard-Locked Domains</p>
-                             <div className="grid grid-cols-3 gap-3 mb-8">
-                               {['Psychiatric', 'Genetic', 'Reproductive'].map(d => (
-                                 <div key={d} className="flex flex-col items-center gap-3">
-                                   <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                                     <Shield className="w-5 h-5 text-red-500/60" />
-                                   </div>
-                                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">{d}</span>
-                                 </div>
-                               ))}
-                             </div>
-                             <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
-                               These sensitive domains are **automatically blocked** across all clinical nodes. 
-                               Access can only be granted via explicit patient bypass.
-                             </p>
-                           </div>
-
-                           <button 
-                             onClick={() => setAcceptStep(5)}
-                             className="w-full py-5 rounded-[20px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-                           >
                               Select Resource Scope <ChevronRight className="w-4 h-4" />
                            </button>
                         </div>
                       )}
 
-                      {acceptStep === 5 && (
+                      {acceptStep === 4 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                           <div className="text-center space-y-1 py-4">
                             <h3 className="text-2xl font-bold text-white tracking-tight">Resource Scope</h3>
-                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 6/7</p>
+                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 5/6</p>
                           </div>
+ 
+                          <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
+                             <Sparkles className="w-5 h-5 text-blue-400" />
+                             <div className="flex-1">
+                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">AI Governance Active</p>
+                                <p className="text-[11px] text-white/60 leading-tight">Suggested scope for {acceptingRequest.doctorSpecialty || 'General Practitioner'} utility</p>
+                             </div>
+                          </div>
+ 
+                          <div className="grid grid-cols-2 gap-2">
+                            {categories.map(cat => {
+                              const isRecommended = getRecommendedCategories(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER).includes(cat.id)
+                              const isSelected = acceptCats.includes(cat.id)
+                              return (
+                                <button
+                                  key={cat.id}
+                                  onClick={() => setAcceptCats(prev => isSelected ? prev.filter(c => c !== cat.id) : [...prev, cat.id])}
+                                  className={cn(
+                                    "p-4 rounded-2xl border transition-all flex flex-col justify-between h-24 text-left relative overflow-hidden",
+                                    isSelected ? "bg-[#54c392]/20 border-[#54c392]/40 text-[#54c392]" : "bg-white/5 border-transparent text-slate-700"
+                                  )}
+                                >
+                                  <span className="text-xs font-bold uppercase tracking-widest relative z-10">{cat.label}</span>
+                                  {!isSelected && (
+                                    <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-red-500/10 text-red-500/50 w-fit">Blocked</span>
+                                  )}
+                                  {isRecommended && isSelected && (
+                                    <Sparkles className="w-4 h-4 text-emerald-400 absolute bottom-3 right-3 opacity-40" />
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
+ 
+                          <button 
+                            onClick={() => setAcceptStep(5)}
+                            disabled={acceptCats.length === 0}
+                            className="w-full py-5 rounded-[24px] bg-white text-black font-black uppercase tracking-widest text-xs mt-4 hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                          >
+                             Final Review <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+ 
+                      {acceptStep === 5 && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                          <div className="space-y-2 text-center py-4">
+                             <div className="w-16 h-16 rounded-3xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+                                <Shield className="w-8 h-8 text-green-500" />
+                             </div>
+                             <h3 className="text-2xl font-black text-white tracking-tighter">Confirm Access</h3>
+                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 6/6</p>
+                          </div>
+ 
+                          <div className="space-y-4">
+                             <div className="p-8 rounded-[40px] bg-[#0a120e] border border-white/5 space-y-6">
+                                <div className="flex justify-between items-center text-xs">
+                                   <span className="text-slate-500 font-bold uppercase tracking-widest">Recipient</span>
+                                   <span className="text-white font-bold">Dr. {acceptingRequest.doctorName}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                   <span className="text-slate-500 font-bold uppercase tracking-widest">Timeline</span>
+                                   <span className="text-emerald-400 font-bold">{acceptMonths === null ? 'All Records' : `Last ${acceptMonths} Months`}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                   <span className="text-slate-500 font-bold uppercase tracking-widest">Special Protection</span>
+                                   <span className="text-blue-400 font-bold">{allowSensitive.length > 0 ? `${allowSensitive.length} Overrides Active` : 'Shielded'}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                   <span className="text-slate-500 font-bold uppercase tracking-widest">Purpose</span>
+                                   <span className="text-blue-400 font-bold">{acceptPurpose}</span>
+                                </div>
 
-                         <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
-                            <Sparkles className="w-5 h-5 text-blue-400" />
-                            <div className="flex-1">
-                               <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">AI Governance Active</p>
-                               <p className="text-[11px] text-white/60 leading-tight">Suggested scope for {acceptingRequest.doctorSpecialty || 'General Practitioner'} utility</p>
-                            </div>
-                         </div>
+                                <div className="w-full h-px bg-white/5" />
 
-                         <div className="grid grid-cols-2 gap-2">
-                           {categories.map(cat => {
-                             const isRecommended = getRecommendedCategories(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER).includes(cat.id)
-                             const isSelected = acceptCats.includes(cat.id)
-                             return (
-                               <button
-                                 key={cat.id}
-                                 onClick={() => setAcceptCats(prev => isSelected ? prev.filter(c => c !== cat.id) : [...prev, cat.id])}
-                                 className={cn(
-                                   "p-4 rounded-2xl border transition-all flex flex-col justify-between h-24 text-left relative overflow-hidden",
-                                   isSelected ? "bg-blue-500/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-transparent text-slate-700"
-                                 )}
-                               >
-                                 <span className="text-xs font-bold uppercase tracking-widest relative z-10">{cat.label}</span>
-                                 {!isSelected && (
-                                   <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-red-500/10 text-red-500/50 w-fit">Blocked</span>
-                                 )}
-                                 {isRecommended && isSelected && (
-                                   <Sparkles className="w-4 h-4 text-blue-400 absolute bottom-3 right-3 opacity-40" />
-                                 )}
-                               </button>
-                             )
-                           })}
-                         </div>
-
-                         <button 
-                           onClick={() => setAcceptStep(6)}
-                           disabled={acceptCats.length === 0}
-                           className="w-full py-5 rounded-[24px] bg-white text-black font-black uppercase tracking-widest text-xs mt-4 hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
-                         >
-                            Final Review <ChevronRight className="w-4 h-4" />
-                         </button>
-                       </div>
-                     )}
-
-                     {acceptStep === 6 && (
-                       <div className="space-y-8">
-                         <div className="space-y-2 text-center py-4">
-                            <div className="w-16 h-16 rounded-3xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
-                               <Shield className="w-8 h-8 text-green-500" />
-                            </div>
-                            <h3 className="text-2xl font-black text-white tracking-tighter">Confirm Access</h3>
-                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 7/7</p>
-                         </div>
-
-                         <div className="space-y-4">
-                            <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 space-y-4">
-                               <div className="flex justify-between items-center text-xs">
-                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Recipient</span>
-                                  <span className="text-white font-bold">Dr. {acceptingRequest.doctorName}</span>
-                               </div>
-                               <div className="flex justify-between items-center text-xs">
-                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Duration</span>
-                                  <span className="text-blue-400 font-bold">{TTL_OPTIONS.find(o => o.seconds === acceptTtl)?.label}</span>
-                               </div>
-                               <div className="flex justify-between items-center text-xs">
-                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Purpose</span>
-                                  <span className="text-blue-400 font-bold">{acceptPurpose}</span>
-                               </div>
-                               <div className="flex justify-between items-start text-xs">
-                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Scope</span>
-                                  <div className="flex flex-wrap gap-1.5 justify-end max-w-[60%]">
-                                     {acceptCats.map(cat => (
-                                       <span key={cat} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase">{cat}</span>
-                                     ))}
-                                  </div>
-                               </div>
-                            </div>
-                         </div>
-
-                         <button 
-                           onClick={async () => {
-                             if (!acceptingRequest) return
-                             setIsAccepting(true)
-                             
-                             try {
-                               await generateToken({
-                                 patientId: acceptingRequest.patientId,
-                                 recipientId: acceptingRequest.doctorId,
-                                 recipientName: acceptingRequest.doctorName,
-                                 specialty: acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER,
-                                 ttlSeconds: acceptTtl,
-                                 allowedCategories: acceptCats,
-                                 allowedFiles: acceptingRequest.metadata?.fileId ? [acceptingRequest.metadata.fileId] : [],
-                                 patientName: patient?.name || 'Authorized Patient',
-                                 purpose: acceptPurpose
-                               })
-
-                               await respondToAccessRequest(acceptingRequest.id, true, acceptCats)
-                               
-                               setAcceptingRequest(null)
-                               setActiveTab('active')
-                             } catch (err) {
-                               console.error('Handshake failed:', err)
-                             } finally {
-                               setIsAccepting(false)
-                             }
-                           }}
-                           disabled={isAccepting || isGenerating}
-                           className="w-full py-6 rounded-[32px] bg-[#5B8DEF] text-white font-black uppercase tracking-widest text-xs hover:bg-[#4A7BD9] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 disabled:opacity-50"
-                         >
-                            {isAccepting ? 'Synchronizing Node...' : 'Grant Access & Link Node'} 
-                            {!isAccepting && <Check className="w-5 h-5" />}
-                         </button>
-                       </div>
-                     )}
+                                <div className="flex flex-col gap-3 text-xs">
+                                   <span className="text-slate-500 font-bold uppercase tracking-widest">Unblocked Scope</span>
+                                   <div className="flex flex-wrap gap-1.5 justify-start">
+                                      {[...acceptCats, ...allowSensitive].map(cat => (
+                                        <span key={cat} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase">{cat}</span>
+                                      ))}
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
+ 
+                          <button 
+                            onClick={async () => {
+                              if (!acceptingRequest) return
+                              setIsAccepting(true)
+                              
+                              try {
+                                await generateToken({
+                                  patientId: acceptingRequest.patientId,
+                                  recipientId: acceptingRequest.doctorId,
+                                  recipientName: acceptingRequest.doctorName,
+                                  specialty: acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER,
+                                  ttlSeconds: acceptTtl,
+                                  allowedCategories: [...acceptCats, ...allowSensitive],
+                                  allowedFiles: acceptingRequest.metadata?.fileId ? [acceptingRequest.metadata.fileId] : [],
+                                  patientName: patient?.name || 'Authorized Patient',
+                                  purpose: acceptPurpose,
+                                  maxHistoryMonths: acceptMonths
+                                })
+ 
+                                await respondToAccessRequest(acceptingRequest.id, true, [...acceptCats, ...allowSensitive])
+                                
+                                setAcceptingRequest(null)
+                                setActiveTab('active')
+                              } catch (err) {
+                                console.error('Handshake failed:', err)
+                              } finally {
+                                setIsAccepting(false)
+                              }
+                            }}
+                            disabled={isAccepting || isGenerating}
+                            className="w-full py-6 rounded-[32px] bg-[#54c392] text-black font-black uppercase tracking-widest text-xs hover:bg-[#46a87d] transition-all shadow-xl shadow-emerald-500/10 flex items-center justify-center gap-3 disabled:opacity-50"
+                          >
+                             {isAccepting ? 'Synchronizing Node...' : 'Grant Access & Link Node'} 
+                             {!isAccepting && <Check className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      )}
                   </div>
                 )}
               </motion.div>

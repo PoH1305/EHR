@@ -167,6 +167,7 @@ export interface ConsentToken {
   allowedFiles?: string[]
   tokenKey?: string | undefined
   purpose?: string
+  maxHistoryMonths?: number | null
 }
 
 export interface ConsentTokenRequest {
@@ -181,6 +182,7 @@ export interface ConsentTokenRequest {
   allowedFiles?: string[]
   tokenKey?: string | undefined
   purpose?: string
+  maxHistoryMonths?: number | null
 }
 
 export interface ConsentTokenValidation {

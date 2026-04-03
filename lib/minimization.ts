@@ -111,9 +111,11 @@ export function filterPatientDataBySpecialty(
   bundle: FHIRBundle,
   specialty: DoctorSpecialty,
   allowedCategories: string[] = [],
-  purpose: string = 'Treatment'
+  purpose: string = 'Treatment',
+  maxHistoryMonthsOverride?: number | null
 ): FilteredFHIRBundle {
   const config = SPECIALTY_FIELD_MAP[specialty] || SPECIALTY_FIELD_MAP[DoctorSpecialty.GENERAL_PRACTITIONER]
+  const maxMonths = maxHistoryMonthsOverride !== undefined ? maxHistoryMonthsOverride : config.maxHistoryMonths
   
   const entries = bundle.entry || []
   const layersTriggered: Set<string> = new Set()
@@ -158,16 +160,16 @@ export function filterPatientDataBySpecialty(
     }
 
     // LAYER 2: TEMPORAL RECENCY (Time-Based)
-    if (config.maxHistoryMonths !== null) {
+    if (maxMonths !== null) {
       const timestamp = (resource as any).effectiveDateTime || (resource as any).authoredOn || (resource as any).uploadedAt || (resource as any).recordedDate
       if (timestamp) {
         const recordDate = new Date(timestamp)
         const cutoff = new Date()
-        cutoff.setMonth(cutoff.getMonth() - config.maxHistoryMonths)
+        cutoff.setMonth(cutoff.getMonth() - maxMonths)
         
         if (recordDate < cutoff) {
           layersTriggered.add('Temporal Layer (Historical Redaction)')
-          return { fullUrl: entry.fullUrl, resource: { redacted: true, reason: `Historical record older than ${config.maxHistoryMonths} months`, category } }
+          return { fullUrl: entry.fullUrl, resource: { redacted: true, reason: `Historical record older than ${maxMonths} months`, category } }
         }
       }
     }

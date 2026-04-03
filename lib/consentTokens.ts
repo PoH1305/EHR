@@ -59,6 +59,7 @@ export async function generateConsentToken(
     patientName: request.patientName,
     tokenKey,
     purpose: request.purpose || 'General',
+    maxHistoryMonths: request.maxHistoryMonths ?? null
   }
 
   // POST to server (mock in development)

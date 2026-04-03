@@ -156,6 +156,7 @@ function RecordsPageContent() {
         fileUrl: attachment.fileUrl,
         fileName: attachment.fileName,
         fileType: attachment.fileType,
+        storagePath: attachment.storagePath,
       })
     }
 

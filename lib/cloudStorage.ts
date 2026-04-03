@@ -11,17 +11,17 @@ export async function uploadMedicalFile(
 ): Promise<{ publicUrl: string; storagePath: string }> {
   const filePath = `${patientId}/${fileId}`
   
-  const { data, error } = await supabase.storage
-    .from('medvault-records')
+  const { data, error: uploadError } = await supabase.storage
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files')
     .upload(filePath, file, {
       upsert: true,
       contentType: file.type
     })
 
-  if (error) throw error
+  if (uploadError) throw uploadError
 
   const { data: { publicUrl } } = supabase.storage
-    .from('medvault-records')
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files')
     .getPublicUrl(filePath)
   
   return { publicUrl, storagePath: filePath }

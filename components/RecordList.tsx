@@ -30,6 +30,7 @@ export interface RecordItem {
   fileName?: string
   fileType?: string
   category?: string
+  storagePath?: string | undefined
 }
 
 interface RecordListProps {

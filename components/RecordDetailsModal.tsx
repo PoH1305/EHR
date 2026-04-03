@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, FileText, Pill, AlertCircle, Activity, Heart, ShieldAlert, BadgeCheck, ShieldCheck, ExternalLink } from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import type { RecordItem } from './RecordList'
+import { useUserStore } from '@/store/useUserStore'
 
 interface RecordDetailsModalProps {
   isOpen: boolean
@@ -31,6 +32,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 
 export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsModalProps) {
   const [mounted, setMounted] = useState(false)
+  const { firebaseUid } = useUserStore()
 
   useEffect(() => {
     setMounted(true)
@@ -174,7 +176,10 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
               {record.fileUrl && (
                 <div className="pt-2">
                   <a
-                    href={record.fileUrl}
+                    href={record.storagePath 
+                      ? `/api/records/view/${record.storagePath}?userId=${firebaseUid}`
+                      : record.fileUrl
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-semibold hover:bg-primary/20 transition-all group"

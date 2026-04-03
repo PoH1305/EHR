@@ -39,11 +39,16 @@ interface RecordListProps {
 }
 
 const RESOURCE_ICONS: Record<string, React.ReactNode> = {
+  Condition: <ClipboardList className="w-4 h-4 text-amber-400" />,
+  MedicationRequest: <Pill className="w-4 h-4 text-blue-400" />,
+  AllergyIntolerance: <AlertCircle className="w-4 h-4 text-rose-400" />,
+  Observation: <Activity className="w-4 h-4 text-emerald-400" />,
   DiagnosticReport: <FileText className="w-4 h-4 text-purple-400" />,
   LAB_REPORT: <Activity className="w-4 h-4 text-emerald-400" />,
   PRESCRIPTION: <Pill className="w-4 h-4 text-blue-400" />,
   DISCHARGE_SUMMARY: <ClipboardList className="w-4 h-4 text-purple-400" />,
   CLINICAL_NOTE: <FileText className="w-4 h-4 text-amber-400" />,
+  ClinicalNote: <FileText className="w-4 h-4 text-amber-400" />,
   IMAGE_REPORT: <ImageIcon className="w-4 h-4 text-rose-400" />,
   INSURANCE_DOC: <ShieldCheck className="w-4 h-4 text-indigo-400" />,
   OTHER: <FileBadge className="w-4 h-4 text-slate-400" />,

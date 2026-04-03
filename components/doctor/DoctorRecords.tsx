@@ -134,13 +134,18 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
       return true
    }
 
-   const handleAction = async (recordId: string, type: 'view' | 'download', filename: string) => {
-      if (!hasPermission(recordId, type)) {
+   const handleAction = async (recordId: string, type: 'view' | 'download', filename: string, isOwner?: boolean) => {
+      // Permission bypass if the doctor is the original uploader
+      if (!isOwner && !hasPermission(recordId, type)) {
          alert(`Access Denied: You do not have active ${type} permissions for this record.`)
          return
       }
 
-      const endpoint = `/api/records/${type}/${encodeURIComponent(recordId)}?userId=${firebaseUid}`
+      // Build the endpoint using the robust catch-all API
+      // Since recordId might be a path like "patientId/fileId", we split and re-encode to be double-safe
+      // Next.js catch-all "[[...recordId]]" will decode segments automatically.
+      const encodedPath = recordId.split('/').map(encodeURIComponent).join('/')
+      const endpoint = `/api/records/${type}/${encodedPath}?userId=${firebaseUid}`
       
       try {
          if (patientId && firebaseUid) {
@@ -273,7 +278,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                             
                             <div className="flex gap-2 shrink-0">
                                <button 
-                                  onClick={() => handleAction(att.storagePath || att.id, 'view', att.fileName)}
+                                  onClick={() => handleAction(att.storagePath || att.id, 'view', att.fileName, att.doctorId === firebaseUid)}
                                   disabled={!canView}
                                   className={cn(
                                     "p-2.5 rounded-xl border transition-all",
@@ -286,7 +291,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                                   {canView ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                                </button>
                                <button 
-                                  onClick={() => handleAction(att.storagePath || att.id, 'download', att.fileName)}
+                                  onClick={() => handleAction(att.storagePath || att.id, 'download', att.fileName, att.doctorId === firebaseUid)}
                                   disabled={!canDownload}
                                   className={cn(
                                     "p-2.5 rounded-xl border transition-all",

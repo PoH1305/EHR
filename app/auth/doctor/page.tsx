@@ -11,7 +11,7 @@ import {
   signInWithPopup 
 } from 'firebase/auth'
 import { useAuthState } from 'react-firebase-hooks/auth'
-import { Check, Mail, Lock, LogIn, Loader2, Shield, AlertTriangle, Stethoscope } from 'lucide-react'
+import { Check, Mail, Lock, LogIn, Loader2, Shield, AlertTriangle, Stethoscope, User } from 'lucide-react'
 import { DoctorSpecialty, DoctorProfile } from '@/lib/types'
 
 function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
@@ -49,6 +49,7 @@ function DoctorAuthContent() {
   const [user, loading] = useAuthState(auth!)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
   const [license, setLicense] = useState('')
   const [specialty, setSpecialty] = useState('General Practitioner')
   const [isSignUp, setIsSignUp] = useState(false)
@@ -103,7 +104,7 @@ function DoctorAuthContent() {
         if (db_firestore) {
           const docData = {
             id: newUser.uid,
-            name: email.split('@')[0] || 'Medical Practitioner', // Primitive name fallback
+            name: name || email.split('@')[0] || 'Medical Practitioner',
             email: newUser.email || email,
             licenseNumber: license,
             specialty: specialty as DoctorSpecialty,
@@ -206,6 +207,23 @@ function DoctorAuthContent() {
         <p className="text-xs text-[#4A6075] mb-10">Secure interface for medical practitioners.</p>
 
         <form onSubmit={handleEmailAuth} className="space-y-6">
+          {isSignUp && (
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-[#354A5A] font-semibold">Full Practitioner Name</label>
+              <div className="flex items-center gap-3 border-b border-white/[0.08] pb-2 mt-2">
+                <User className="w-4 h-4 text-[#4A6075]" />
+                <input 
+                  type="text" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  required
+                  className="bg-transparent border-none outline-none text-base text-[#E2EAF0] flex-1" 
+                  placeholder="Dr. Alexander Smith" 
+                />
+              </div>
+            </div>
+          )}
+
           {isSignUp && (
             <div>
               <label className="text-[10px] uppercase tracking-widest text-[#354A5A] font-semibold">Medical License No.</label>

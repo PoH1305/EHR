@@ -43,6 +43,7 @@ interface UserActions {
   setSessionState: (state: SessionState) => void
   updateLastActive: () => void
   updatePatient: (profile: Partial<PatientProfile>) => void
+  updateDoctor: (profile: Partial<DoctorProfile>) => void
   loadPatient: (id: string) => Promise<void>
   deleteAccount: () => Promise<void>
   setHasHydrated: (val: boolean) => void
@@ -290,14 +291,27 @@ export const useUserStore = create<UserState & UserActions>()(
         })
         void get().syncProfileToCloud()
       },
-      setHasHydrated: (val) => {
+      updateDoctor: (profile) => {
+        set((state) => {
+          if (state.doctor) {
+            state.doctor = { ...state.doctor, ...profile }
+          }
+        })
+        void get().syncProfileToCloud()
+      },
+      setHasHydrated: (val: boolean) => {
         set({ _hasHydrated: val })
       },
       syncProfileToCloud: async () => {
         const { patient, firebaseUid, role, doctor } = get()
         if (!firebaseUid) return
-        if (role === 'patient' && !patient) return
-        if (role === 'doctor' && !doctor) return
+        
+        // Ensure we handle case where role might be unset but profile exists
+        const effectiveRole = role || (doctor ? 'doctor' : (patient ? 'patient' : null))
+        if (!effectiveRole) return
+        
+        if (effectiveRole === 'patient' && !patient) return
+        if (effectiveRole === 'doctor' && !doctor) return
 
         try {
           const { supabase } = await import('@/lib/supabase')

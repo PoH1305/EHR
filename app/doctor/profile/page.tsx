@@ -11,25 +11,73 @@ import {
   Shield, 
   ChevronRight,
   Settings,
-  Trash2
+  Trash2,
+  X,
+  Loader2,
+  Check
 } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { useToast } from '@/store/useToast'
 import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/GlassCard'
+import { DoctorSpecialty } from '@/lib/types'
 
 export default function DoctorProfilePage() {
-  const { firebaseEmail, firebaseUid, role, doctor, signOut, fetchDoctorProfile, deleteAccount } = useUserStore()
+  const { 
+    firebaseEmail, 
+    firebaseUid, 
+    role, 
+    doctor, 
+    signOut, 
+    fetchDoctorProfile, 
+    deleteAccount,
+    updateDoctor 
+  } = useUserStore()
   const { clearClinicalState } = useClinicalStore()
   const { toast } = useToast()
   const router = useRouter()
+
+  const [isEditing, setIsEditing] = React.useState(false)
+  const [editName, setEditName] = React.useState(doctor?.name || '')
+  const [editSpecialty, setEditSpecialty] = React.useState<DoctorSpecialty>(doctor?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER)
+  const [editLicense, setEditLicense] = React.useState(doctor?.licenseNumber || '')
+  const [isSaving, setIsSaving] = React.useState(false)
 
   React.useEffect(() => {
     if (firebaseUid && !doctor) {
       void fetchDoctorProfile(firebaseUid)
     }
   }, [firebaseUid, doctor, fetchDoctorProfile])
+
+  React.useEffect(() => {
+    if (doctor) {
+      setEditName(doctor.name)
+      setEditSpecialty(doctor.specialty)
+      setEditLicense(doctor.licenseNumber)
+    }
+  }, [doctor])
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      toast("Name cannot be empty", "error")
+      return
+    }
+    setIsSaving(true)
+    try {
+      await updateDoctor({
+        name: editName,
+        specialty: editSpecialty,
+        licenseNumber: editLicense
+      })
+      toast("Profile updated successfully", "success")
+      setIsEditing(false)
+    } catch (error) {
+      toast("Failed to update profile", "error")
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleSignOut = async () => {
     try {
@@ -68,7 +116,7 @@ export default function DoctorProfilePage() {
            <p className="text-sm text-white/30 font-medium mt-1">Clinical Practitioner Identity</p>
         </div>
         <button 
-          onClick={() => toast("Settings coming soon", "info")}
+          onClick={() => setIsEditing(true)}
           className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-white/40 hover:text-white/60 transition-colors"
         >
            <Settings className="w-5 h-5" />
@@ -185,8 +233,80 @@ export default function DoctorProfilePage() {
                </div>
                <ChevronRight className="w-4 h-4 text-red-500/20" />
             </GlassCard>
-         </button>
-      </div>
+          </button>
+       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+           <GlassCard className="w-full max-w-md p-8 space-y-6 relative overflow-visible border-white/10 shadow-2xl">
+              <button 
+                onClick={() => setIsEditing(false)}
+                className="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div>
+                <h3 className="text-xl font-bold text-white mb-1">Edit Professional Identity</h3>
+                <p className="text-xs text-white/30 truncate">Update your clinical credentials and specialty.</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase tracking-widest font-black text-white/20 ml-1">Full Name</label>
+                  <input 
+                    type="text" 
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full h-12 rounded-xl bg-white/[0.03] border border-white/5 px-4 text-white focus:outline-none focus:border-[#1A3A8F] transition-colors"
+                    placeholder="Enter full name"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase tracking-widest font-black text-white/20 ml-1">Clinical Specialty</label>
+                  <div className="relative">
+                    <select 
+                      value={editSpecialty}
+                      onChange={(e) => setEditSpecialty(e.target.value as DoctorSpecialty)}
+                      className="w-full h-12 rounded-xl bg-white/[0.03] border border-white/5 px-4 text-white appearance-none focus:outline-none focus:border-[#1A3A8F] transition-colors cursor-pointer"
+                    >
+                      {Object.values(DoctorSpecialty).map(s => (
+                        <option key={s} value={s} className="bg-[#0b1019] py-2">{s}</option>
+                      ))}
+                    </select>
+                    <ChevronRight className="w-4 h-4 text-white/20 absolute right-4 top-4 rotate-90 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase tracking-widest font-black text-white/20 ml-1">License Number</label>
+                  <input 
+                    type="text" 
+                    value={editLicense}
+                    onChange={(e) => setEditLicense(e.target.value)}
+                    className="w-full h-12 rounded-xl bg-white/[0.03] border border-white/5 px-4 text-white focus:outline-none focus:border-[#1A3A8F] transition-colors font-mono"
+                    placeholder="e.g. MCI-2019-XXXX"
+                  />
+                </div>
+              </div>
+
+              <button 
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="w-full h-14 rounded-2xl bg-[#1A3A8F] text-white font-bold text-sm shadow-lg shadow-[#1A3A8F]/20 disabled:opacity-50 flex items-center justify-center gap-3 transition-all hover:scale-[1.02]"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Check className="w-5 h-5" />
+                )}
+                Save Professional Profile
+              </button>
+           </GlassCard>
+        </div>
+      )}
     </div>
   )
 }

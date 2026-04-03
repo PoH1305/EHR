@@ -12,14 +12,16 @@ import { useClinicalStore } from '@/store/useClinicalStore'
 import { UploadModal } from '@/components/patient/UploadModal'
 import type { PatientAttachment } from '@/lib/types'
 
-const FILTER_TABS = ['All', 'Conditions', 'Medications', 'Allergies', 'Labs', 'Procedures']
+const FILTER_TABS = ['Records', 'Vitals', 'Medications', 'Conditions', 'Allergies', 'Notes']
 
 function RecordsPageContent() {
   const { 
+    vitals,
     conditions, 
     medications, 
     allergies, 
     attachments,
+    clinicalNotes,
     medicalImages,
     loadClinicalData,
     syncToCloud,
@@ -172,25 +174,51 @@ function RecordsPageContent() {
       })
     }
 
+    for (const note of clinicalNotes) {
+      records.push({
+        id: note.id,
+        resourceType: 'ClinicalNote',
+        title: 'Clinical Note',
+        subtitle: note.content.substring(0, 50) + (note.content.length > 50 ? '...' : ''),
+        date: note.timestamp,
+        verified: true,
+      })
+    }
+
+    for (const series of vitals) {
+      records.push({
+        id: `vital-${series.type}`,
+        resourceType: 'Observation',
+        title: series.type.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase()),
+        subtitle: `${series.latestValue} ${series.unit} (${series.trend})`,
+        date: series.readings?.[series.readings.length - 1]?.timestamp || new Date().toISOString(),
+        verified: true,
+      })
+    }
+
     return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [attachments, conditions, medications, allergies])
+  }, [attachments, conditions, medications, allergies, medicalImages, clinicalNotes, vitals])
 
 
   const filteredRecords = useMemo(() => {
     let records = allRecords
 
-    if (activeFilter !== 'All') {
+    if (activeFilter !== 'Records') {
       const filterMap: Record<string, string> = {
-        Conditions: 'Condition',
+        Vitals: 'Observation',
         Medications: 'MedicationRequest',
+        Conditions: 'Condition',
         Allergies: 'AllergyIntolerance',
-        Labs: 'DiagnosticReport',
-        Procedures: 'Procedure',
+        Notes: 'ClinicalNote',
       }
       const resourceType = filterMap[activeFilter]
       if (resourceType) {
         records = records.filter((r) => r.resourceType === resourceType)
       }
+    } else {
+      // For "Records" tab, we show only the items that aren't specific FHIR resources
+      // such as Attachments, DiagnosticReports, and Medical Images
+      records = records.filter((r) => r.resourceType === 'DiagnosticReport' || r.resourceType === 'DocumentReference')
     }
 
     if (searchQuery.trim()) {
@@ -238,7 +266,7 @@ function RecordsPageContent() {
       {/* Record count */}
       <p className="text-[10px] text-foreground/20">
         {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''}
-        {activeFilter !== 'All' && ` in ${activeFilter}`}
+        {activeFilter !== 'Records' && ` in ${activeFilter}`}
       </p>
 
       {/* Record list */}

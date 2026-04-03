@@ -183,21 +183,32 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           ])
 
           const isMinimization = get().isMinimizationActive
+          
+          // ALWAYS check Cloud (Supabase) in background if we are a patient to catch doctor uploads
+          if (supabase) {
+            console.log('[ClinicalStore] Checking Cloud (Supabase) for updates...')
+            const { data: cloudRow, error } = await supabase
+              .from('clinical_data')
+              .select('data, last_synced_at')
+              .eq('patient_id', patientId)
+              .maybeSingle()
+              
+            if (!error && cloudRow?.data) {
+              const cloudData = cloudRow.data
+              
+              // 1. Merge new attachments into Dexie
+              if (cloudData.attachments && Array.isArray(cloudData.attachments)) {
+                for (const att of cloudData.attachments) {
+                  const exists = attachments.some(a => a.id === att.id)
+                  if (!exists && db) {
+                    await db.patient_attachments.add(att)
+                    attachments.push(att) // Update local list
+                  }
+                }
+              }
 
-          if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
-            console.log('[ClinicalStore] Local storage empty, checking Cloud (Supabase)...')
-            
-            if (supabase) {
-              const { data, error } = await supabase
-                .from('clinical_data')
-                .select('data, last_synced_at')
-                .eq('patient_id', patientId)
-                .maybeSingle()
-                
-              if (error) throw error
-
-              if (data && data.data) {
-                const cloudData = data.data
+              // 2. If local store was effectively empty, perform initial projection from cloud
+              if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
                 set((state) => {
                   state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : []
                   state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : []
@@ -210,7 +221,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                   state.riskAnalyses = cloudData.riskAnalyses || []
                   state.isLoading = false
                   state.isLoaded = true
-                  state.lastUpdated = data.last_synced_at
+                  state.lastUpdated = cloudRow.last_synced_at
                 })
                 clearTimeout(timeoutId)
                 return

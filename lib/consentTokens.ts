@@ -57,7 +57,8 @@ export async function generateConsentToken(
     lastAccessedAt: null,
     tokenHash,
     patientName: request.patientName,
-    tokenKey
+    tokenKey,
+    purpose: request.purpose || 'General',
   }
 
   // POST to server (mock in development)

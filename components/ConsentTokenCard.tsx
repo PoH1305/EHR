@@ -95,6 +95,16 @@ export function ConsentTokenCard({ token, onRevoke }: ConsentTokenCardProps) {
         </span>
       </div>
 
+      {/* Access Purpose */}
+      {token.purpose && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <Tag className="w-3 h-3 text-foreground/30" />
+          <span className="text-[10px] text-blue-400/80 font-bold uppercase tracking-wider">
+            {token.purpose}
+          </span>
+        </div>
+      )}
+
       {/* Privacy Badge */}
       <div className="flex items-center gap-2 mt-4 px-3 py-2 rounded-2xl bg-blue-500/5 border border-blue-500/10">
         <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />

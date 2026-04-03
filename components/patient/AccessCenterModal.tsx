@@ -59,6 +59,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
   const [acceptStep, setAcceptStep] = useState(0)
   const [acceptTtl, setAcceptTtl] = useState(3600)
   const [acceptCats, setAcceptCats] = useState<string[]>([])
+  const [acceptPurpose, setAcceptPurpose] = useState('Treatment')
   const [isAccepting, setIsAccepting] = useState(false)
 
   const categories = [
@@ -285,14 +286,33 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                        </div>
                      )}
 
-                     {/* Step 2: Duration */}
+                     {/* Step 2: Duration and Purpose */}
                      {acceptStep === 1 && (
                        <div className="space-y-6">
                          <div className="space-y-2">
-                            <h3 className="text-xl font-bold text-white tracking-tight">Access Duration</h3>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">How long should this access remain valid?</p>
+                            <h3 className="text-xl font-bold text-white tracking-tight">Access Purpose & Duration</h3>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Define the intent and validity of this token</p>
                          </div>
-                         <div className="grid grid-cols-2 gap-3">
+                         
+                         <div className="space-y-3">
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Purpose of Access</p>
+                           <select 
+                             value={acceptPurpose} 
+                             onChange={(e) => setAcceptPurpose(e.target.value)}
+                             className="w-full bg-[#0d1117] border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                           >
+                             <option value="Treatment">Treatment</option>
+                             <option value="Consultation">Consultation</option>
+                             <option value="Insurance Claim">Insurance Claim</option>
+                             <option value="Research">Research</option>
+                             <option value="Second Opinion">Second Opinion</option>
+                             <option value="Other">Other</option>
+                           </select>
+                         </div>
+
+                         <div className="space-y-3">
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">Duration</p>
+                           <div className="grid grid-cols-2 gap-3">
                            {TTL_OPTIONS.map(opt => (
                              <button
                                key={opt.seconds}
@@ -306,6 +326,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                 <span className="text-sm font-bold truncate">{opt.label}</span>
                              </button>
                            ))}
+                           </div>
                          </div>
                          <button 
                            onClick={() => setAcceptStep(2)}
@@ -393,6 +414,10 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                   <span className="text-slate-500 font-bold uppercase tracking-widest">Duration</span>
                                   <span className="text-blue-400 font-bold">{TTL_OPTIONS.find(o => o.seconds === acceptTtl)?.label}</span>
                                </div>
+                               <div className="flex justify-between items-center text-xs">
+                                  <span className="text-slate-500 font-bold uppercase tracking-widest">Purpose</span>
+                                  <span className="text-blue-400 font-bold">{acceptPurpose}</span>
+                               </div>
                                <div className="flex justify-between items-start text-xs">
                                   <span className="text-slate-500 font-bold uppercase tracking-widest">Scope</span>
                                   <div className="flex flex-wrap gap-1.5 justify-end max-w-[60%]">
@@ -419,7 +444,8 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                  ttlSeconds: acceptTtl,
                                  allowedCategories: acceptCats,
                                  allowedFiles: acceptingRequest.metadata?.fileId ? [acceptingRequest.metadata.fileId] : [],
-                                 patientName: patient?.name || 'Authorized Patient'
+                                 patientName: patient?.name || 'Authorized Patient',
+                                 purpose: acceptPurpose
                                })
 
                                // 2. Mark the incoming request as APPROVED

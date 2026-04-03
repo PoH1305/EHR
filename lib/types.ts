@@ -166,6 +166,7 @@ export interface ConsentToken {
   patientName?: string | undefined
   allowedFiles?: string[]
   tokenKey?: string | undefined
+  purpose?: string
 }
 
 export interface ConsentTokenRequest {
@@ -179,6 +180,7 @@ export interface ConsentTokenRequest {
   patientName: string
   allowedFiles?: string[]
   tokenKey?: string | undefined
+  purpose?: string
 }
 
 export interface ConsentTokenValidation {

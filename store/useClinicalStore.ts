@@ -352,6 +352,17 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           try {
             if (!supabase) return
             
+            // SANITIZATION GUARD: Never sync records that still have blob/data URLs
+            const isUnsanitized = (val: any) => {
+              const url = val.fileUrl || val.imageUrl || val.url || ''
+              return typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:'))
+            }
+
+            if (isUnsanitized(value)) {
+              console.warn(`[ClinicalStore] Blocking atomic sync for unsanitized ${key} (blob/data URL detected). Record will sync once digitized.`)
+              return
+            }
+
             console.log(`[ClinicalStore] Syncing atomicaly: ${key} for patient ${patientId}`)
             const { error } = await supabase.rpc('append_clinical_data', {
               p_patient_id: patientId,
@@ -443,51 +454,61 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       addMedicalImage: async (image: MedicalImage) => {
+        // PRIORITY: Never write to Dexie or Cloud until the upload is FINISHED
         let finalImage = { ...image }
         let storagePath = ''
         
         if (image.imageUrl.startsWith('blob:') || image.imageUrl.startsWith('data:')) {
           try {
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
+            console.log('[ClinicalStore] digitizing image to cloud storage...')
             const blob = await blobUrlToBlob(image.imageUrl)
             const uploadResult = await uploadMedicalFile(image.patientId, image.id, blob)
+            
+            // Critical: Ensure we have a permanent storagePath
+            if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
+            
             finalImage.imageUrl = uploadResult.publicUrl
             storagePath = uploadResult.storagePath
           } catch (error) {
-            console.error('[ClinicalStore] Failed to upload image to Cloud:', error)
+            console.error('[ClinicalStore] Failed to digitize image to Cloud:', error)
+            throw new Error('Clinical upload failed. Please check your connection and try again.')
           }
         }
 
+        // Apply doctor tracing if applicable
+        const { role, firebaseUid } = useUserStore.getState()
+        if (role === 'doctor' && firebaseUid) {
+          finalImage.doctorId = firebaseUid
+        }
+
+        // Now that we have a permanent URL, write to store and cloud
         if (db) await db.medical_images.add(finalImage)
         set((state) => {
           state.medicalImages.unshift(finalImage)
         })
+        
+        // Sync to cloud ONLY after image is digitized
         void get().syncAtomic(finalImage.patientId, 'medicalImages', finalImage)
         
-        // NEW: Standardize uploader tracing and permissions
-        const { role, firebaseUid } = useUserStore.getState()
-        if (role === 'doctor' && firebaseUid) {
-          finalImage.doctorId = firebaseUid
-          
-          if (storagePath && supabase) {
-            console.log('[ClinicalStore] Generating 7-day image permissions for doctor:', firebaseUid)
-            await supabase.from('record_access_permissions').insert([
-              { 
-                record_id: storagePath, 
-                patient_id: image.patientId, 
-                doctor_id: firebaseUid, 
-                permission_type: 'view', 
-                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
-              },
-              { 
-                record_id: storagePath, 
-                patient_id: image.patientId, 
-                doctor_id: firebaseUid, 
-                permission_type: 'download', 
-                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
-              }
-            ])
-          }
+        if (role === 'doctor' && firebaseUid && storagePath && supabase) {
+          console.log('[ClinicalStore] Generating 7-day image permissions for doctor:', firebaseUid)
+          await supabase.from('record_access_permissions').upsert([
+            { 
+              record_id: storagePath, 
+              patient_id: image.patientId, 
+              doctor_id: firebaseUid, 
+              permission_type: 'view', 
+              expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
+            },
+            { 
+              record_id: storagePath, 
+              patient_id: image.patientId, 
+              doctor_id: firebaseUid, 
+              permission_type: 'download', 
+              expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
+            }
+          ], { onConflict: 'record_id,doctor_id,patient_id,permission_type' })
         }
       },
 
@@ -500,19 +521,26 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       addAttachment: async (attachment: PatientAttachment) => {
+        // PRIORITY: Full Digitization First
         let finalAttachment = { ...attachment }
         let storagePath = ''
 
         if (attachment.fileUrl.startsWith('blob:') || attachment.fileUrl.startsWith('data:')) {
           try {
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
+            console.log('[ClinicalStore] digitizing attachment to cloud storage...')
             const blob = await blobUrlToBlob(attachment.fileUrl)
             const uploadResult = await uploadMedicalFile(attachment.patientId, attachment.id, blob)
+            
+            // Critical: Ensure we have a permanent storagePath
+            if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
+            
             finalAttachment.fileUrl = uploadResult.publicUrl
             finalAttachment.storagePath = uploadResult.storagePath
             storagePath = uploadResult.storagePath
           } catch (error) {
-            console.error('[ClinicalStore] Failed to upload attachment to Cloud:', error)
+            console.error('[ClinicalStore] Failed to digitize attachment to Cloud:', error)
+            throw new Error('Clinical upload failed. Please check your connection and try again.')
           }
         }
 
@@ -521,16 +549,19 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           finalAttachment.doctorId = firebaseUid
         }
 
+        // Now safe to persist metadata
         if (db) await db.patient_attachments.add(finalAttachment)
         set((state) => {
           state.attachments.unshift(finalAttachment)
         })
+        
+        // Sync metadata only AFTER crystallization of the cloud path
         void get().syncAtomic(finalAttachment.patientId, 'attachments', finalAttachment)
 
-        // NEW: Generate initial permissions for doctor-uploaded files
+        // Generate initial permissions for doctor-uploaded files
         if (role === 'doctor' && firebaseUid && storagePath && supabase) {
            console.log('[ClinicalStore] Generating 7-day permissions for new attachment:', storagePath)
-           await supabase.from('record_access_permissions').insert([
+           await supabase.from('record_access_permissions').upsert([
               { 
                 record_id: storagePath, 
                 patient_id: attachment.patientId, 
@@ -545,7 +576,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                 permission_type: 'download', 
                 expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
               }
-           ])
+           ], { onConflict: 'record_id,doctor_id,patient_id,permission_type' })
         }
       },
 
@@ -620,6 +651,11 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           const localIds = new Set(localAttachments.map(a => a.id))
           const attachmentsToKeep = [...localAttachments, ...cloudAttachments.filter((a: any) => !localIds.has(a.id))]
 
+          const isUnsanitized = (val: any) => {
+            const url = val.fileUrl || val.imageUrl || val.url || ''
+            return typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:'))
+          }
+
           const clinicalPayload = {
             vitals: state.vitals,
             conditions: state.conditions,
@@ -630,9 +666,9 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             immunizations: state.immunizations,
             procedures: state.procedures,
             clinicalNotes: state.clinicalNotes,
-            medicalImages: state.medicalImages,
-            attachments: attachmentsToKeep, // Merged
-            riskAnalyses: state.riskAnalyses,
+            medicalImages: state.medicalImages.filter(img => !isUnsanitized(img)),
+            attachments: attachmentsToKeep.filter(att => !isUnsanitized(att)),
+            riskAnalyses: state.riskAnalyses.filter(r => !isUnsanitized(r)),
             auditEvents: state.auditEvents,
           }
 

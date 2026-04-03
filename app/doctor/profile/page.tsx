@@ -44,19 +44,21 @@ export default function DoctorProfilePage() {
   const [editLicense, setEditLicense] = React.useState(doctor?.licenseNumber || '')
   const [isSaving, setIsSaving] = React.useState(false)
 
+  // Initial load
   React.useEffect(() => {
     if (firebaseUid && !doctor) {
       void fetchDoctorProfile(firebaseUid)
     }
   }, [firebaseUid, doctor, fetchDoctorProfile])
 
+  // Sync form state when doctor data changes, but NOT while editing
   React.useEffect(() => {
-    if (doctor) {
-      setEditName(doctor.name)
-      setEditSpecialty(doctor.specialty)
-      setEditLicense(doctor.licenseNumber)
+    if (doctor && !isEditing) {
+      setEditName(doctor.name || '')
+      setEditSpecialty(doctor.specialty || DoctorSpecialty.GENERAL_PRACTITIONER)
+      setEditLicense(doctor.licenseNumber || '')
     }
-  }, [doctor])
+  }, [doctor, isEditing])
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) {

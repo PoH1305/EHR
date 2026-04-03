@@ -29,6 +29,7 @@ interface UserState {
   doctor: DoctorProfile | null
   isAddPatientOpen: boolean
   isProfileRestoring: boolean
+  isProfileSyncing: boolean
   _hasHydrated: boolean
 }
 
@@ -43,12 +44,12 @@ interface UserActions {
   setSessionState: (state: SessionState) => void
   updateLastActive: () => void
   updatePatient: (profile: Partial<PatientProfile>) => void
-  updateDoctor: (profile: Partial<DoctorProfile>) => void
   loadPatient: (id: string) => Promise<void>
   deleteAccount: () => Promise<void>
   setHasHydrated: (val: boolean) => void
   syncProfileToCloud: () => Promise<void>
   fetchProfileFromCloud: () => Promise<void>
+  updateDoctor: (profile: Partial<DoctorProfile>) => Promise<void>
   fetchDoctorProfile: (id: string) => Promise<void>
   checkHealthIdUnique: (healthId: string) => Promise<boolean>
 }
@@ -75,6 +76,7 @@ export const useUserStore = create<UserState & UserActions>()(
       doctor: null,
       isAddPatientOpen: false,
       isProfileRestoring: false,
+      isProfileSyncing: false,
       _hasHydrated: false,
 
       // Actions
@@ -291,13 +293,22 @@ export const useUserStore = create<UserState & UserActions>()(
         })
         void get().syncProfileToCloud()
       },
-      updateDoctor: (profile) => {
+      updateDoctor: async (profile) => {
         set((state) => {
+          state.isProfileSyncing = true
           if (state.doctor) {
             state.doctor = { ...state.doctor, ...profile }
+          } else {
+            // If doctor object is missing, create it from the profile
+            state.doctor = profile as DoctorProfile
           }
         })
-        void get().syncProfileToCloud()
+        
+        try {
+          await get().syncProfileToCloud()
+        } finally {
+          set((state) => { state.isProfileSyncing = false })
+        }
       },
       setHasHydrated: (val: boolean) => {
         set({ _hasHydrated: val })
@@ -380,6 +391,10 @@ export const useUserStore = create<UserState & UserActions>()(
         }
       },
       fetchDoctorProfile: async (id: string) => {
+        const { isProfileSyncing } = get()
+        // Never overwrite local state if a sync is currently in progress
+        if (isProfileSyncing) return
+
         try {
           const { supabase } = await import('@/lib/supabase')
           if (!supabase) return

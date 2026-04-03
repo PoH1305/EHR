@@ -171,6 +171,7 @@ function RecordsPageContent() {
         date: image.timestamp,
         verified: true,
         fileUrl: image.imageUrl,
+        storagePath: (image as any).storagePath,
       })
     }
 

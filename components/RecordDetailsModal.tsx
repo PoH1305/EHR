@@ -178,8 +178,14 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                   <a
                     href={record.storagePath 
                       ? `/api/records/view/${record.storagePath}?userId=${firebaseUid}`
-                      : record.fileUrl
+                      : (record.fileUrl?.startsWith('blob:') ? '#' : record.fileUrl)
                     }
+                    onClick={(e) => {
+                      if (record.fileUrl?.startsWith('blob:') && !record.storagePath) {
+                        e.preventDefault()
+                        alert('This record is still being synchronized from the source device.')
+                      }
+                    }}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-semibold hover:bg-primary/20 transition-all group"

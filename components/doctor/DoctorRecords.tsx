@@ -16,7 +16,8 @@ import {
   Paperclip,
   BadgeCheck,
   Download,
-  Lock
+  Lock,
+  Eye
 } from 'lucide-react'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { useConsentStore } from '@/store/useConsentStore'
@@ -282,7 +283,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                                   )}
                                   title={canView ? "View Record" : "View Access Restricted"}
                                >
-                                  {canView ? <Activity className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                                  {canView ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                                </button>
                                <button 
                                   onClick={() => handleAction(att.storagePath || att.id, 'download', att.fileName)}

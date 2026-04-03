@@ -33,7 +33,7 @@ export async function GET(
 
     // 3. Download from Storage
     const { data, error: downloadError } = await supabase.storage
-      .from('patient-files')
+      .from('medvault-records')
       .download(filePath)
 
     if (downloadError) throw downloadError

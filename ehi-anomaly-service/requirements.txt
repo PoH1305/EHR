@@ -1,0 +1,12 @@
+pandas
+numpy
+faker
+scikit-learn
+matplotlib
+seaborn
+fastapi
+uvicorn
+google-cloud-aiplatform
+firebase-admin
+supabase
+python-dotenv

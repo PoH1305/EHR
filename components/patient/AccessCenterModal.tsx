@@ -25,7 +25,7 @@ import { useClinicalStore } from '@/store/useClinicalStore'
 import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type AccessRequest } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
-import { getRecommendedCategories } from '@/lib/minimization'
+import { getRecommendedCategories, SPECIALTY_FIELD_MAP } from '@/lib/minimization'
 
 interface AccessCenterModalProps {
   isOpen: boolean
@@ -260,21 +260,21 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                             {acceptStep === 0 ? 'Cancel' : 'Back'}
                           </span>
                         </button>
-                        <div className="flex gap-1.5">
-                           {[0, 1, 2, 3].map(s => (
-                             <div key={s} className={cn(
-                               "w-8 h-1 rounded-full transition-all duration-500",
-                               acceptStep >= s ? "bg-blue-500" : "bg-white/5"
-                             )} />
-                           ))}
-                        </div>
+                         <div className="flex gap-1 shrink-0">
+                            {[0, 1, 2, 3, 4, 5, 6].map(s => (
+                              <div key={s} className={cn(
+                                "w-5 h-1 rounded-full transition-all duration-500",
+                                acceptStep >= s ? "bg-emerald-500" : "bg-white/5"
+                              )} />
+                            ))}
+                         </div>
                      </div>
 
                       {acceptStep === 0 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                           <div className="text-center space-y-1 py-4">
                             <h3 className="text-2xl font-bold text-white tracking-tight">Establish clinical link</h3>
-                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 1/4</p>
+                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 1/7</p>
                           </div>
 
                           {/* MAIN DOCTOR IDENTITY CARD */}
@@ -372,12 +372,12 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                         </div>
                       )}
 
-                     {acceptStep === 1 && (
-                       <div className="space-y-6">
-                         <div className="space-y-2">
-                            <h3 className="text-xl font-bold text-white tracking-tight">Access Purpose & Duration</h3>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Define the intent and validity of this token</p>
-                         </div>
+                      {acceptStep === 1 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                          <div className="text-center space-y-1 py-4">
+                             <h3 className="text-xl font-bold text-white tracking-tight">Access Purpose & Duration</h3>
+                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 2/7</p>
+                          </div>
                          
                          <div className="space-y-3">
                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Purpose of Access</p>
@@ -422,13 +422,120 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                        </div>
                      )}
 
-                     {acceptStep === 2 && (
-                       <div className="space-y-6">
-                         <div className="space-y-2">
-                            <h3 className="text-xl font-bold text-white tracking-tight">AI Data Minimization</h3>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Unnecessary records are blocked by default for your safety.</p>
-                         </div>
-                         
+                      {acceptStep === 2 && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                           <div className="text-center space-y-2">
+                             <div className="w-16 h-16 rounded-[24px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                               <Clock className="w-8 h-8 text-emerald-500" />
+                             </div>
+                             <h3 className="text-xl font-bold text-white tracking-tight">Temporal Security Pulse</h3>
+                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em]">VERIFICATION · PHASE 3/7</p>
+                           </div>
+
+                           <div className="p-8 rounded-[32px] bg-[#0a120e] border border-emerald-500/20 text-center relative overflow-hidden">
+                             <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full" />
+                             <p className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-widest">Active Verification Window</p>
+                             <div className="flex items-center justify-center gap-3 mb-6">
+                               <div className="px-5 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                                 <span className="text-lg font-black text-white">{SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]?.maxHistoryMonths || '∞'}</span>
+                                 <span className="text-[10px] font-bold text-emerald-500 ml-2 uppercase">Months</span>
+                               </div>
+                             </div>
+                             <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
+                               Only records from the last **{SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]?.maxHistoryMonths || 'unlimited'} months** will be visible to the provider. 
+                               Stale clinical data is automatically shielded.
+                             </p>
+                           </div>
+
+                           <button 
+                             onClick={() => setAcceptStep(3)}
+                             className="w-full py-5 rounded-[20px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                           >
+                              Next Layer: Semantic Lock <ChevronRight className="w-4 h-4" />
+                           </button>
+                        </div>
+                      )}
+
+                      {acceptStep === 3 && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                           <div className="text-center space-y-2">
+                             <div className="w-16 h-16 rounded-[24px] bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                               <Activity className="w-8 h-8 text-blue-500" />
+                             </div>
+                             <h3 className="text-xl font-bold text-white tracking-tight">Semantic Context Lock</h3>
+                             <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.2em]">VERIFICATION · PHASE 4/7</p>
+                           </div>
+
+                           <div className="p-8 rounded-[32px] bg-[#0a120e] border border-blue-500/20 text-center relative overflow-hidden">
+                             <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full" />
+                             <p className="text-xs text-slate-400 font-medium mb-4 uppercase tracking-widest">Enforced Specialty Keywords</p>
+                             <div className="flex flex-wrap justify-center gap-2 mb-6">
+                               {SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]?.allowedKeywords.slice(0, 8).map(k => (
+                                 <span key={k} className="px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/10 text-[9px] font-black text-blue-400 uppercase tracking-tighter">
+                                   {k}
+                                 </span>
+                               ))}
+                             </div>
+                             <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
+                               Records without these clinical markers will be **redacted automatically**. 
+                               This ensures Dr. {acceptingRequest.doctorName} only sees relevant conditions.
+                             </p>
+                           </div>
+
+                           <button 
+                             onClick={() => setAcceptStep(4)}
+                             className="w-full py-5 rounded-[20px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                           >
+                              Next Layer: Privacy Shield <ChevronRight className="w-4 h-4" />
+                           </button>
+                        </div>
+                      )}
+
+                      {acceptStep === 4 && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                           <div className="text-center space-y-2">
+                             <div className="w-16 h-16 rounded-[24px] bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+                               <ShieldAlert className="w-8 h-8 text-red-500" />
+                             </div>
+                             <h3 className="text-xl font-bold text-white tracking-tight">Automated Sensitivity Shield</h3>
+                             <p className="text-[10px] text-red-400 font-black uppercase tracking-[0.2em]">VERIFICATION · PHASE 5/7</p>
+                           </div>
+
+                           <div className="p-8 rounded-[32px] bg-[#0a120e] border border-red-500/20 text-center relative overflow-hidden">
+                             <div className="absolute -top-12 -left-12 w-32 h-32 bg-red-500/5 blur-3xl rounded-full" />
+                             <p className="text-xs text-slate-400 font-medium mb-6 uppercase tracking-widest">Hard-Locked Domains</p>
+                             <div className="grid grid-cols-3 gap-3 mb-8">
+                               {['Psychiatric', 'Genetic', 'Reproductive'].map(d => (
+                                 <div key={d} className="flex flex-col items-center gap-3">
+                                   <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                                     <Shield className="w-5 h-5 text-red-500/60" />
+                                   </div>
+                                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">{d}</span>
+                                 </div>
+                               ))}
+                             </div>
+                             <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
+                               These sensitive domains are **automatically blocked** across all clinical nodes. 
+                               Access can only be granted via explicit patient bypass.
+                             </p>
+                           </div>
+
+                           <button 
+                             onClick={() => setAcceptStep(5)}
+                             className="w-full py-5 rounded-[20px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                           >
+                              Select Resource Scope <ChevronRight className="w-4 h-4" />
+                           </button>
+                        </div>
+                      )}
+
+                      {acceptStep === 5 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                          <div className="text-center space-y-1 py-4">
+                            <h3 className="text-2xl font-bold text-white tracking-tight">Resource Scope</h3>
+                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 6/7</p>
+                          </div>
+
                          <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
                             <Sparkles className="w-5 h-5 text-blue-400" />
                             <div className="flex-1">
@@ -463,7 +570,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                          </div>
 
                          <button 
-                           onClick={() => setAcceptStep(3)}
+                           onClick={() => setAcceptStep(6)}
                            disabled={acceptCats.length === 0}
                            className="w-full py-5 rounded-[24px] bg-white text-black font-black uppercase tracking-widest text-xs mt-4 hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
                          >
@@ -472,14 +579,14 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                        </div>
                      )}
 
-                     {acceptStep === 3 && (
+                     {acceptStep === 6 && (
                        <div className="space-y-8">
                          <div className="space-y-2 text-center py-4">
                             <div className="w-16 h-16 rounded-3xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
                                <Shield className="w-8 h-8 text-green-500" />
                             </div>
                             <h3 className="text-2xl font-black text-white tracking-tighter">Confirm Access</h3>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Clinical Handshake Summary</p>
+                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 7/7</p>
                          </div>
 
                          <div className="space-y-4">

@@ -238,35 +238,63 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                 </div>
 
                 {foundPatient && (
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Data Access Scope</label>
-                    <div className="grid grid-cols-2 gap-2">
-                       {categories.map(cat => (
-                         <button
-                           key={cat.id}
-                           onClick={() => toggleCategory(cat.id)}
-                           className={cn(
-                             "flex items-center gap-2 p-3 rounded-xl border text-[9px] font-bold uppercase tracking-wider transition-all",
-                             selectedCategories.includes(cat.id)
-                               ? "bg-blue-500/10 border-blue-500/40 text-blue-400"
-                               : "bg-white/5 border-white/5 text-white/20 hover:bg-white/10"
-                           )}
-                         >
-                            <cat.icon className="w-3 h-3" />
-                            {cat.label}
-                         </button>
-                       ))}
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Data Access Scope</label>
+                      <div className="grid grid-cols-2 gap-2">
+                         {categories.map(cat => (
+                           <button
+                             key={cat.id}
+                             type="button"
+                             onClick={() => toggleCategory(cat.id)}
+                             className={cn(
+                               "flex items-center gap-2 p-3 rounded-xl border text-[9px] font-bold uppercase tracking-wider transition-all",
+                               selectedCategories.includes(cat.id)
+                                 ? "bg-blue-500/10 border-blue-500/40 text-blue-400"
+                                 : "bg-white/5 border-white/5 text-white/20 hover:bg-white/10"
+                             )}
+                           >
+                              <cat.icon className="w-3 h-3" />
+                              {cat.label}
+                           </button>
+                         ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {foundPatient && (
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Reason for Request</label>
+
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Intent of Access</label>
+                      <span className="text-[9px] text-blue-500/60 font-bold uppercase tracking-widest">Required</span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 mb-2">
+                        {[
+                          'Checkup',
+                          'Consultation',
+                          'Emergency',
+                          'Follow-up',
+                          'Lab Review'
+                        ].map(chip => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => setReason(chip)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all",
+                              reason === chip 
+                                ? "bg-blue-500 border-blue-500 text-white" 
+                                : "bg-white/5 border-white/5 text-white/40 hover:border-white/20"
+                            )}
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                    </div>
+
                     <textarea
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder="e.g., Routine checkup, Follow-up consultation, Emergency review..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-[#1A3A8F] transition-all min-h-[80px] resize-none"
+                      placeholder="Or enter a custom clinical reason..."
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-blue-500/50 transition-all min-h-[100px] resize-none"
                     />
                   </div>
                 )}

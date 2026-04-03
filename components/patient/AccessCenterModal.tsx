@@ -15,7 +15,9 @@ import {
   History,
   Sparkles,
   Info,
-  Activity
+  Activity,
+  CheckCircle2,
+  User
 } from 'lucide-react'
 import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
@@ -93,6 +95,18 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
     const label = risk === 'high' ? 'Unusual Activity' : risk === 'caution' ? 'Minor Variance' : 'Trusted Link'
     
     return { score, color, bg, border, label, risk, glow }
+  }
+
+  const getDoctorBio = (specialty: string) => {
+    const bios: Record<string, string> = {
+      [DoctorSpecialty.CARDIOLOGIST]: "Board-certified Cardiologist with expertise in preventive heart care, arrhythmia management, and advanced diagnostic imaging. Committed to long-term heart health.",
+      [DoctorSpecialty.DERMATOLOGIST]: "Specializing in medical and aesthetic dermatology. Expert in early detection of skin conditions, lesion analysis, and precision treatment for chronic skin issues.",
+      [DoctorSpecialty.ONCOLOGIST]: "Dedicated Oncology specialist focused on personalized therapy plans and comprehensive cancer care. Specialized in clinical trials and genetic markers.",
+      [DoctorSpecialty.GENERAL_PRACTITIONER]: "Core Family Physician focused on holistic health, preventive medicine, and long-term wellness for patients of all ages.",
+      [DoctorSpecialty.EMERGENCY]: "Emergency Care Specialist trained for rapid response, acute stabilization, and critical diagnostic assessment in urgent clinical scenarios.",
+      [DoctorSpecialty.NEUROLOGIST]: "Neurology expert focused on brain health, nerve function, and neuromuscular diagnostics. Specialized in managing complex neurological conditions."
+    }
+    return bios[specialty] || "Dedicated medical professional committed to providing high-quality, patient-centric clinical care and maintaining the highest standards of data security."
   }
 
   if (!isOpen) return null
@@ -257,63 +271,103 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                      </div>
 
                      {acceptStep === 0 && (
-                       <div className="space-y-8">
-                         <div className="space-y-2">
-                           <h3 className="text-2xl font-black text-white tracking-tighter">Clinical Consent</h3>
-                           <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                             You are about to establish a clinical link with <span className="text-white">Dr. {acceptingRequest.doctorName}</span>. 
-                           </p>
-                         </div>
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                          <div className="text-center space-y-1">
+                            <h3 className="text-2xl font-black text-white tracking-tighter">Establish Clinical Link</h3>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Verification Flow Phase 1/4</p>
+                          </div>
 
-                         {/* ENHANCED SECURITY RATING WIDGET */}
-                         {(() => {
-                           const trust = getTrustData(acceptingRequest.doctorName, acceptingRequest.metadata)
-                           return (
-                             <div className={cn(
-                               "p-8 rounded-[40px] border relative overflow-hidden transition-all duration-700",
-                               trust.bg, trust.border, trust.glow
-                             )}>
-                               <div className="flex items-center justify-between relative z-10">
-                                 <div className="flex items-center gap-5">
-                                   <div className={cn(
-                                     "w-16 h-16 rounded-[24px] flex items-center justify-center border bg-white/5",
-                                     trust.border, trust.color
-                                   )}>
-                                     <Activity className={cn("w-8 h-8", trust.risk === 'high' ? "animate-bounce" : "animate-pulse")} />
-                                   </div>
-                                   <div>
-                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Clinical Trust Pulse</p>
-                                     <div className="flex items-baseline gap-2">
-                                       <h4 className={cn("text-3xl font-black tracking-tighter", trust.color)}>
-                                         {trust.score}/100
-                                       </h4>
-                                       <span className={cn("text-[10px] font-bold uppercase", trust.color, "opacity-60")}>
-                                         {trust.label}
-                                       </span>
-                                     </div>
-                                   </div>
-                                 </div>
-                                 <div className="group relative">
-                                   <Info className="w-5 h-5 text-slate-500 hover:text-white transition-colors cursor-help" />
-                                   <div className="absolute bottom-full right-0 mb-4 w-60 p-4 rounded-2xl bg-[#0a0a0a] border border-white/10 shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                      <p className="text-[10px] text-white/70 leading-relaxed font-medium">
-                                        This rating is generated by our **Isolation Forest AI** microservice. It analyzes 12 behavioral vectors to differentiate standard clinical access from high-risk anomalies.
+                          {/* PREMIUM DOCTOR IDENTITY CARD */}
+                          {(() => {
+                            const trust = getTrustData(acceptingRequest.doctorName, acceptingRequest.metadata)
+                            const bio = getDoctorBio(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
+                            
+                            return (
+                              <div className="space-y-6">
+                                <div className={cn(
+                                  "p-8 rounded-[48px] bg-white/[0.02] border relative overflow-hidden transition-all duration-1000",
+                                  trust.border, trust.glow
+                                )}>
+                                  {/* Glass Background Elements */}
+                                  <div className={cn("absolute -top-24 -right-24 w-64 h-64 blur-[100px] opacity-20 rounded-full", trust.bg)} />
+                                  
+                                  <div className="flex flex-col items-center text-center relative z-10">
+                                    {/* Pulsing Avatar */}
+                                    <div className="relative mb-6">
+                                      <div className={cn(
+                                        "w-28 h-28 rounded-full flex items-center justify-center border-4 bg-slate-900 overflow-hidden relative z-10 transition-all duration-500",
+                                        trust.border
+                                      )}>
+                                        <div className="w-full h-full bg-gradient-to-br from-white/10 to-transparent flex items-center justify-center">
+                                          <User className="w-12 h-12 text-white/20" />
+                                        </div>
+                                      </div>
+                                      {/* THE PULSE GLOW */}
+                                      <div className={cn(
+                                        "absolute inset-0 rounded-full animate-ping opacity-20 z-0",
+                                        trust.bg
+                                      )} />
+                                      <div className={cn(
+                                        "absolute -inset-2 rounded-full blur-xl opacity-30 animate-pulse z-0",
+                                        trust.bg
+                                      )} />
+
+                                      {/* Integrated Trust Badge */}
+                                      <div className={cn(
+                                        "absolute -bottom-2 -right-2 px-3 py-1.5 rounded-2xl border-2 shadow-2xl flex items-center gap-1.5 z-20",
+                                        trust.bg, trust.border, trust.color
+                                      )}>
+                                        <Activity className="w-3 h-3" />
+                                        <span className="text-[10px] font-black tracking-tighter">{trust.score}/100</span>
+                                      </div>
+                                    </div>
+
+                                    <h4 className="text-2xl font-black text-white tracking-tight mb-1">
+                                      Dr. {acceptingRequest.doctorName}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mb-6">
+                                      <span className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                                        {acceptingRequest.doctorSpecialty}
+                                      </span>
+                                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+                                        {acceptingRequest.organization}
+                                      </span>
+                                    </div>
+
+                                    {/* Biography */}
+                                    <p className="text-xs text-slate-400 leading-relaxed font-medium max-w-sm mb-8 italic">
+                                      "{bio}"
+                                    </p>
+
+                                    {/* Stated Clinical Intent Block */}
+                                    <div className="w-full p-6 rounded-[32px] bg-white/[0.03] border border-white/5 relative group hover:bg-white/[0.05] transition-all">
+                                      <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-[#0a0a0a] border border-white/10">
+                                        <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Clinical Intent</span>
+                                      </div>
+                                      <p className="text-sm text-white font-semibold tracking-tight text-left">
+                                        {acceptingRequest.reason || "General clinical review and consultation"}
                                       </p>
-                                   </div>
-                                 </div>
-                               </div>
-                             </div>
-                           )
-                         })()}
+                                    </div>
+                                  </div>
+                                </div>
 
-                         {acceptingRequest.reason && (
-                           <div className="p-5 rounded-3xl bg-white/5 border border-white/5">
-                             <p className="text-[10px] font-black text-blue-400/60 uppercase tracking-[0.2em] mb-1.5">Stated Clinical Intent</p>
-                             <p className="text-sm text-white/90 font-medium italic">"{acceptingRequest.reason}"</p>
-                           </div>
-                         )}
-
-                         <div className="flex flex-col gap-3">
+                                {/* Privacy Assurance Info */}
+                                <div className="flex items-start gap-4 px-4">
+                                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                    <Shield className="w-5 h-5 text-emerald-500" />
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-black text-white uppercase tracking-widest mb-1">Vault Protection Active</p>
+                                    <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                                      This provider has a **{trust.label}** status. Granting access will trigger your 4-layer data minimization policy, redacting non-essential records automatically.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })()}
+                          
+                          <div className="flex flex-col gap-3">
                             <button 
                               onClick={() => setAcceptStep(1)}
                               className="w-full py-5 rounded-[24px] bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all flex items-center justify-center gap-2"

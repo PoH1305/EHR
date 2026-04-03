@@ -9,6 +9,8 @@ import { RecordList, type RecordItem } from '@/components/RecordList'
 import { RecordDetailsModal } from '@/components/RecordDetailsModal'
 import { useUserStore } from '@/store/useUserStore'
 import { useClinicalStore } from '@/store/useClinicalStore'
+import { UploadModal } from '@/components/patient/UploadModal'
+import type { PatientAttachment } from '@/lib/types'
 
 const FILTER_TABS = ['All', 'Conditions', 'Medications', 'Allergies', 'Labs', 'Procedures']
 
@@ -28,6 +30,8 @@ function RecordsPageContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [showUploadModal, setShowUploadModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mounted, setMounted] = useState(false)
   const searchParams = useSearchParams()
@@ -53,9 +57,15 @@ function RecordsPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, patient?.healthId]) // intentionally omit store functions
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !patient?.healthId) return
+    setUploadFile(file)
+    setShowUploadModal(true)
+  }
+
+  const handleUpload = async ({ category, description, file }: { category: string; description: string; file: File }) => {
+    if (!patient?.healthId) return
 
     setIsUploading(true)
     
@@ -64,26 +74,30 @@ function RecordsPageContent() {
       const localUrl = URL.createObjectURL(file)
       
       // 2. Prepare the attachment record
-      const attachment: any = {
+      const attachment: PatientAttachment = {
         id: crypto.randomUUID(),
         patientId: patient.healthId,
         fileUrl: localUrl,
         fileName: file.name,
         fileType: file.type,
+        fileSize: file.size,
         uploadedAt: new Date().toISOString(),
-        description: 'Uploaded via MedVault Patient App',
+        category: category as any,
+        description: description || 'Uploaded via MedVault Patient App',
         isVerified: false
       }
 
       // 3. Use ClinicalStore to handle cloud upload and state sync
       await addAttachment(attachment)
       
-      alert('File uploaded successfully! It is now being synced to your secure cloud storage.')
+      alert(`Record stored! Category: ${category.replace('_', ' ')}`)
     } catch (error: any) {
       console.error('File upload failed:', error)
       alert(`Upload failed: ${error.message}`)
     } finally {
       setIsUploading(false)
+      setUploadFile(null)
+      setShowUploadModal(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -134,8 +148,9 @@ function RecordsPageContent() {
       records.push({
         id: attachment.id,
         resourceType: 'DiagnosticReport',
+        category: attachment.category, // Pass the category through
         title: attachment.fileName.replace(/\.[^/.]+$/, ''),
-        subtitle: attachment.description || 'Uploaded Document',
+        subtitle: attachment.description || attachment.category.replace('_', ' '),
         date: attachment.uploadedAt,
         verified: attachment.isVerified || false,
         fileUrl: attachment.fileUrl,
@@ -237,7 +252,7 @@ function RecordsPageContent() {
           <input 
             type="file" 
             ref={fileInputRef} 
-            onChange={handleUpload} 
+            onChange={handleFileSelect} 
             className="hidden" 
             accept=".pdf,.jpg,.jpeg,.png"
           />
@@ -256,6 +271,17 @@ function RecordsPageContent() {
               <Upload className="w-6 h-6 text-white" />
             )}
           </button>
+
+          <UploadModal
+            isOpen={showUploadModal}
+            onClose={() => {
+              setShowUploadModal(false)
+              setUploadFile(null)
+              if (fileInputRef.current) fileInputRef.current.value = ''
+            }}
+            onUpload={handleUpload}
+            selectedFile={uploadFile}
+          />
         </>,
         document.body
       )}

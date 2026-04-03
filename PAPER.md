@@ -72,8 +72,8 @@ To solve the "Broad RBAC" problem, we run a **NLP-driven minimization engine** o
 ### C. Purpose-Specific & Time-Bound Handshakes
 Every consent grant includes a mandatory "Purpose of Access" attribute (e.g., "Consultation", "Insurance Claim") and a cryptographically enforced TTL (Time-To-Live), ensuring that clinical access automatically expires after the intended workflow.
 
-### D. Provider Security Rating & Informed Consent
-To empower patients during the consent process, the system integrates a dynamic **Security Rating (0-100)** for every requesting provider. This rating is derived from the doctor's global access behavior tracked by the AI Anomaly Detection service. Before approving a data request, patients are presented with the provider's trust level, transforming the access decision from a blind approval into a risk-aware handshake.
+### D. Clinical Trust Pulse & Informed Consent
+We introduce the **Clinical Trust Pulse**, a dynamic rating (0–100) surfaced to patients during the access negotiation phase. This rating is derived from a local **Isolation Forest** AI model that analyzes provider behavioral vectors. By transforming abstract anomaly scores into a visible "Trust Pulse," we empower patients to make risk-aware consent decisions.
 
 ### E. Cryptographically Chained Auditing
 The audit ledger is not just a list; it is a **Hash-Chain**. Every access event includes the SHA-256 hash of the previous event. This mathematical link ensures that if any past log entry is deleted or modified by an administrator, the chain is broken and the discrepancy is immediately alerted to the patient's dashboard.

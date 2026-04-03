@@ -9,82 +9,97 @@ export const SPECIALTY_FIELD_MAP: Record<DoctorSpecialty, {
   allowedResources: string[]
   allowedKeywords: string[]
   defaultBlockedSensitive: string[]
+  maxHistoryMonths: number | null // null = infinite, e.g. for GP
 }> = {
   [DoctorSpecialty.CARDIOLOGIST]: {
     allowedResources: ['Observation', 'DiagnosticReport', 'MedicationRequest', 'Condition', 'Procedure'],
-    allowedKeywords: ['heart', 'cardiac', 'blood pressure', 'valvular', 'cholesterol', 'stent', 'ecg', 'ekg'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedKeywords: ['heart', 'cardiac', 'blood pressure', 'valvular', 'cholesterol', 'stent', 'ecg', 'ekg', 'pulse', 'arrhythmia'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 24
   },
   [DoctorSpecialty.DERMATOLOGIST]: {
-    allowedResources: ['Observation', 'Condition', 'MedicationRequest'],
-    allowedKeywords: ['skin', 'rash', 'dermatitis', 'lesion', 'melanoma', 'biopsy'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['Observation', 'Condition', 'MedicationRequest', 'MedicalImage'],
+    allowedKeywords: ['skin', 'rash', 'dermatitis', 'lesion', 'melanoma', 'biopsy', 'psoriasis', 'eczema', 'acne'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 36
   },
   [DoctorSpecialty.ONCOLOGIST]: {
-    allowedResources: ['Condition', 'DiagnosticReport', 'MedicationRequest', 'Procedure', 'Observation'],
-    allowedKeywords: ['tumor', 'malignancy', 'chemo', 'radiation', 'biopsy', 'staged'],
-    defaultBlockedSensitive: ['psychiatric', 'reproductive']
+    allowedResources: ['Condition', 'DiagnosticReport', 'MedicationRequest', 'Procedure', 'Observation', 'MedicalImage'],
+    allowedKeywords: ['tumor', 'malignancy', 'chemo', 'radiation', 'biopsy', 'staged', 'cancer', 'metastasis', 'remission'],
+    defaultBlockedSensitive: ['psychiatric', 'reproductive'],
+    maxHistoryMonths: 60
   },
   [DoctorSpecialty.PSYCHIATRIST]: {
-    allowedResources: ['Condition', 'MedicationRequest', 'Observation', 'DiagnosticReport'],
-    allowedKeywords: ['mood', 'anxiety', 'behavior', 'psychosis', 'therapy', 'counseling'],
-    defaultBlockedSensitive: ['genetic', 'reproductive'] // Mental health allowed for psychiatrists
+    allowedResources: ['Condition', 'MedicationRequest', 'Observation', 'DiagnosticReport', 'ClinicalNote'],
+    allowedKeywords: ['mood', 'anxiety', 'behavior', 'psychosis', 'therapy', 'counseling', 'depression', 'bipolar', 'sleep'],
+    defaultBlockedSensitive: ['genetic', 'reproductive'],
+    maxHistoryMonths: 48
   },
   [DoctorSpecialty.GENERAL_PRACTITIONER]: {
-    allowedResources: ['Patient', 'Observation', 'Condition', 'MedicationRequest', 'AllergyIntolerance', 'Immunization'],
-    allowedKeywords: ['*'], // Access to broad general data
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['*'], // Special case for GPs
+    allowedKeywords: ['*'], 
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: null // Unlimited history for primary care
   },
   [DoctorSpecialty.EMERGENCY]: {
-    allowedResources: ['Condition', 'MedicationRequest', 'AllergyIntolerance', 'Procedure', 'Observation'],
+    allowedResources: ['*'],
     allowedKeywords: ['*'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: null // Unlimited history for emergencies
   },
-  // Add other specialties as needed...
   [DoctorSpecialty.NEUROLOGIST]: {
-    allowedResources: ['Observation', 'Condition', 'Procedure'],
-    allowedKeywords: ['brain', 'nerve', 'seizure', 'reflex', 'motor'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['Observation', 'Condition', 'Procedure', 'DiagnosticReport', 'MedicalImage'],
+    allowedKeywords: ['brain', 'nerve', 'seizure', 'reflex', 'motor', 'epilepsy', 'stroke', 'mri', 'ct'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 24
   },
   [DoctorSpecialty.ENDOCRINOLOGIST]: {
-    allowedResources: ['Observation', 'Condition', 'MedicationRequest'],
-    allowedKeywords: ['hormone', 'thyroid', 'diabetes', 'insulin', 'glucose', 'metabolic'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['Observation', 'Condition', 'MedicationRequest', 'DiagnosticReport'],
+    allowedKeywords: ['hormone', 'thyroid', 'diabetes', 'insulin', 'glucose', 'metabolic', 'pituitary', 'adrenal'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 24
   },
   [DoctorSpecialty.GYNECOLOGIST]: {
-    allowedResources: ['Condition', 'Procedure', 'MedicationRequest'],
-    allowedKeywords: ['reproductive', 'ovary', 'uterus', 'pregnancy', 'obstetric'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic']
+    allowedResources: ['Condition', 'Procedure', 'MedicationRequest', 'Observation', 'DiagnosticReport'],
+    allowedKeywords: ['reproductive', 'ovary', 'uterus', 'pregnancy', 'obstetric', 'period', 'menopause', 'breast'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic'],
+    maxHistoryMonths: 48
   },
   [DoctorSpecialty.UROLOGIST]: {
-    allowedResources: ['Condition', 'Procedure', 'MedicationRequest'],
-    allowedKeywords: ['urinary', 'kidney', 'bladder', 'prostate'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic']
+    allowedResources: ['Condition', 'Procedure', 'MedicationRequest', 'Observation', 'DiagnosticReport'],
+    allowedKeywords: ['urinary', 'kidney', 'bladder', 'prostate', 'calculus', 'renal'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic'],
+    maxHistoryMonths: 24
   },
   [DoctorSpecialty.ORTHOPEDIST]: {
-    allowedResources: ['Observation', 'Condition', 'Procedure', 'DiagnosticReport'],
-    allowedKeywords: ['bone', 'joint', 'fracture', 'spinal', 'ligament'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['Observation', 'Condition', 'Procedure', 'DiagnosticReport', 'MedicalImage'],
+    allowedKeywords: ['bone', 'joint', 'fracture', 'spinal', 'ligament', 'vertebra', 'cast', 'orthosis'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 36
   },
   [DoctorSpecialty.PULMONOLOGIST]: {
-    allowedResources: ['Observation', 'Condition', 'DiagnosticReport'],
-    allowedKeywords: ['lung', 'respiratory', 'asthma', 'breath', 'oxygen'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['Observation', 'Condition', 'DiagnosticReport', 'MedicationRequest', 'Procedure'],
+    allowedKeywords: ['lung', 'respiratory', 'asthma', 'breath', 'oxygen', 'copd', 'bronchial', 'pleural'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 24
   },
   [DoctorSpecialty.GASTROENTEROLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'DiagnosticReport', 'Procedure'],
-    allowedKeywords: ['stomach', 'bowel', 'liver', 'gastric', 'endoscopy'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedKeywords: ['stomach', 'bowel', 'liver', 'gastric', 'endoscopy', 'colonoscopy', 'pancreas', 'digestive'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 24
   },
   [DoctorSpecialty.RHEUMATOLOGIST]: {
-    allowedResources: ['Observation', 'Condition', 'AllergyIntolerance'],
-    allowedKeywords: ['autoimmune', 'joint', 'inflammation', 'arthritis', 'lupus'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['Observation', 'Condition', 'AllergyIntolerance', 'DiagnosticReport', 'MedicationRequest'],
+    allowedKeywords: ['autoimmune', 'joint', 'inflammation', 'arthritis', 'lupus', 'crp', 'esr', 'connective'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: 36
   },
   [DoctorSpecialty.OPHTHALMOLOGIST]: {
-    allowedResources: ['Observation', 'Condition', 'Procedure'],
-    allowedKeywords: ['eye', 'vision', 'retina', 'cornea', 'cataract'],
-    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive']
+    allowedResources: ['Observation', 'Condition', 'Procedure', 'DiagnosticReport'],
+    allowedKeywords: ['eye', 'vision', 'retina', 'cornea', 'cataract', 'glaucoma', 'macular', 'optics'],
+    defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
+    maxHistoryMonths: null // GP-like for vision history
   }
 }
 
@@ -95,48 +110,94 @@ export const SPECIALTY_FIELD_MAP: Record<DoctorSpecialty, {
 export function filterPatientDataBySpecialty(
   bundle: FHIRBundle,
   specialty: DoctorSpecialty,
-  allowedCategories: string[] = []
+  allowedCategories: string[] = [],
+  purpose: string = 'Treatment'
 ): FilteredFHIRBundle {
   const config = SPECIALTY_FIELD_MAP[specialty] || SPECIALTY_FIELD_MAP[DoctorSpecialty.GENERAL_PRACTITIONER]
   
   const entries = bundle.entry || []
+  const layersTriggered: Set<string> = new Set()
+
   const filteredEntries = entries.map(entry => {
     const resource = entry.resource as FHIRResource
     if (!resource) return entry
     
-    // Categorize resource (Simulated categorization logic)
     const category = getResourceCategory(resource)
     
-    // Check if resource is in a sensitive category
+    // LAYER 1: ACCESS CONTEXT (Purpose-Based)
+    if (purpose === 'Administrative') {
+      const isClinical = ['Observation', 'MedicationRequest', 'ClinicalNote', 'AllergyIntolerance'].includes(resource.resourceType)
+      if (isClinical) {
+        layersTriggered.add('Contextual Layer (Admin Redaction)')
+        return { fullUrl: entry.fullUrl, resource: { redacted: true, reason: 'Clinical data restricted for Administrative purpose', category } }
+      }
+    }
+
+    if (purpose === 'Research') {
+      // PII Redaction
+      if (resource.resourceType === 'Patient') {
+        layersTriggered.add('Contextual Layer (De-identification)')
+        return { 
+          fullUrl: entry.fullUrl, 
+          resource: { 
+            ...resource, 
+            name: [{ text: 'DE-IDENTIFIED' }], 
+            address: [], 
+            telecom: [],
+            birthDate: (resource as any).birthDate?.split('-')[0] || '1900' // Generalize to year
+          } as any 
+        }
+      }
+    }
+
+    // LAYER 0: SPECIALTY MAPPING (Base Layer)
+    const resourceTypePass = config.allowedResources.includes('*') || config.allowedResources.includes(resource.resourceType)
+    if (!resourceTypePass) {
+       layersTriggered.add('Specialty Layer (Out-of-Scope Resource)')
+       return { fullUrl: entry.fullUrl, resource: { redacted: true, reason: `Resource ${resource.resourceType} restricted for ${specialty}`, category } }
+    }
+
+    // LAYER 2: TEMPORAL RECENCY (Time-Based)
+    if (config.maxHistoryMonths !== null) {
+      const timestamp = (resource as any).effectiveDateTime || (resource as any).authoredOn || (resource as any).uploadedAt || (resource as any).recordedDate
+      if (timestamp) {
+        const recordDate = new Date(timestamp)
+        const cutoff = new Date()
+        cutoff.setMonth(cutoff.getMonth() - config.maxHistoryMonths)
+        
+        if (recordDate < cutoff) {
+          layersTriggered.add('Temporal Layer (Historical Redaction)')
+          return { fullUrl: entry.fullUrl, resource: { redacted: true, reason: `Historical record older than ${config.maxHistoryMonths} months`, category } }
+        }
+      }
+    }
+
+    // LAYER 3: SEMANTIC SECURITY (AI-Driven Keyword Enforcement)
+    if (config.allowedKeywords !== null && !config.allowedKeywords.includes('*')) {
+      const content = JSON.stringify(resource).toLowerCase()
+      const matchesKeyword = config.allowedKeywords.some(k => content.includes(k.toLowerCase()))
+      
+      const requiresSemanticMatch = ['DiagnosticReport', 'ClinicalNote', 'MedicalImage', 'Condition'].includes(resource.resourceType)
+      
+      if (requiresSemanticMatch && !matchesKeyword) {
+        layersTriggered.add('Semantic Layer (Non-Relevant Context)')
+        return { fullUrl: entry.fullUrl, resource: { redacted: true, reason: 'Record does not match requester clinical specialty context', category } }
+      }
+    }
+
+    // Final Sensitivity Check (Keep previous logic)
     const isSensitive = ['psychiatric', 'genetic', 'reproductive'].includes(category)
     const isExplicitlyAllowed = allowedCategories.includes(category)
-    
-    // Filtering logic:
-    // 1. Must be in allowedResources for the specialty
-    // 2. Must not be sensitive OR must be explicitly allowed
-    // 3. (Optional) Keyword matching for more granular control
-    
-    const resourceTypeMatch = config.allowedResources.includes(resource.resourceType)
     const sensitivityPass = !isSensitive || isExplicitlyAllowed || !config.defaultBlockedSensitive.includes(category)
     
-    const shouldInclude = resourceTypeMatch && sensitivityPass
+    if (!sensitivityPass) {
+      layersTriggered.add('Privacy Layer (Sensitive Redaction)')
+      return { fullUrl: entry.fullUrl, resource: { redacted: true, reason: 'Sensitivity policy restriction', category } }
+    }
 
-    if (shouldInclude) {
-      return {
-        fullUrl: entry.fullUrl,
-        resource: resource as unknown as Record<string, unknown>
-      }
-    } else {
-      // Return a redacted stub as per specification
-      const redacted: RedactedField = {
-        redacted: true,
-        reason: 'Restricted by AI Data Minimization policy',
-        category: category
-      }
-      return {
-        fullUrl: entry.fullUrl,
-        resource: redacted
-      }
+    return {
+      fullUrl: entry.fullUrl,
+      resource: resource as unknown as Record<string, unknown>
     }
   })
 
@@ -146,10 +207,8 @@ export function filterPatientDataBySpecialty(
     meta: {
       specialty,
       filteredAt: new Date().toISOString(),
-      fieldsRedacted: filteredEntries
-        .filter(e => (e.resource as Record<string, unknown>).redacted === true)
-        .map(e => (e.resource as Record<string, unknown>).category as string),
-      consentId: 'temp_meta_id',
+      fieldsRedacted: Array.from(layersTriggered), // Store info on what layers were active
+      consentId: 'vault_protection_node',
       emergencyAccess: specialty === DoctorSpecialty.EMERGENCY
     }
   }

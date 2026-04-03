@@ -355,7 +355,7 @@ export interface PatientAttachment {
   fileUrl: string // Public URL or Proxy URL
   storagePath?: string // Internal Supabase storage path
   uploadedAt: string
-  category: 'LAB_REPORT' | 'PRESCRIPTION' | 'DISCHARGE_SUMMARY' | 'OTHER'
+  category: 'LAB_REPORT' | 'PRESCRIPTION' | 'DISCHARGE_SUMMARY' | 'CLINICAL_NOTE' | 'IMAGE_REPORT' | 'INSURANCE_DOC' | 'OTHER'
   description?: string | undefined
   isVerified?: boolean
   doctorId?: string // Track uploader

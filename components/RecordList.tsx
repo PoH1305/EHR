@@ -2,7 +2,17 @@
 
 import React, { useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FileText, Pill, AlertCircle, Activity, Heart, ShieldCheck } from 'lucide-react'
+import { 
+  FileText, 
+  Pill, 
+  AlertCircle, 
+  Activity, 
+  Heart, 
+  ShieldCheck,
+  ClipboardList,
+  Image as ImageIcon,
+  FileBadge
+} from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { GlassCard } from './GlassCard'
 import { FileTypeBadge } from './FileTypeBadge'
@@ -19,6 +29,7 @@ export interface RecordItem {
   fileUrl?: string
   fileName?: string
   fileType?: string
+  category?: string
 }
 
 interface RecordListProps {
@@ -27,11 +38,14 @@ interface RecordListProps {
 }
 
 const RESOURCE_ICONS: Record<string, React.ReactNode> = {
-  Condition: <Heart className="w-4 h-4 text-red-400" />,
-  MedicationRequest: <Pill className="w-4 h-4 text-blue-400" />,
-  AllergyIntolerance: <AlertCircle className="w-4 h-4 text-amber-400" />,
-  Observation: <Activity className="w-4 h-4 text-green-400" />,
   DiagnosticReport: <FileText className="w-4 h-4 text-purple-400" />,
+  LAB_REPORT: <Activity className="w-4 h-4 text-emerald-400" />,
+  PRESCRIPTION: <Pill className="w-4 h-4 text-blue-400" />,
+  DISCHARGE_SUMMARY: <ClipboardList className="w-4 h-4 text-purple-400" />,
+  CLINICAL_NOTE: <FileText className="w-4 h-4 text-amber-400" />,
+  IMAGE_REPORT: <ImageIcon className="w-4 h-4 text-rose-400" />,
+  INSURANCE_DOC: <ShieldCheck className="w-4 h-4 text-indigo-400" />,
+  OTHER: <FileBadge className="w-4 h-4 text-slate-400" />,
 }
 
 export function RecordList({ records, onRecordClick }: RecordListProps) {
@@ -75,7 +89,7 @@ export function RecordList({ records, onRecordClick }: RecordListProps) {
               >
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-xl bg-foreground/[0.05] flex items-center justify-center flex-shrink-0">
-                    {RESOURCE_ICONS[record.resourceType] ?? <FileText className="w-4 h-4 text-foreground/30" />}
+                    {record.category ? (RESOURCE_ICONS[record.category] ?? <FileText className="w-4 h-4 text-foreground/30" />) : (RESOURCE_ICONS[record.resourceType] ?? <FileText className="w-4 h-4 text-foreground/30" />)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">

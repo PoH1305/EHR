@@ -288,8 +288,8 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                 <div className="p-8 rounded-[32px] bg-[#0a120e] border border-emerald-500/20 relative overflow-hidden transition-all duration-1000">
                                   <div className="flex flex-col items-center relative z-10">
                                     {/* Avatar */}
-                                    <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
-                                      <User className="w-8 h-8 text-emerald-500/60" />
+                                    <div className="w-20 h-20 rounded-full bg-[#13271d] border border-emerald-500/20 flex items-center justify-center mb-6">
+                                      <User className="w-8 h-8 text-emerald-500/70" />
                                     </div>
 
                                     <h4 className="text-2xl font-bold text-white tracking-tight mb-0.5">
@@ -324,11 +324,13 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
 
                                     {/* TRUST SCORE UI */}
                                     <div className="w-full space-y-4">
-                                      <div className="flex items-baseline justify-center gap-2">
-                                        <span className="text-4xl font-bold text-white tracking-tighter">{trust.score}</span>
-                                        <span className="text-sm font-bold text-emerald-500 opacity-60">/100 trust score</span>
+                                      <div className="flex items-baseline justify-center gap-1.5">
+                                        <span className="text-5xl font-bold text-white tracking-tighter">{trust.score}</span>
+                                        <span className="text-sm font-bold text-emerald-500/50">/100 trust score</span>
                                       </div>
-                                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                      
+                                      {/* PROGRESS BAR */}
+                                      <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                                         <div 
                                           className="h-full bg-emerald-400 transition-all duration-1000 ease-out"
                                           style={{ width: `${trust.score}%` }}

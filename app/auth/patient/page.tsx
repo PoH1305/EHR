@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Mail, Lock, LogIn, Loader2, AlertTriangle } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
-import { auth, googleProvider, isFirebaseInitialized } from '@/lib/firebase'
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup 
-} from 'firebase/auth'
-import { useAuthState } from 'react-firebase-hooks/auth'
+import { supabase } from '@/lib/supabase'
 
 function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
   return (
@@ -34,18 +28,13 @@ function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
 }
 
 export default function PatientAuthPage() {
-  const router = useRouter()
-
-  if (!isFirebaseInitialized) {
-    return <ConfigError type="patient" />
-  }
-
   return <PatientAuthContent />
 }
 
 function PatientAuthContent() {
   const router = useRouter()
-  const [user, loading, error] = useAuthState(auth!)
+  const [user, setUser] = useState<{ id: string, email: string } | null>(null)
+  const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
@@ -61,10 +50,19 @@ function PatientAuthContent() {
     setRole
   } = useUserStore()
 
-  // Sync Firebase state with Zustand
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email || '' })
+      }
+      setLoading(false)
+    })
+  }, [])
+
+  // Sync Supabase state with Zustand
   useEffect(() => {
     if (user) {
-      setFirebaseUser(user.uid, user.email)
+      setFirebaseUser(user.id, user.email)
       setSessionState('AUTHENTICATED')
       setRole('patient')
       updateLastActive()
@@ -86,9 +84,11 @@ function PatientAuthContent() {
 
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth!, email, password)
+        const { error } = await supabase.auth.signUp({ email, password })
+        if (error) throw error
       } else {
-        await signInWithEmailAndPassword(auth!, email, password)
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
       }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed')
@@ -101,7 +101,10 @@ function PatientAuthContent() {
     setIsProcessing(true)
     setAuthError(null)
     try {
-      await signInWithPopup(auth!, googleProvider!)
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      })
+      if (error) throw error
     } catch (err: any) {
       setAuthError(err.message || 'Google sign-in failed')
     } finally {

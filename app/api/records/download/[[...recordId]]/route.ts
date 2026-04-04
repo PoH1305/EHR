@@ -1,32 +1,31 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createAuthenticatedClient, getAuthenticatedUser } from '@/lib/supabaseServer'
 
 export async function GET(
   request: Request,
   { params }: { params: { recordId?: string[] } }
 ) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
-  
-  // 1. Resolve storage path from catch-all segments
+  // 1. Extract user from session — NOT from query params
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const userId = user.id
+
+  // 2. Resolve storage path from catch-all segments
   const recordSegments = params.recordId || []
   const filePath = recordSegments.map(decodeURIComponent).join('/')
   const patientId = recordSegments[0]
-  const fileName = recordSegments[recordSegments.length - 1] // Fallback filename
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Missing User ID' }, { status: 401 })
-  }
 
   if (!filePath) {
     return NextResponse.json({ error: 'Missing Record Path' }, { status: 400 })
   }
 
   try {
-    // 2. Permission Check
-    // ALLOW if:
-    // a) The requesting user IS the patient who owns the folder
-    // b) The requesting user is a doctor with a valid, unexpired 'download' permission record
+    const supabase = createAuthenticatedClient()
+
+    // 3. Permission Check
     let hasAccess = false
 
     if (userId === patientId) {
@@ -34,7 +33,7 @@ export async function GET(
     } else {
       const { data: rpcAccess, error: rpcError } = await supabase.rpc('check_record_access', {
         p_user_id: userId,
-        p_record_id: filePath, // Check using the full path
+        p_record_id: filePath,
         p_type: 'download'
       })
       if (!rpcError && rpcAccess) hasAccess = true
@@ -44,33 +43,27 @@ export async function GET(
       return NextResponse.json({ error: 'Access Denied or Expired' }, { status: 403 })
     }
 
-    // 3. Download from Storage
-    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files'
-    const { data, error: downloadError } = await supabase.storage
+    // 4. Generate signed download URL
+    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Patient-Files'
+    const { data: signedData, error: signedError } = await supabase.storage
       .from(bucket)
-      .download(filePath)
+      .createSignedUrl(filePath, 300) // 5 minutes
 
-    if (downloadError) {
-       console.error(`[Storage] Download failed for ${filePath} in ${bucket}:`, downloadError)
-       throw downloadError
+    if (signedError || !signedData?.signedUrl) {
+       console.error(`[Storage] Signed URL failed for ${filePath}:`, signedError)
+       throw signedError || new Error('Failed to generate signed URL')
     }
 
-    // 4. Determine MIME Type & Dispositions
-    const contentType = data.type || 'application/octet-stream'
-
-    // 5. Stream Response (Attachment for download)
-    return new Response(data, {
+    // 5. Redirect to signed URL
+    return NextResponse.redirect(signedData.signedUrl, {
       headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${fileName}"`,
         'Cache-Control': 'no-store, max-age=0',
-      },
+      }
     })
   } catch (err: any) {
     console.error('Record Download Error:', err)
     return NextResponse.json({ 
       error: err.message || 'Server Error',
-      details: `Bucket: ${process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files'}`
     }, { status: 500 })
   }
 }

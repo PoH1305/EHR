@@ -128,21 +128,86 @@ export async function sha256(input: string): Promise<string> {
 }
 
 /**
- * High-level helper to encrypt a clinical bundle for sharing
+ * Derive an AES-GCM key from a shared secret string using PBKDF2
  */
-export async function encryptBundle(bundle: any, keyString: string): Promise<string> {
-  // This is a placeholder for actual AES-GCM with the keyString
-  // In a real implementation, we'd derive a key from keyString
-  const json = JSON.stringify(bundle)
-  return btoa(unescape(encodeURIComponent(json))) // Simple base64 for demo, but marked as "encrypted"
+async function deriveKeyFromString(keyString: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder()
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(keyString),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits', 'deriveKey']
+  )
+  
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt.buffer as ArrayBuffer,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt']
+  )
 }
 
 /**
- * High-level helper to decrypt a clinical bundle
+ * High-level helper to encrypt a clinical bundle for sharing using proper AES-GCM
+ */
+export async function encryptBundle(bundle: any, keyString: string): Promise<string> {
+  const json = JSON.stringify(bundle)
+  const encoder = new TextEncoder()
+  
+  // Generate salt and IV
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  
+  // Derive key
+  const key = await deriveKeyFromString(keyString, salt)
+  
+  // Encrypt payload
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encoder.encode(json)
+  )
+  
+  // Combine salt, iv, and ciphertext
+  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength)
+  combined.set(salt, 0)
+  combined.set(iv, salt.length)
+  combined.set(new Uint8Array(encrypted), salt.length + iv.length)
+  
+  return arrayBufferToBase64(combined.buffer as ArrayBuffer)
+}
+
+/**
+ * High-level helper to decrypt a clinical bundle using proper AES-GCM
  */
 export async function decryptBundle(encryptedData: string, keyString: string): Promise<any> {
-  // Reverse of encryptBundle
-  const json = decodeURIComponent(escape(atob(encryptedData)))
+  const combinedBuffer = base64ToArrayBuffer(encryptedData)
+  const combined = new Uint8Array(combinedBuffer)
+  
+  // Extract salt, iv, and ciphertext
+  const salt = combined.slice(0, 16)
+  const iv = combined.slice(16, 28)
+  const ciphertext = combined.slice(28)
+  
+  // Derive key
+  const key = await deriveKeyFromString(keyString, salt)
+  
+  // Decrypt payload
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    ciphertext
+  )
+  
+  const decoder = new TextDecoder()
+  const json = decoder.decode(decrypted)
   return JSON.parse(json)
 }
 

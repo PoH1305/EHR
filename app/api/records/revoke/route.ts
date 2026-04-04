@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createAuthenticatedClient, getAuthenticatedUser } from '@/lib/supabaseServer'
 
 export async function POST(request: Request) {
+  // 1. Authenticate via session cookies
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const { permissionId, recordId, doctorId } = await request.json()
 
@@ -9,7 +15,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing Required Parameters' }, { status: 400 })
     }
 
-    // 1. Revoke the permission
+    const supabase = createAuthenticatedClient()
+
+    // 2. Revoke the permission (RLS ensures only the patient who owns the permission can update it)
     const query = supabase
       .from('record_access_permissions')
       .update({ is_revoked: true })

@@ -2,11 +2,19 @@ import os
 import pandas as pd
 import joblib
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from firebase_auth import verify_firebase_token
-from supabase_client import create_alert
+from supabase_client import create_alert, verify_supabase_token
 
 app = FastAPI(title="EHI Anomaly Detection Service")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load models
 MODEL_DIR = "model"
@@ -34,13 +42,10 @@ class AuditEvent(BaseModel):
     request_rate: float
 
 @app.post("/api/anomaly/check")
-def check_anomaly(event: AuditEvent, user: dict = Depends(verify_firebase_token)):
+def check_anomaly(event: AuditEvent, user: dict = Depends(verify_supabase_token)):
     return _process_audit_event(event)
 
-@app.post("/api/anomaly/verify")
-def verify_logic(event: AuditEvent):
-    """Temporary unauthenticated endpoint to verify ML model logic on Railway."""
-    return _process_audit_event(event)
+
 
 def _process_audit_event(event: AuditEvent):
     if model is None:

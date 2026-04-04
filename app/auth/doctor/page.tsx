@@ -4,13 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUserStore } from '@/store/useUserStore'
-import { auth, googleProvider, isFirebaseInitialized } from '@/lib/firebase'
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup 
-} from 'firebase/auth'
-import { useAuthState } from 'react-firebase-hooks/auth'
+import { supabase } from '@/lib/supabase'
 import { Check, Mail, Lock, LogIn, Loader2, Shield, AlertTriangle, Stethoscope, User } from 'lucide-react'
 import { DoctorSpecialty, DoctorProfile } from '@/lib/types'
 
@@ -22,7 +16,7 @@ function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
       </div>
       <h2 className="text-xl font-bold text-white mb-2">Configuration Required</h2>
       <p className="text-sm text-white/40 max-w-xs mb-8 leading-relaxed">
-        Firebase is not initialized. Please add your Firebase project keys to <code>.env.local</code> to access the {type} portal.
+        Supabase is not initialized. Please add your Supabase project keys to <code>.env.local</code> to access the {type} portal.
       </p>
       <button
         onClick={() => window.location.reload()}
@@ -35,18 +29,13 @@ function ConfigError({ type }: { type: 'patient' | 'doctor' }) {
 }
 
 export default function DoctorAuthPage() {
-  const router = useRouter()
-
-  if (!isFirebaseInitialized) {
-    return <ConfigError type="doctor" />
-  }
-
   return <DoctorAuthContent />
 }
 
 function DoctorAuthContent() {
   const router = useRouter()
-  const [user, loading] = useAuthState(auth!)
+  const [user, setUser] = useState<{ id: string, email: string } | null>(null)
+  const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -66,15 +55,24 @@ function DoctorAuthContent() {
     setDoctor
   } = useUserStore()
 
-  // Sync Firebase state with Zustand
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email || '' })
+      }
+      setLoading(false)
+    })
+  }, [])
+
+  // Sync Supabase state with Zustand
   useEffect(() => {
     if (user) {
-      setFirebaseUser(user.uid, user.email)
+      setFirebaseUser(user.id, user.email)
       setSessionState('AUTHENTICATED')
       setRole('doctor')
       updateLastActive()
       // NEW: Trigger profile fetch/migration on login
-      void fetchDoctorProfile(user.uid)
+      void fetchDoctorProfile(user.id)
     }
   }, [user, setFirebaseUser, setSessionState, updateLastActive, setRole, fetchDoctorProfile])
 
@@ -95,32 +93,29 @@ function DoctorAuthContent() {
         if (license.length < 5) {
           throw new Error('Please enter a valid medical license number')
         }
-        const { user: newUser } = await createUserWithEmailAndPassword(auth!, email, password)
-        
-        // Save Doctor Profile to Firestore
-        const { db_firestore } = await import('@/lib/firebase')
-        const { doc, setDoc } = await import('firebase/firestore')
-        
-        if (db_firestore) {
-          const docData = {
-            id: newUser.uid,
-            name: name || email.split('@')[0] || 'Medical Practitioner',
-            email: newUser.email || email,
-            licenseNumber: license,
-            specialty: specialty as DoctorSpecialty,
-            isVerified: false,
-            createdAt: new Date().toISOString(),
-            lastActiveAt: new Date().toISOString()
-          }
-          
-          await setDoc(doc(db_firestore, 'doctors', newUser.uid), docData)
-          
-          // NEW: Sync to Supabase via UserStore
-          const { setDoctor } = useUserStore.getState()
-          setDoctor(docData)
+        const { data: { user: newUser }, error } = await supabase.auth.signUp({ email, password })
+        if (error) throw error
+        if (!newUser) throw new Error('Signup failed')
+
+        const docData = {
+          id: newUser.id,
+          name: name || email.split('@')[0] || 'Medical Practitioner',
+          email: newUser.email || email,
+          licenseNumber: license,
+          specialty: specialty as DoctorSpecialty,
+          isVerified: false,
+          createdAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString()
         }
+        
+        // Sync to Supabase Profiles directly via UserStore
+        // (The app's setDoctor internally calls syncProfileToCloud, handling the insert/upsert)
+        const { setDoctor } = useUserStore.getState()
+        setDoctor(docData)
+
       } else {
-        await signInWithEmailAndPassword(auth!, email, password)
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
       }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed')
@@ -133,35 +128,8 @@ function DoctorAuthContent() {
     setIsProcessing(true)
     setAuthError(null)
     try {
-      const { user: gUser } = await signInWithPopup(auth!, googleProvider!)
-      
-      // Check if profile exists, if not create a stub
-      const { db_firestore } = await import('@/lib/firebase')
-      const { doc, getDoc, setDoc } = await import('firebase/firestore')
-      
-      if (db_firestore) {
-        const docRef = doc(db_firestore, 'doctors', gUser.uid)
-        const docSnap = await getDoc(docRef)
-        
-        if (!docSnap.exists()) {
-          const docData = {
-            id: gUser.uid,
-            name: gUser.displayName || gUser.email?.split('@')[0] || 'Medical Practitioner',
-            email: gUser.email || '',
-            licenseNumber: 'PENDING',
-            specialty: DoctorSpecialty.GENERAL_PRACTITIONER,
-            isVerified: false,
-            createdAt: new Date().toISOString(),
-            lastActiveAt: new Date().toISOString()
-          }
-          await setDoc(docRef, docData)
-          setDoctor(docData)
-        } else {
-          // If exists, load it
-          const docData = docSnap.data() as DoctorProfile
-          setDoctor(docData)
-        }
-      }
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
+      if (error) throw error
     } catch (err: any) {
       setAuthError(err.message || 'Google sign-in failed')
     } finally {

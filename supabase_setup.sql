@@ -66,21 +66,76 @@ ALTER TABLE public.access_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shared_secrets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.record_access_permissions ENABLE ROW LEVEL SECURITY;
 
--- 4. Create Policies (Permissive for the anon role, secured by ID)
+-- 4. Create Policies (Strict row level security)
+
+-- PROFILES
 DROP POLICY IF EXISTS "Allow anon read/write profile by ID" ON public.profiles;
-CREATE POLICY "Allow anon read/write profile by ID" ON public.profiles FOR ALL TO anon USING (true) WITH CHECK (true);
+-- User can read and write their own profile
+CREATE POLICY "Allow users to read own profile" ON public.profiles FOR SELECT TO authenticated USING (id = auth.uid()::text);
+CREATE POLICY "Allow users to insert/update own profile" ON public.profiles FOR ALL TO authenticated USING (id = auth.uid()::text) WITH CHECK (id = auth.uid()::text);
+-- Doctors can read profiles of patients they have approved access to
+CREATE POLICY "Allow doctors to read approved patient profiles" ON public.profiles FOR SELECT TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.access_requests 
+    WHERE access_requests.patient_id = profiles.health_id 
+    AND access_requests.doctor_id = auth.uid()::text 
+    AND access_requests.status = 'APPROVED'
+  )
+);
 
+-- CLINICAL DATA
 DROP POLICY IF EXISTS "Allow anon read/write clinical by ID" ON public.clinical_data;
-CREATE POLICY "Allow anon read/write clinical by ID" ON public.clinical_data FOR ALL TO anon USING (true) WITH CHECK (true);
+-- Patient can read own data
+CREATE POLICY "Allow patient to read own clinical data" ON public.clinical_data FOR SELECT TO authenticated USING (patient_id = auth.uid()::text);
+CREATE POLICY "Allow patient to insert own clinical data" ON public.clinical_data FOR INSERT TO authenticated WITH CHECK (patient_id = auth.uid()::text);
+CREATE POLICY "Allow patient to update own clinical data" ON public.clinical_data FOR UPDATE TO authenticated USING (patient_id = auth.uid()::text);
+-- Doctors can read/update/insert clinical data if they have approved access
+CREATE POLICY "Allow doctors to read approved clinical data" ON public.clinical_data FOR SELECT TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.access_requests 
+    WHERE (access_requests.patient_id = clinical_data.patient_id OR access_requests.patient_id IN (SELECT health_id FROM public.profiles WHERE id = clinical_data.patient_id))
+    AND access_requests.doctor_id = auth.uid()::text 
+    AND access_requests.status = 'APPROVED'
+  )
+);
+CREATE POLICY "Allow doctors to insert approved clinical data" ON public.clinical_data FOR INSERT TO authenticated WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.access_requests 
+    WHERE (access_requests.patient_id = clinical_data.patient_id OR access_requests.patient_id IN (SELECT health_id FROM public.profiles WHERE id = clinical_data.patient_id))
+    AND access_requests.doctor_id = auth.uid()::text 
+    AND access_requests.status = 'APPROVED'
+  )
+);
+CREATE POLICY "Allow doctors to update approved clinical data" ON public.clinical_data FOR UPDATE TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.access_requests 
+    WHERE (access_requests.patient_id = clinical_data.patient_id OR access_requests.patient_id IN (SELECT health_id FROM public.profiles WHERE id = clinical_data.patient_id))
+    AND access_requests.doctor_id = auth.uid()::text 
+    AND access_requests.status = 'APPROVED'
+  )
+);
 
+-- ACCESS REQUESTS
 DROP POLICY IF EXISTS "Allow anon read/write lookup" ON public.access_requests;
-CREATE POLICY "Allow anon read/write lookup" ON public.access_requests FOR ALL TO anon USING (true) WITH CHECK (true);
+-- Doctors can insert their own requests and see their own requests
+CREATE POLICY "Allow doctor read/write own requests" ON public.access_requests FOR ALL TO authenticated USING (doctor_id = auth.uid()::text) WITH CHECK (doctor_id = auth.uid()::text);
+-- Patients can read and update requests targeted at them
+-- We join with profiles to find if auth.uid() owns the health_id requested
+CREATE POLICY "Allow patient to view and update incoming requests" ON public.access_requests FOR ALL TO authenticated USING (
+  patient_id IN (SELECT health_id FROM public.profiles WHERE id = auth.uid()::text)
+) WITH CHECK (
+  patient_id IN (SELECT health_id FROM public.profiles WHERE id = auth.uid()::text)
+);
 
+-- SHARED SECRETS
 DROP POLICY IF EXISTS "Allow anon read/write secrets" ON public.shared_secrets;
-CREATE POLICY "Allow anon read/write secrets" ON public.shared_secrets FOR ALL TO anon USING (true) WITH CHECK (true);
+-- Any authenticated user can read/write shared secrets (further secured by knowing the ID / token)
+CREATE POLICY "Allow authenticated read/write secrets" ON public.shared_secrets FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
+-- RECORD ACCESS PERMISSIONS
 DROP POLICY IF EXISTS "Allow anon read/write permissions" ON public.record_access_permissions;
-CREATE POLICY "Allow anon read/write permissions" ON public.record_access_permissions FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "Allow doctors to read permissions" ON public.record_access_permissions FOR SELECT TO authenticated USING (doctor_id = auth.uid()::text);
+CREATE POLICY "Allow patients to read/write permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (patient_id = auth.uid()::text) WITH CHECK (patient_id = auth.uid()::text);
 
 -- 6. Enable Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.access_requests;
@@ -89,13 +144,22 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.record_access_permissions;
 
 -- 7. Storage Bucket Setup
 DROP POLICY IF EXISTS "Allow public read of patient files" ON storage.objects;
-CREATE POLICY "Allow public read of patient files" ON storage.objects FOR SELECT TO anon USING ( bucket_id = 'patient-files' );
+DROP POLICY IF EXISTS "Allow authenticated read of patient-files" ON storage.objects;
+CREATE POLICY "Allow patient to read own files" ON storage.objects FOR SELECT TO authenticated USING (
+  bucket_id = 'Patient-Files' AND (storage.foldername(name))[1] = auth.uid()::text
+);
 
 DROP POLICY IF EXISTS "Allow authenticated uploads to patient-files" ON storage.objects;
-CREATE POLICY "Allow authenticated uploads to patient-files" ON storage.objects FOR INSERT TO anon WITH CHECK ( bucket_id = 'patient-files' );
+DROP POLICY IF EXISTS "Allow authenticated uploads to Patient-Files" ON storage.objects;
+CREATE POLICY "Allow patient to upload own files" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
+  bucket_id = 'Patient-Files' AND (storage.foldername(name))[1] = auth.uid()::text
+);
 
 DROP POLICY IF EXISTS "Allow authenticated updates to patient-files" ON storage.objects;
-CREATE POLICY "Allow authenticated updates to patient-files" ON storage.objects FOR UPDATE TO anon USING ( bucket_id = 'patient-files' );
+DROP POLICY IF EXISTS "Allow authenticated updates to Patient-Files" ON storage.objects;
+CREATE POLICY "Allow patient to update own files" ON storage.objects FOR UPDATE TO authenticated USING (
+  bucket_id = 'Patient-Files' AND (storage.foldername(name))[1] = auth.uid()::text
+);
 
 -- 8. Medical Records Table (Audit Log)
 CREATE TABLE IF NOT EXISTS public.medical_records (
@@ -112,10 +176,11 @@ CREATE TABLE IF NOT EXISTS public.medical_records (
 ALTER TABLE public.medical_records ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow anon read medical_records" ON public.medical_records;
-CREATE POLICY "Allow anon read medical_records" ON public.medical_records FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow authenticated read own medical_records" ON public.medical_records FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
+CREATE POLICY "Allow authenticated insert own medical_records" ON public.medical_records FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Allow anon delete medical_records" ON public.medical_records;
-CREATE POLICY "Allow anon delete medical_records" ON public.medical_records FOR DELETE TO anon USING (true);
+-- DELETION IS STRICTLY PROHIBITED ON THE AUDIT LOG
 
 -- 9. Atomic Append Function (Fixes doctor overwrite bug)
 CREATE OR REPLACE FUNCTION append_clinical_data(p_patient_id TEXT, p_key TEXT, p_value JSONB)
@@ -131,7 +196,7 @@ BEGIN
   ),
   last_synced_at = NOW();
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 11. Permission Check Function (RPC) with Auto-Revoke
 CREATE OR REPLACE FUNCTION check_record_access(p_user_id TEXT, p_record_id TEXT, p_type TEXT)
@@ -155,7 +220,6 @@ BEGIN
   IF v_perm_id IS NULL OR v_is_revoked = TRUE THEN
     v_has_access := FALSE;
   ELSIF v_expires_at <= NOW() THEN
-    -- AUTO-EXPIRE: Mark as revoked if we just discovered it's expired
     UPDATE public.record_access_permissions
     SET is_revoked = TRUE
     WHERE id = v_perm_id;
@@ -164,7 +228,7 @@ BEGIN
     v_has_access := TRUE;
   END IF;
 
-  -- 3. Log the access attempt (Audit)
+  -- 3. Log the access attempt (Immutable Audit)
   INSERT INTO public.medical_records (user_id, role, filename, filepath, file_type, metadata)
   VALUES (p_user_id, 'doctor', 'Access Check: ' || p_type, p_record_id, p_type, jsonb_build_object(
     'success', v_has_access, 
@@ -179,7 +243,7 @@ BEGIN
 
   RETURN v_has_access;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 12. Auto-Revoke on Expiry Helper
 CREATE OR REPLACE FUNCTION revoke_expired_permissions()
@@ -189,4 +253,4 @@ BEGIN
   SET is_revoked = TRUE
   WHERE expires_at <= NOW() AND is_revoked = FALSE;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

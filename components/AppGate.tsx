@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useUserStore } from '@/store/useUserStore'
-import { auth, isFirebaseInitialized } from '@/lib/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+// Remove Firebase imports and replace with Supabase
+import { supabase } from '@/lib/supabase'
 import { Loader2, RefreshCcw } from 'lucide-react'
 
 export function AppGate({ children }: { children: React.ReactNode }) {
@@ -44,16 +44,16 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     return () => events.forEach(e => window.removeEventListener(e, handleActivity))
   }, [updateLastActive])
 
-  // 2. Firebase Auth Listener
+  // 2. Supabase Auth Listener
   useEffect(() => {
-    if (!isFirebaseInitialized || !auth) {
+    if (!supabase) {
       setIsAuthChecking(false)
       return
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setFirebaseUser(user.uid, user.email)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setFirebaseUser(session.user.id, session.user.email || null)
         setSessionState('AUTHENTICATED')
       } else {
         setFirebaseUser(null, null)
@@ -62,7 +62,19 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       setIsAuthChecking(false)
     })
 
-    return () => unsubscribe()
+    // Also check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setFirebaseUser(session.user.id, session.user.email || null)
+        setSessionState('AUTHENTICATED')
+      } else {
+        setFirebaseUser(null, null)
+        setSessionState('UNAUTHENTICATED')
+      }
+      setIsAuthChecking(false)
+    })
+
+    return () => subscription.unsubscribe()
   }, [setFirebaseUser, setSessionState])
 
   // 3. Timeout Safety

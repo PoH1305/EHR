@@ -153,17 +153,15 @@ export const useUserStore = create<UserState & UserActions>()(
         if (!db || !firebaseUid) return
 
         try {
-          // 1. Client-side Firestore Deletion (Authenticated)
+          // 1. Client-side Supabase Deletion
           if (role === 'doctor') {
-            const { db_firestore } = await import('@/lib/firebase')
-            const { doc, deleteDoc } = await import('firebase/firestore')
-            if (db_firestore) {
-              const docRef = doc(db_firestore, 'doctors', firebaseUid)
+            const { supabase } = await import('@/lib/supabase')
+            if (supabase) {
               try {
-                await deleteDoc(docRef)
-                console.log('[UserStore] Firestore doctor profile erased')
+                await supabase.from('profiles').delete().eq('id', firebaseUid)
+                console.log('[UserStore] Supabase doctor profile erased')
               } catch (fsError) {
-                console.warn('[UserStore] Firestore erasure failed (likely non-existent doc):', fsError)
+                console.warn('[UserStore] Supabase erasure failed (likely non-existent doc):', fsError)
               }
             }
           }
@@ -228,10 +226,10 @@ export const useUserStore = create<UserState & UserActions>()(
 
       signOut: async () => {
         try {
-          const { auth } = await import('@/lib/firebase')
-          if (auth) await auth.signOut()
+          const { supabase } = await import('@/lib/supabase')
+          if (supabase) await supabase.auth.signOut()
         } catch (e) {
-          console.error('[UserStore] Firebase signout failed:', e)
+          console.error('[UserStore] Supabase signout failed:', e)
         }
 
         set((state) => {
@@ -242,7 +240,6 @@ export const useUserStore = create<UserState & UserActions>()(
           state.doctor = null
           state.lastActiveAt = null
           // Note: we keep 'patient' and 'healthId' to allow "Continue where you left off"
-          // the middleware and auth guards will still block access until re-authentication
         })
 
         if (typeof window !== 'undefined') {
@@ -412,23 +409,6 @@ export const useUserStore = create<UserState & UserActions>()(
               state.role = 'doctor'
             })
             return
-          }
-
-          // Fallback to Firestore if not found in Supabase
-          console.log('[UserStore] Doctor profile not in Supabase, checking Firestore...')
-          const { db_firestore } = await import('@/lib/firebase')
-          const { doc, getDoc } = await import('firebase/firestore')
-          
-          if (db_firestore) {
-            const docRef = doc(db_firestore, 'doctors', id)
-            const docSnap = await getDoc(docRef)
-            
-            if (docSnap.exists()) {
-              const docData = docSnap.data() as DoctorProfile
-              console.log('[UserStore] Migrating doctor profile from Firestore to Supabase')
-              // This will trigger syncProfileToCloud() automatically via setDoctor
-              get().setDoctor(docData)
-            }
           }
         } catch (error) {
           console.error('[UserStore] Failed to fetch doctor profile:', error)

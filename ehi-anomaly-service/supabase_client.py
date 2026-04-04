@@ -56,3 +56,27 @@ def create_alert(event_data: dict, score: float, rule_flagged: bool):
     except Exception as e:
         print(f"Error logging alert to Supabase: {e}")
         return None
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+def verify_supabase_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Dependency to verify a Supabase JWT token.
+    Extracts Bearer token from the Authorization header and verifies it via the Supabase Client.
+    """
+    token = credentials.credentials
+    try:
+        # Get the user using the provided JWT
+        res = supabase.auth.get_user(token)
+        if not res or not res.user:
+            raise Exception("Invalid token")
+        return {"uid": res.user.id, "email": res.user.email}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid authentication credentials: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

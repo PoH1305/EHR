@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { db_firestore } from '@/lib/firebase'
-import { doc, deleteDoc } from 'firebase/firestore'
+import { createAuthenticatedClient, getAuthenticatedUser } from '@/lib/supabaseServer'
 
 export async function POST(request: Request) {
-  try {
-    const { uid, role } = await request.json()
+  // 1. Authenticate via session cookies — no trusting body params
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-    if (!uid) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
-    }
+  const uid = user.id
+
+  try {
+    const { role } = await request.json()
 
     if (role !== 'doctor') {
       return NextResponse.json({ error: 'Unauthorized: Only clinical accounts can be deleted via this portal' }, { status: 403 })
     }
 
-    // 1. Delete from Supabase Profiles
+    const supabase = createAuthenticatedClient()
+
+    // 1. Delete from Supabase Profiles (RLS ensures only own profile)
     const { error: profileError } = await supabase
       .from('profiles')
       .delete()
@@ -26,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Failed to delete Supabase profile: ${profileError.message}` }, { status: 500 })
     }
 
-    // 2. Delete Permissions & Access Requests
+    // 2. Delete Permissions & Access Requests (RLS scoped to own)
     const { error: permError } = await supabase
       .from('record_access_permissions')
       .delete()
@@ -41,19 +45,9 @@ export async function POST(request: Request) {
     
     if (reqError) console.warn('[DeleteAccount] Supabase Requests deletion warning:', reqError)
 
-    // 3. Delete Audit Logs (Medical Records associated with the doctor)
-    const { error: auditError } = await supabase
-      .from('medical_records')
-      .delete()
-      .eq('user_id', uid)
+    // 3. Audit logs are NEVER deleted — they are immutable by RLS policy
 
-    if (auditError) {
-      console.warn('[DeleteAccount] Supabase Audit deletion warning (likely RLS):', auditError)
-      // We don't hard-fail on audit log deletion as it might be restricted by policy, 
-      // but we log it for the developer.
-    }
-
-    return NextResponse.json({ success: true, message: 'Supabase clinical identity erased. Firestore erasure handled by client.' })
+    return NextResponse.json({ success: true, message: 'Clinical identity erased.' })
 
   } catch (error: any) {
     console.error('[DeleteAccount] Global failure:', error)

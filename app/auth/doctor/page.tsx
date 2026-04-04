@@ -62,6 +62,15 @@ function DoctorAuthContent() {
       }
       setLoading(false)
     })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email || '' })
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Sync Supabase state with Zustand
@@ -79,7 +88,7 @@ function DoctorAuthContent() {
   // Navigation Logic
   useEffect(() => {
     if (_hasHydrated && user && !loading) {
-      setTimeout(() => router.replace('/dashboard'), 1500)
+      setTimeout(() => router.replace('/dashboard'), 500)
     }
   }, [_hasHydrated, user, loading, router])
 
@@ -97,6 +106,8 @@ function DoctorAuthContent() {
         if (error) throw error
         if (!newUser) throw new Error('Signup failed')
 
+        setUser({ id: newUser.id, email: newUser.email || '' })
+
         const docData = {
           id: newUser.id,
           name: name || email.split('@')[0] || 'Medical Practitioner',
@@ -108,14 +119,15 @@ function DoctorAuthContent() {
           lastActiveAt: new Date().toISOString()
         }
         
-        // Sync to Supabase Profiles directly via UserStore
-        // (The app's setDoctor internally calls syncProfileToCloud, handling the insert/upsert)
         const { setDoctor } = useUserStore.getState()
         setDoctor(docData)
 
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        if (data.user) {
+          setUser({ id: data.user.id, email: data.user.email || '' })
+        }
       }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed')

@@ -57,6 +57,15 @@ function PatientAuthContent() {
       }
       setLoading(false)
     })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email || '' })
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Sync Supabase state with Zustand
@@ -73,7 +82,7 @@ function PatientAuthContent() {
   useEffect(() => {
     if (_hasHydrated && user && !loading) {
       const destination = patient ? '/dashboard' : '/onboarding'
-      setTimeout(() => router.replace(destination), 1500)
+      setTimeout(() => router.replace(destination), 500)
     }
   }, [_hasHydrated, user, loading, patient, router])
 
@@ -84,11 +93,17 @@ function PatientAuthContent() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
+        if (data.user) {
+          setUser({ id: data.user.id, email: data.user.email || '' })
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        if (data.user) {
+          setUser({ id: data.user.id, email: data.user.email || '' })
+        }
       }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed')

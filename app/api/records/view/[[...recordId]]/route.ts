@@ -59,7 +59,7 @@ export async function GET(
     }
 
     // 3. Generate Secure Signed URL (1-hour validity)
-    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Patient-Files'
+    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files'
     const { data: signedData, error: signedError } = await supabase.storage
       .from(bucket)
       .createSignedUrl(filePath, 3600)

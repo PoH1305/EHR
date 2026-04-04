@@ -12,7 +12,7 @@ export async function uploadMedicalFile(
   const filePath = `${patientId}/${fileId}`
   
   const { data, error: uploadError } = await supabase.storage
-    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Patient-Files')
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files')
     .upload(filePath, file, {
       upsert: true,
       contentType: file.type
@@ -21,7 +21,7 @@ export async function uploadMedicalFile(
   if (uploadError) throw uploadError
 
   const { data: { publicUrl } } = supabase.storage
-    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Patient-Files')
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files')
     .getPublicUrl(filePath)
   
   return { publicUrl, storagePath: filePath }

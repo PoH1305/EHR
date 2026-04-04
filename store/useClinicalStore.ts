@@ -473,7 +473,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to digitize image to Cloud:', error)
-            throw new Error('Clinical upload failed. Please check your connection and try again.')
+            throw new Error('Storage not configured. Please contact support.')
           }
         }
 
@@ -541,7 +541,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to digitize attachment to Cloud:', error)
-            throw new Error('Clinical upload failed. Please check your connection and try again.')
+            throw new Error('Storage not configured. Please contact support.')
           }
         }
 

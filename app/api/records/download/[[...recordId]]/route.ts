@@ -45,7 +45,7 @@ export async function GET(
     }
 
     // 3. Download from Storage
-    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Patient-Files'
+    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files'
     const { data, error: downloadError } = await supabase.storage
       .from(bucket)
       .download(filePath)
@@ -70,7 +70,7 @@ export async function GET(
     console.error('Record Download Error:', err)
     return NextResponse.json({ 
       error: err.message || 'Server Error',
-      details: `Bucket: ${process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Patient-Files'}`
+      details: `Bucket: ${process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'patient-files'}`
     }, { status: 500 })
   }
 }

@@ -12,6 +12,17 @@ export async function POST(req: Request) {
     
     console.log('[API/Consent/Revoke] Token revoked:', tokenId, 'Reason:', reason)
 
+    try {
+      import('@/lib/anomalyLogger').then(({ logClinicalAccess }) => {
+        logClinicalAccess({
+          userId: patientId || 'patient',
+          action: 'DELETE',
+          resourceCount: 1,
+          resourceType: 'Consent'
+        }).catch(() => {})
+      }).catch(() => {})
+    } catch (e) {}
+
     return NextResponse.json({ success: true, message: 'Token revoked' })
   } catch (err) {
     console.error('Consent Revoke Error:', err)

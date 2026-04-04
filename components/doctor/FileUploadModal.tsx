@@ -71,6 +71,15 @@ export default function FileUploadModal({ isOpen, onClose, patientId }: FileUplo
         metadata: { fileName: file.name, category, patientId, isVerified: true }
       }, patientId)
       
+      import('@/lib/anomalyLogger').then(({ logClinicalAccess }) => {
+        logClinicalAccess({
+          userId: firebaseUid || 'doctor',
+          action: 'WRITE',
+          resourceCount: 1,
+          resourceType: 'File'
+        }).catch(() => {})
+      }).catch(() => {})
+
       toast("File uploaded successfully and synced to patient", "success")
       setFile(null)
       setDescription('')

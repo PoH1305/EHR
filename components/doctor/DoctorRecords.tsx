@@ -24,6 +24,7 @@ import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
 import { FileTypeBadge } from '@/components/FileTypeBadge'
 import { supabase } from '@/lib/supabase'
+import { logClinicalAccess } from '@/lib/anomalyLogger'
 
 interface DoctorRecordsProps {
    patientId?: string | null
@@ -76,8 +77,15 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
             description: `Doctor (${firebaseEmail || 'Unknown'}) accessed your clinical records dashboard.`,
             metadata: { doctorId: firebaseUid, patientId }
          }, patientId)
+
+         logClinicalAccess({
+            userId: firebaseUid,
+            action: 'READ',
+            resourceCount: attachments?.length || 1,
+            resourceType: 'PatientProfile'
+         }).catch(() => {})
       }
-   }, [patientId, firebaseUid, firebaseEmail, addAuditEvent])
+   }, [patientId, firebaseUid, firebaseEmail, attachments, addAuditEvent])
 
    // 2. Fetch and Subscribe to Permissions
    useEffect(() => {

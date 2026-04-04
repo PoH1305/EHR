@@ -72,6 +72,17 @@ export async function GET(
     // 4. Log Access for Anomaly Detection
     // This feeds the pipeline to detect account takeovers or unauthorized sharing patterns
     try {
+      import('@/lib/anomalyLogger').then(({ logClinicalAccess }) => {
+        logClinicalAccess({
+          userId: userId,
+          action: 'READ',
+          resourceCount: 1,
+          resourceType: 'File'
+        }).catch(() => {})
+      }).catch(() => {})
+    } catch (e) {}
+
+    try {
       await supabase.from('file_access_logs').insert({
         doctor_id: viewerType === 'doctor' ? userId : null,
         patient_id: patientId,

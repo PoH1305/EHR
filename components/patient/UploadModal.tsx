@@ -43,6 +43,16 @@ export function UploadModal({ isOpen, onClose, onUpload, selectedFile }: UploadM
     setIsUploading(true)
     try {
       await onUpload({ category, description, file: selectedFile })
+      
+      import('@/lib/anomalyLogger').then(({ logClinicalAccess }) => {
+        logClinicalAccess({
+          userId: 'patient', // or fetch from auth if needed, but it uses getAuth inside
+          action: 'WRITE',
+          resourceCount: 1,
+          resourceType: 'File'
+        }).catch(() => {})
+      }).catch(() => {})
+
       onClose()
     } catch (error) {
       console.error('Upload failed:', error)

@@ -312,8 +312,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 status: newReq.status,
                 patient_name: newReq.patientName,
                 reason: newReq.reason,
-                requested_duration: newReq.requestedDuration,
-                shared_categories: newReq.sharedCategories
+                shared_categories: newReq.sharedCategories,
+                metadata: { requested_duration: newReq.requestedDuration }
               })
             if (syncError) throw syncError
             console.log('[ConsentStore] Access request synced successfully:', newReq.id)
@@ -415,6 +415,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               patientName: d.patient_name,
               reason: d.reason,
               sharedCategories: d.shared_categories || [],
+              requestedDuration: d.metadata?.requested_duration || null,
               metadata: d.metadata || {}
             }))
 

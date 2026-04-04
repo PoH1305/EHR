@@ -35,6 +35,14 @@ class AuditEvent(BaseModel):
 
 @app.post("/api/anomaly/check")
 def check_anomaly(event: AuditEvent, user: dict = Depends(verify_firebase_token)):
+    return _process_audit_event(event)
+
+@app.post("/api/anomaly/verify")
+def verify_logic(event: AuditEvent):
+    """Temporary unauthenticated endpoint to verify ML model logic on Railway."""
+    return _process_audit_event(event)
+
+def _process_audit_event(event: AuditEvent):
     if model is None:
         raise HTTPException(status_code=500, detail="Machine learning models are not loaded.")
 
@@ -50,12 +58,10 @@ def check_anomaly(event: AuditEvent, user: dict = Depends(verify_firebase_token)
         rule_flagged = True
         
     # 2. ML Model Prediction
-    # Preprocess categorical features safely
     action_code = -1
     ip_code = -1
     
     try:
-        # Transform expects 1D array-like
         action_code = le_action.transform([event.action])[0]
         ip_code = le_ip.transform([event.ip_address])[0]
     except ValueError:
@@ -64,8 +70,6 @@ def check_anomaly(event: AuditEvent, user: dict = Depends(verify_firebase_token)
         score = 0.9
     
     if not rule_flagged:
-        # If no rules fired and categories are known, use the ML model
-        # Prepare single row DataFrame
         input_dict = {
             "resource_count": event.resource_count,
             "action": action_code,
@@ -73,27 +77,19 @@ def check_anomaly(event: AuditEvent, user: dict = Depends(verify_firebase_token)
         }
         
         try:
-            # Reconstruct DataFrame precisely with expected features
             input_df = pd.DataFrame([input_dict])
             if feature_names:
-                # Keep only features the model was trained on
                 input_df = input_df[[f for f in feature_names if f in input_df.columns]]
             
-            prediction = model.predict(input_df)[0] # Returns 1 for inlier, -1 for outlier
-            
-            if prediction == -1:
-                score = 0.9 # Anomaly
-            else:
-                score = 0.1 # Normal
+            prediction = model.predict(input_df)[0]
+            score = 0.9 if prediction == -1 else 0.1
         except Exception as e:
             print(f"Prediction error: {e}")
             raise HTTPException(status_code=500, detail="Error during anomaly prediction.")
         
-    # Determine final status
     is_anomaly = score > 0.8 or rule_flagged
     status = "flagged" if is_anomaly else "normal"
     
-    # Log to Supabase if anomalous
     if is_anomaly:
         create_alert(event.dict(), score, rule_flagged)
         

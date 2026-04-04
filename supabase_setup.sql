@@ -156,18 +156,21 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.record_access_permissions;
 -- 7. Storage Bucket Setup
 DROP POLICY IF EXISTS "Allow public read of patient files" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated read of patient-files" ON storage.objects;
+DROP POLICY IF EXISTS "Allow patient to read own files" ON storage.objects;
 CREATE POLICY "Allow patient to read own files" ON storage.objects FOR SELECT TO authenticated USING (
   bucket_id = 'Patient-Files' AND (storage.foldername(name))[1] = auth.uid()::text
 );
 
 DROP POLICY IF EXISTS "Allow authenticated uploads to patient-files" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated uploads to Patient-Files" ON storage.objects;
+DROP POLICY IF EXISTS "Allow patient to upload own files" ON storage.objects;
 CREATE POLICY "Allow patient to upload own files" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
   bucket_id = 'Patient-Files' AND (storage.foldername(name))[1] = auth.uid()::text
 );
 
 DROP POLICY IF EXISTS "Allow authenticated updates to patient-files" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated updates to Patient-Files" ON storage.objects;
+DROP POLICY IF EXISTS "Allow patient to update own files" ON storage.objects;
 CREATE POLICY "Allow patient to update own files" ON storage.objects FOR UPDATE TO authenticated USING (
   bucket_id = 'Patient-Files' AND (storage.foldername(name))[1] = auth.uid()::text
 );
@@ -187,6 +190,8 @@ CREATE TABLE IF NOT EXISTS public.medical_records (
 ALTER TABLE public.medical_records ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow anon read medical_records" ON public.medical_records;
+DROP POLICY IF EXISTS "Allow authenticated read own medical_records" ON public.medical_records;
+DROP POLICY IF EXISTS "Allow authenticated insert own medical_records" ON public.medical_records;
 CREATE POLICY "Allow authenticated read own medical_records" ON public.medical_records FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
 CREATE POLICY "Allow authenticated insert own medical_records" ON public.medical_records FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 

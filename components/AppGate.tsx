@@ -24,6 +24,8 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     setFirebaseUser,
     firebaseUid,
     fetchProfileFromCloud,
+    syncProfileToCloud,
+    doctor,
     isProfileRestoring
   } = useUserStore()
 
@@ -96,6 +98,11 @@ export function AppGate({ children }: { children: React.ReactNode }) {
       fetchProfileFromCloud()
     }
 
+    // Ensure profile is synced to Supabase (critical for RLS health_id lookups)
+    if (firebaseUid && (patient || doctor)) {
+      syncProfileToCloud()
+    }
+
     // Note: Recovery sync is now handled by Dashboard.tsx after loadClinicalData
     // which ensures we don't overwrite cloud data with an empty local state.
 
@@ -113,7 +120,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     } else if (pathname === '/onboarding' && patient) {
       router.replace('/dashboard')
     }
-  }, [mounted, _hasHydrated, isAuthChecking, firebaseUid, patient, role, sessionState, isAuthRoute, pathname, router, fetchProfileFromCloud])
+  }, [mounted, _hasHydrated, isAuthChecking, firebaseUid, patient, doctor, role, sessionState, isAuthRoute, pathname, router, fetchProfileFromCloud, syncProfileToCloud])
 
   // Render Logic
   if (!mounted) return null

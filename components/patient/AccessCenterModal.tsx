@@ -107,16 +107,8 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
     return { score, color, bg, border, label, risk, glow }
   }
 
-  const getDoctorBio = (specialty: string) => {
-    const bios: Record<string, string> = {
-      [DoctorSpecialty.CARDIOLOGIST]: "Board-certified Cardiologist with expertise in preventive heart care, arrhythmia management, and advanced diagnostic imaging. Committed to long-term heart health.",
-      [DoctorSpecialty.DERMATOLOGIST]: "Specializing in medical and aesthetic dermatology. Expert in early detection of skin conditions, lesion analysis, and precision treatment for chronic skin issues.",
-      [DoctorSpecialty.ONCOLOGIST]: "Dedicated Oncology specialist focused on personalized therapy plans and comprehensive cancer care. Specialized in clinical trials and genetic markers.",
-      [DoctorSpecialty.GENERAL_PRACTITIONER]: "Core Family Physician focused on holistic health, preventive medicine, and long-term wellness for patients of all ages.",
-      [DoctorSpecialty.EMERGENCY]: "Emergency Care Specialist trained for rapid response, acute stabilization, and critical diagnostic assessment in urgent clinical scenarios.",
-      [DoctorSpecialty.NEUROLOGIST]: "Neurology expert focused on brain health, nerve function, and neuromuscular diagnostics. Specialized in managing complex neurological conditions."
-    }
-    return bios[specialty] || "Dedicated medical professional committed to providing high-quality, patient-centric clinical care and maintaining the highest standards of data security."
+  const getDoctorBio = (name: string, specialty: string) => {
+    return `Dr. ${name} is a specialist in ${specialty} and he could be trusted with your records.`
   }
 
   if (!isOpen) return null
@@ -283,22 +275,17 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                        {acceptStep === 0 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                           <div className="text-center space-y-1 py-4">
-                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 1/6</p>
                             <h3 className="text-2xl font-bold text-white tracking-tight">Establish clinical link</h3>
                           </div>
 
                           {(() => {
-                            const bio = getDoctorBio(acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
+                            if (!acceptingRequest) return null
+                            const bio = getDoctorBio(acceptingRequest.doctorName, acceptingRequest.doctorSpecialty || DoctorSpecialty.GENERAL_PRACTITIONER)
                             const regId = (acceptingRequest.metadata as any)?.regId || `MCI-2019-04821`
                             
                             return (
                               <div className="space-y-4">
                                 <div className="p-8 rounded-[40px] bg-[#0a120e] border border-emerald-500/20 relative overflow-hidden text-left">
-                                  <div className="absolute top-8 right-8 text-right">
-                                     <div className="text-white text-3xl font-bold tracking-tighter">94</div>
-                                     <div className="text-[9px] font-black text-emerald-500 uppercase tracking-widest opacity-80">TRUST</div>
-                                  </div>
-
                                   <div className="flex items-center gap-6 mb-8">
                                     <div className="w-16 h-16 rounded-full bg-[#13271d] border border-emerald-500/20 flex items-center justify-center">
                                       <User className="w-7 h-7 text-emerald-500" />
@@ -313,12 +300,8 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                     </div>
                                   </div>
 
-                                  <div className="w-full h-[2px] bg-white/5 mb-8 relative">
-                                     <div className="absolute top-0 left-0 h-full w-[85%] bg-emerald-500/20" />
-                                  </div>
-
                                   <p className="text-[13px] text-emerald-400/90 leading-relaxed font-bold italic mb-10 pr-6">
-                                    "{bio}"
+                                    {bio}
                                   </p>
 
                                   <div className="grid grid-cols-2 gap-y-6 gap-x-12 mb-10">
@@ -339,13 +322,6 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                       <p className="text-sm font-bold text-emerald-100 flex items-center gap-1.5">Trusted link <Check className="w-3.5 h-3.5" /></p>
                                     </div>
                                   </div>
-
-                                  <div className="p-4 py-5 rounded-[24px] bg-emerald-500/10 border border-emerald-500/10 flex items-center gap-4">
-                                    <Shield className="w-5 h-5 text-emerald-500/60" />
-                                    <p className="text-[11px] text-emerald-400 font-bold leading-tight">
-                                      4-layer data minimization applies automatically on access
-                                    </p>
-                                  </div>
                                 </div>
                               </div>
                             )
@@ -356,7 +332,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                               onClick={() => setAcceptStep(1)}
                               className="w-full py-5 rounded-[24px] bg-[#54c392] text-black font-black uppercase tracking-widest text-xs hover:bg-[#46a87d] transition-all flex items-center justify-center gap-2 shadow-xl"
                             >
-                               Configure access scope <ChevronRight className="w-4 h-4" />
+                               Next <ChevronRight className="w-4 h-4" />
                             </button>
                             <button 
                               onClick={() => respondToAccessRequest(acceptingRequest.id, false).then(() => setAcceptingRequest(null))}

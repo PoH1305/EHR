@@ -473,7 +473,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to digitize image to Cloud:', error)
-            throw new Error('Storage not configured. Please contact support.')
+            throw new Error(`File upload failed: ${error instanceof Error ? error.message : 'Unknown storage error'}`)
           }
         }
 
@@ -541,7 +541,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to digitize attachment to Cloud:', error)
-            throw new Error('Storage not configured. Please contact support.')
+            throw new Error(`File upload failed: ${error instanceof Error ? error.message : 'Unknown storage error'}`)
           }
         }
 

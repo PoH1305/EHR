@@ -66,74 +66,85 @@ ALTER TABLE public.access_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shared_secrets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.record_access_permissions ENABLE ROW LEVEL SECURITY;
 
--- 4. Create Policies (Strict row level security)
+-- 4. Helper Functions (SECURITY DEFINER bypasses RLS to break circular dependencies)
+
+-- Returns the health_id for a given user id (bypasses profiles RLS)
+CREATE OR REPLACE FUNCTION get_user_health_id(p_user_id TEXT)
+RETURNS TEXT AS $$
+  SELECT health_id FROM public.profiles WHERE id = p_user_id LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- Returns TRUE if doctor has an approved access request for a patient_id (bypasses access_requests RLS)
+CREATE OR REPLACE FUNCTION has_approved_access(p_doctor_id TEXT, p_patient_health_id TEXT)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.access_requests
+    WHERE doctor_id = p_doctor_id
+    AND patient_id = p_patient_health_id
+    AND status = 'APPROVED'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- 5. Create Policies (Strict row level security — no circular dependencies)
 
 -- PROFILES
 DROP POLICY IF EXISTS "Allow anon read/write profile by ID" ON public.profiles;
+DROP POLICY IF EXISTS "Allow users to read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Allow users to insert/update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Allow doctors to read approved patient profiles" ON public.profiles;
 -- User can read and write their own profile
 CREATE POLICY "Allow users to read own profile" ON public.profiles FOR SELECT TO authenticated USING (id = auth.uid()::text);
 CREATE POLICY "Allow users to insert/update own profile" ON public.profiles FOR ALL TO authenticated USING (id = auth.uid()::text) WITH CHECK (id = auth.uid()::text);
--- Doctors can read profiles of patients they have approved access to
+-- Doctors can read profiles of patients they have approved access to (uses helper fn, no recursion)
 CREATE POLICY "Allow doctors to read approved patient profiles" ON public.profiles FOR SELECT TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.access_requests 
-    WHERE access_requests.patient_id = profiles.health_id 
-    AND access_requests.doctor_id = auth.uid()::text 
-    AND access_requests.status = 'APPROVED'
-  )
+  has_approved_access(auth.uid()::text, health_id)
 );
 
 -- CLINICAL DATA
 DROP POLICY IF EXISTS "Allow anon read/write clinical by ID" ON public.clinical_data;
--- Patient can read own data
+DROP POLICY IF EXISTS "Allow patient to read own clinical data" ON public.clinical_data;
+DROP POLICY IF EXISTS "Allow patient to insert own clinical data" ON public.clinical_data;
+DROP POLICY IF EXISTS "Allow patient to update own clinical data" ON public.clinical_data;
+DROP POLICY IF EXISTS "Allow doctors to read approved clinical data" ON public.clinical_data;
+DROP POLICY IF EXISTS "Allow doctors to insert approved clinical data" ON public.clinical_data;
+DROP POLICY IF EXISTS "Allow doctors to update approved clinical data" ON public.clinical_data;
+-- Patient can read/write own data
 CREATE POLICY "Allow patient to read own clinical data" ON public.clinical_data FOR SELECT TO authenticated USING (patient_id = auth.uid()::text);
 CREATE POLICY "Allow patient to insert own clinical data" ON public.clinical_data FOR INSERT TO authenticated WITH CHECK (patient_id = auth.uid()::text);
 CREATE POLICY "Allow patient to update own clinical data" ON public.clinical_data FOR UPDATE TO authenticated USING (patient_id = auth.uid()::text);
--- Doctors can read/update/insert clinical data if they have approved access
+-- Doctors can read/insert/update clinical data if they have approved access (uses helper fn)
 CREATE POLICY "Allow doctors to read approved clinical data" ON public.clinical_data FOR SELECT TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.access_requests 
-    WHERE (access_requests.patient_id = clinical_data.patient_id OR access_requests.patient_id IN (SELECT health_id FROM public.profiles WHERE id = clinical_data.patient_id))
-    AND access_requests.doctor_id = auth.uid()::text 
-    AND access_requests.status = 'APPROVED'
-  )
+  has_approved_access(auth.uid()::text, patient_id) OR has_approved_access(auth.uid()::text, (SELECT health_id FROM public.profiles WHERE id = patient_id))
 );
 CREATE POLICY "Allow doctors to insert approved clinical data" ON public.clinical_data FOR INSERT TO authenticated WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.access_requests 
-    WHERE (access_requests.patient_id = clinical_data.patient_id OR access_requests.patient_id IN (SELECT health_id FROM public.profiles WHERE id = clinical_data.patient_id))
-    AND access_requests.doctor_id = auth.uid()::text 
-    AND access_requests.status = 'APPROVED'
-  )
+  has_approved_access(auth.uid()::text, patient_id) OR has_approved_access(auth.uid()::text, (SELECT health_id FROM public.profiles WHERE id = patient_id))
 );
 CREATE POLICY "Allow doctors to update approved clinical data" ON public.clinical_data FOR UPDATE TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.access_requests 
-    WHERE (access_requests.patient_id = clinical_data.patient_id OR access_requests.patient_id IN (SELECT health_id FROM public.profiles WHERE id = clinical_data.patient_id))
-    AND access_requests.doctor_id = auth.uid()::text 
-    AND access_requests.status = 'APPROVED'
-  )
+  has_approved_access(auth.uid()::text, patient_id) OR has_approved_access(auth.uid()::text, (SELECT health_id FROM public.profiles WHERE id = patient_id))
 );
 
 -- ACCESS REQUESTS
 DROP POLICY IF EXISTS "Allow anon read/write lookup" ON public.access_requests;
+DROP POLICY IF EXISTS "Allow doctor read/write own requests" ON public.access_requests;
+DROP POLICY IF EXISTS "Allow patient to view and update incoming requests" ON public.access_requests;
 -- Doctors can insert their own requests and see their own requests
 CREATE POLICY "Allow doctor read/write own requests" ON public.access_requests FOR ALL TO authenticated USING (doctor_id = auth.uid()::text) WITH CHECK (doctor_id = auth.uid()::text);
--- Patients can read and update requests targeted at them
--- We join with profiles to find if auth.uid() owns the health_id requested
+-- Patients can read and update requests targeted at them (uses helper fn, no recursion)
 CREATE POLICY "Allow patient to view and update incoming requests" ON public.access_requests FOR ALL TO authenticated USING (
-  patient_id IN (SELECT health_id FROM public.profiles WHERE id = auth.uid()::text)
+  patient_id = get_user_health_id(auth.uid()::text)
 ) WITH CHECK (
-  patient_id IN (SELECT health_id FROM public.profiles WHERE id = auth.uid()::text)
+  patient_id = get_user_health_id(auth.uid()::text)
 );
 
 -- SHARED SECRETS
 DROP POLICY IF EXISTS "Allow anon read/write secrets" ON public.shared_secrets;
--- Any authenticated user can read/write shared secrets (further secured by knowing the ID / token)
+DROP POLICY IF EXISTS "Allow authenticated read/write secrets" ON public.shared_secrets;
 CREATE POLICY "Allow authenticated read/write secrets" ON public.shared_secrets FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- RECORD ACCESS PERMISSIONS
 DROP POLICY IF EXISTS "Allow anon read/write permissions" ON public.record_access_permissions;
+DROP POLICY IF EXISTS "Allow doctors to read permissions" ON public.record_access_permissions;
+DROP POLICY IF EXISTS "Allow patients to read/write permissions" ON public.record_access_permissions;
 CREATE POLICY "Allow doctors to read permissions" ON public.record_access_permissions FOR SELECT TO authenticated USING (doctor_id = auth.uid()::text);
 CREATE POLICY "Allow patients to read/write permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (patient_id = auth.uid()::text) WITH CHECK (patient_id = auth.uid()::text);
 

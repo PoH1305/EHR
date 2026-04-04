@@ -104,6 +104,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
   }, [isOpen])
 
   const [reason, setReason] = useState('')
+  const [requestedDuration, setRequestedDuration] = useState<number>(3600) // Default 1h
   const [selectedCategories, setSelectedCategories] = useState<string[]>([
     'vitals', 'conditions', 'medications', 'allergies', 'clinicalNotes', 'attachments'
   ])
@@ -141,7 +142,8 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
         'Clinical Health Network',
         reason,
         foundPatient?.name || undefined,
-        selectedCategories
+        selectedCategories,
+        requestedDuration
       )
       
       setIsSubmitting(false)
@@ -294,8 +296,35 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       placeholder="Or enter a custom clinical reason..."
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-blue-500/50 transition-all min-h-[100px] resize-none"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-blue-500/50 transition-all min-h-[80px] resize-none mb-6"
                     />
+
+                    <div className="flex items-center justify-between px-1 mb-3">
+                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">How long do you need?</label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-6">
+                      {[
+                        { label: '1 Hour', seconds: 3600 },
+                        { label: '4 Hours', seconds: 14400 },
+                        { label: '24 Hours', seconds: 86400 },
+                        { label: '7 Days', seconds: 604800 },
+                      ].map(dur => (
+                        <button
+                          key={dur.seconds}
+                          type="button"
+                          onClick={() => setRequestedDuration(dur.seconds)}
+                          className={cn(
+                            "py-3 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all",
+                            requestedDuration === dur.seconds 
+                              ? "bg-blue-500 border-blue-500 text-white" 
+                              : "bg-white/5 border-white/5 text-white/40 hover:border-white/20"
+                          )}
+                        >
+                          {dur.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

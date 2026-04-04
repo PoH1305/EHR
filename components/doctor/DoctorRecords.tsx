@@ -315,22 +315,8 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
                       <div className="col-span-full">
                          <EmptyState 
                             icon={<FlaskConical className="w-8 h-8 text-white/10" />} 
-                            label="No clinical records available for this patient" 
+                            label="No clinical records shared" 
                          />
-                         {approvedRequest && (
-                            <div className="mt-8 flex flex-col items-center">
-                               <p className="text-[10px] text-white/40 mb-4 max-w-xs text-center uppercase tracking-widest font-bold leading-relaxed">
-                                  You have an approved clinical link, but record-level permissions may be pending synchronization.
-                                </p>
-                               <button 
-                                  onClick={handleRestoreAccess}
-                                  className="px-6 py-3 rounded-2xl bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 text-[#5B8DEF] text-[10px] font-black uppercase tracking-widest hover:bg-[#5B8DEF]/20 transition-all flex items-center gap-2"
-                               >
-                                  <ShieldCheck className="w-4 h-4" />
-                                  Restore Patient Files Visibility
-                               </button>
-                            </div>
-                         )}
                       </div>
                    )}
                 </div>

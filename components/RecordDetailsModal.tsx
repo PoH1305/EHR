@@ -90,7 +90,7 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                 {record.sensitive && (
                   <div className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-1.5 text-amber-400 text-xs font-medium">
                     <ShieldAlert className="w-3.5 h-3.5" />
-                    Highly Sensitive PHI
+                    Private Record
                   </div>
                 )}
                 
@@ -107,12 +107,6 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                 )}
               </div>
               
-              {/* Note on Clinical Statuses based on user asking "what are the labels" */}
-              {record.status && (
-                <p className="text-[11px] text-foreground/30 italic mt-0">
-                  * Note: The &apos;{record.status}&apos; label is the standardized FHIR clinical status indicating whether this record represents a current, past (resolved), or inactive medical finding.
-                </p>
-              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-foreground/[0.03] border border-foreground/5">
@@ -121,14 +115,13 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                   <p className="text-[10px] text-foreground/30 mt-0.5">{formatRelativeTime(record.date)}</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-foreground/[0.03] border border-foreground/5">
-                  <p className="text-xs text-foreground/40 mb-1">Record ID</p>
-                  <p className="text-sm font-mono text-foreground/80 truncate">...{record.id.slice(-8)}</p>
+                  <p className="text-xs text-foreground/40 mb-1">Status</p>
                   <p className={cn(
-                    "text-[10px] items-center flex gap-1 mt-0.5",
+                    "text-sm font-medium items-center flex gap-1",
                     record.verified ? "text-blue-500 dark:text-blue-400/80" : "text-foreground/30"
                   )}>
-                    {record.verified ? <ShieldCheck className="w-3 h-3" /> : null}
-                    {record.verified ? 'Blockchain Verified' : 'Local Record'}
+                    {record.verified ? <ShieldCheck className="w-4 h-4 text-blue-500" /> : null}
+                    {record.verified ? 'Verified Health Link' : 'Personal Entry'}
                   </p>
                 </div>
               </div>
@@ -157,15 +150,14 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
                     )}
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-foreground/40">Verification Standard</span>
+                    <span className="text-foreground/40">Clinical Standard</span>
                     {record.verified ? (
-                      <span className="text-blue-500 dark:text-blue-400 font-mono flex items-center gap-1.5">
-                        <BadgeCheck className="w-3 h-3" />
-                        HL7 FHIR R4 (EHR Verified)
+                      <span className="text-blue-500 dark:text-blue-400 font-medium flex items-center gap-1.5">
+                        Official Provider Record
                       </span>
                     ) : (
-                      <span className="text-foreground/60 font-mono">
-                        Not Verified (Self-Reported)
+                      <span className="text-foreground/60">
+                        Self-Reported Entry
                       </span>
                     )}
                   </div>
@@ -173,7 +165,7 @@ export function RecordDetailsModal({ isOpen, record, onClose }: RecordDetailsMod
               </div>
 
               {/* View Document Button */}
-              {record.fileUrl && (
+              {(record.fileUrl || record.storagePath) && (
                 <div className="pt-2">
                   <a
                     href={record.storagePath 

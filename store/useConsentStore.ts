@@ -33,8 +33,18 @@ interface ConsentActions {
   generateToken: (request: ConsentTokenRequest) => Promise<ConsentToken>
   revokeToken: (tokenId: string, reason: string) => Promise<void>
   refreshTokenStatuses: () => void
-  createAccessRequest: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, reason?: string, patientName?: string | null, sharedCategories?: string[]) => Promise<void>
-  requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, reason?: string, patientName?: string | null) => Promise<void>
+  createAccessRequest: (
+    patientId: string, 
+    doctorId: string, 
+    doctorName: string, 
+    doctorSpecialty: DoctorSpecialty, 
+    organization: string, 
+    reason?: string | null, 
+    patientName?: string | null, 
+    sharedCategories?: string[],
+    requestedDuration?: number | null
+  ) => Promise<void>
+  requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, reason?: string | null, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
@@ -252,7 +262,17 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      createAccessRequest: async (patientId, doctorId, doctorName, doctorSpecialty, organization, reason, patientName, sharedCategories = []) => {
+      createAccessRequest: async (
+        patientId, 
+        doctorId, 
+        doctorName, 
+        doctorSpecialty, 
+        organization, 
+        reason = null, 
+        patientName = null, 
+        sharedCategories = [],
+        requestedDuration = null
+      ) => {
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
@@ -263,14 +283,15 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
           patientName: patientName || null,
-          sharedCategories,
+          sharedCategories: sharedCategories || [],
           reason: reason || null,
-          metadata: {}
+          requestedDuration: requestedDuration || null
         }
         
         set((state) => {
           state.accessRequests.unshift(newReq)
         })
+        
         if (typeof window !== 'undefined' && db) {
           void db.access_requests.add(newReq)
         }
@@ -291,10 +312,11 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
                 status: newReq.status,
                 patient_name: newReq.patientName,
                 reason: newReq.reason,
-                shared_categories: newReq.sharedCategories,
-                metadata: newReq.metadata
+                requested_duration: newReq.requestedDuration,
+                shared_categories: newReq.sharedCategories
               })
             if (syncError) throw syncError
+            console.log('[ConsentStore] Access request synced successfully:', newReq.id)
           }
           set({ syncError: null })
         } catch (err: any) {

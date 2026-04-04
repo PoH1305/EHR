@@ -59,11 +59,21 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
   const [acceptPurpose, setAcceptPurpose] = useState('Treatment')
   const [isAccepting, setIsAccepting] = useState(false)
 
-  // Initialize defaults based on specialty
+  // Initialize defaults based on specialty and doctor request
   useEffect(() => {
     if (acceptingRequest) {
       const config = SPECIALTY_FIELD_MAP[acceptingRequest.doctorSpecialty as DoctorSpecialty]
       setAcceptMonths(config?.maxHistoryMonths ?? null)
+      
+      // Pre-select doctor's requested duration if provided
+      if (acceptingRequest.requestedDuration) {
+        setAcceptTtl(acceptingRequest.requestedDuration)
+      }
+      
+      // Pre-select doctor's reason if provided
+      if (acceptingRequest.reason) {
+        setAcceptPurpose(acceptingRequest.reason)
+      }
     }
   }, [acceptingRequest])
 
@@ -207,8 +217,8 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                                     "px-2 py-0.5 rounded-full flex items-center gap-1.5 border",
                                     trust.bg, trust.border, trust.color
                                   )}>
-                                    <Activity className={cn("w-2.5 h-2.5", trust.risk === 'high' && "animate-pulse")} />
-                                    <span className="text-[8px] font-black uppercase tracking-tighter">Trust: {trust.score}/100</span>
+                                    <CheckCircle2 className="w-2.5 h-2.5" />
+                                    <span className="text-[8px] font-black uppercase tracking-tighter">Verified Clinician</span>
                                   </div>
                                 </div>
                               </div>
@@ -275,7 +285,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                        {acceptStep === 0 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                           <div className="text-center space-y-1 py-4">
-                            <h3 className="text-2xl font-bold text-white tracking-tight">Establish clinical link</h3>
+                            <h3 className="text-2xl font-bold text-white tracking-tight">Medical Link Details</h3>
                           </div>
 
                           {(() => {
@@ -347,8 +357,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                       {acceptStep === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                           <div className="text-center space-y-1 py-4">
-                             <h3 className="text-xl font-bold text-white tracking-tight">Access Purpose & Duration</h3>
-                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 2/6</p>
+                             <h3 className="text-xl font-bold text-white tracking-tight">Why and for how long?</h3>
                           </div>
                          
                          <div className="space-y-3">
@@ -400,8 +409,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              <div className="w-16 h-16 rounded-[24px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                                <Clock className="w-8 h-8 text-emerald-500" />
                              </div>
-                             <h3 className="text-xl font-bold text-white tracking-tight">Temporal Security Window</h3>
-                             <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-[0.2em]">VERIFICATION · PHASE 3/6</p>
+                             <h3 className="text-xl font-bold text-white tracking-tight">How far back should we look?</h3>
                            </div>
 
                            <div className="p-8 rounded-[32px] bg-[#0a120e] border border-emerald-500/20 text-center relative overflow-hidden">
@@ -444,8 +452,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              <div className="w-16 h-16 rounded-[24px] bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
                                <ShieldAlert className="w-8 h-8 text-red-500" />
                              </div>
-                             <h3 className="text-xl font-bold text-white tracking-tight">Sensitivity Filter</h3>
-                             <p className="text-[10px] text-red-400 font-black uppercase tracking-[0.2em]">VERIFICATION · PHASE 4/6</p>
+                             <h3 className="text-xl font-bold text-white tracking-tight">Any private records to hide?</h3>
                            </div>
 
                            <div className="p-8 rounded-[32px] bg-[#0a120e] border border-red-500/20 text-center relative overflow-hidden">
@@ -493,15 +500,14 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                       {acceptStep === 4 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                           <div className="text-center space-y-1 py-4">
-                            <h3 className="text-2xl font-bold text-white tracking-tight">Resource Scope</h3>
-                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 5/6</p>
+                            <h3 className="text-2xl font-bold text-white tracking-tight">What can they see?</h3>
                           </div>
  
                           <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
                              <Sparkles className="w-5 h-5 text-blue-400" />
                              <div className="flex-1">
-                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">AI Governance Active</p>
-                                <p className="text-[11px] text-white/60 leading-tight">Suggested scope for {acceptingRequest.doctorSpecialty || 'General Practitioner'} utility</p>
+                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Smart Suggestions Active</p>
+                                <p className="text-[11px] text-white/60 leading-tight">We've pre-selected what a {acceptingRequest.doctorSpecialty || 'General Practitioner'} usually needs.</p>
                              </div>
                           </div>
  
@@ -546,8 +552,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                              <div className="w-16 h-16 rounded-3xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
                                 <Shield className="w-8 h-8 text-green-500" />
                              </div>
-                             <h3 className="text-2xl font-black text-white tracking-tighter">Confirm Access</h3>
-                             <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.25em]">VERIFICATION · PHASE 6/6</p>
+                             <h3 className="text-2xl font-black text-white tracking-tighter">Ready to share?</h3>
                           </div>
  
                           <div className="space-y-4">
@@ -614,7 +619,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
                             disabled={isAccepting || isGenerating}
                             className="w-full py-6 rounded-[32px] bg-[#54c392] text-black font-black uppercase tracking-widest text-xs hover:bg-[#46a87d] transition-all shadow-xl shadow-emerald-500/10 flex items-center justify-center gap-3 disabled:opacity-50"
                           >
-                             {isAccepting ? 'Synchronizing Node...' : 'Grant Access & Link Node'} 
+                             {isAccepting ? 'Opening Health Timeline...' : 'Grant Access & Connect'} 
                              {!isAccepting && <Check className="w-5 h-5" />}
                           </button>
                         </div>

@@ -77,8 +77,8 @@ export function UploadModal({ isOpen, onClose, onUpload, selectedFile }: UploadM
                 <Upload className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Categorize Record</h2>
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-0.5">Secure Vault Upload</p>
+                <h2 className="text-xl font-bold text-white tracking-tight">What is this?</h2>
+                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-0.5">Adding to your timeline</p>
               </div>
             </div>
             <button 
@@ -98,14 +98,14 @@ export function UploadModal({ isOpen, onClose, onUpload, selectedFile }: UploadM
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-white truncate">{selectedFile.name}</p>
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">
-                  {(selectedFile.size / 1024).toFixed(1)} KB · {selectedFile.type || 'Unknown Type'}
+                  {(selectedFile.size / 1024).toFixed(1)} KB · Ready to save
                 </p>
               </div>
             </div>
 
             {/* Category Grid */}
             <div className="space-y-3">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Select Record Category</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Choose a category</p>
               <div className="grid grid-cols-2 gap-2">
                 {CATEGORIES.map((cat) => {
                   const Icon = cat.icon
@@ -159,7 +159,7 @@ export function UploadModal({ isOpen, onClose, onUpload, selectedFile }: UploadM
               ) : (
                 <ShieldCheck className="w-4 h-4" />
               )}
-              {isUploading ? 'Securing...' : 'Seal in Vault'}
+              {isUploading ? 'Saving...' : 'Save to Records'}
             </button>
           </div>
         </motion.div>

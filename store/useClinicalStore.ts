@@ -468,7 +468,8 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             // Critical: Ensure we have a permanent storagePath
             if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
             
-            finalImage.imageUrl = uploadResult.publicUrl
+            finalImage.imageUrl = uploadResult.storagePath
+            finalImage.storagePath = uploadResult.storagePath
             storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to digitize image to Cloud:', error)
@@ -535,7 +536,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             // Critical: Ensure we have a permanent storagePath
             if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
             
-            finalAttachment.fileUrl = uploadResult.publicUrl
+            finalAttachment.fileUrl = uploadResult.storagePath
             finalAttachment.storagePath = uploadResult.storagePath
             storagePath = uploadResult.storagePath
           } catch (error) {

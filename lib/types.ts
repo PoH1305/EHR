@@ -322,7 +322,8 @@ export interface MedicalImage {
   patientId: string
   doctorId: string
   timestamp: string
-  imageUrl: string // Local blob/data URL
+  imageUrl: string // Local blob/data URL or Public URL
+  storagePath?: string // Internal Supabase storage path
   type: 'X-RAY' | 'MRI' | 'CT' | 'PHOTO'
   description?: string
   aiFindings?: ClinicalFinding[]
@@ -497,5 +498,6 @@ export interface AccessRequest {
   patientName?: string | null
   sharedCategories: string[]
   reason?: string | null
+  requestedDuration?: number | null
   metadata?: Record<string, any>
 }

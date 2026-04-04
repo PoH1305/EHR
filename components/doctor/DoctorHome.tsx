@@ -122,7 +122,10 @@ export default function DoctorHome() {
         <div className="flex items-center justify-between px-1">
            <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Connection Activity</h2>
            {accessRequests.length > 0 && (
-             <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest">Real-time Sync Active</span>
+             <span className="text-[9px] font-black text-[#5B8DEF] uppercase tracking-widest flex items-center gap-1.5">
+               <div className="w-1 h-1 rounded-full bg-[#5B8DEF] animate-pulse" />
+               Connected & Live
+             </span>
            )}
         </div>
         
@@ -174,7 +177,7 @@ export default function DoctorHome() {
                 <Clock className="w-6 h-6 text-white/10" />
              </div>
              <p className="text-sm font-bold text-white/30 tracking-tight">No connection activity yet</p>
-             <p className="text-[10px] text-white/10 mt-1 uppercase tracking-widest">Connect patients via EHI ID to start tracking</p>
+             <p className="text-[10px] text-white/10 mt-1 uppercase tracking-widest">Connect with your patient&apos;s ID to start tracking</p>
           </div>
         )}
       </div>

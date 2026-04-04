@@ -90,7 +90,7 @@ export default function PatientList({ onSelect }: PatientListProps) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-8 h-8 text-[#5B8DEF] animate-spin mb-4" />
-        <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Accessing Patient Roster</p>
+        <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Opening your care team...</p>
       </div>
     )
   }
@@ -110,7 +110,7 @@ export default function PatientList({ onSelect }: PatientListProps) {
           type="text" 
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search name or EHI ID..." 
+          placeholder="Search name or ID..." 
           className="w-full bg-[#111827]/30 border border-white/[0.05] rounded-2xl py-4 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-[#5B8DEF]/40 transition-all placeholder:text-white/10"
         />
       </div>

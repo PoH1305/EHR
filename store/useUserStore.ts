@@ -280,12 +280,12 @@ export const useUserStore = create<UserState & UserActions>()(
             
           if (error || !data) return null
           
-          // IDENTITY HEALING: If we accidentally find a legacy 'pat-' ID in the lookup, 
-          // we should ideally ignore it and wait for the real Auth UID record to be created, 
-          // or at least log a warning.
-          if (data.id.startsWith('pat-')) {
-            console.warn('[UserStore] Discovery resolved to a legacy ID (pat-...). Waiting for patient to perform cloud sync.', data.id)
-            return null // Don't bridge to a legacy ID that will fail RLS
+          // IDENTITY EXORCISM: If we find a legacy 'pat-' ID in the lookup, 
+          // we must ignore it so the doctor app doesn't send requests to a "ghost" account.
+          // Once the patient performs a cloud sync, this record will be converted to a UUID.
+          if (data.id && data.id.startsWith('pat-')) {
+            console.warn('[UserStore] Discovery hit a Ghost Identity (pat-...). Waiting for patient to perform sanitized sync.')
+            return null 
           }
 
           return data.id
@@ -375,13 +375,16 @@ export const useUserStore = create<UserState & UserActions>()(
 
           if (!syncData) return
 
+          // IDENTITY EXORCISM: We perform an upsert that specifically targets the 
+          // HEALTH_ID column for conflicts. This ensures that any existing legacy 
+          // 'pat-' record for this patient is strictly overwritten by their new UUID.
           const { error } = await supabase
             .from('profiles')
             .upsert({
-              id: firebaseUid,
+              id: firebaseUid, 
               health_id: syncHealthId,
               data: syncData
-            })
+            }, { onConflict: 'health_id' }) // Explicitly target Health ID to merge "Ghost" identities
 
           if (error) throw error
           console.log('[UserStore] Profile synced to Supabase')

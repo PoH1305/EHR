@@ -112,11 +112,11 @@ CREATE POLICY "Allow users to read own profile" ON public.profiles FOR SELECT TO
 DROP POLICY IF EXISTS "Allow users to insert/update own profile" ON public.profiles;
 CREATE POLICY "Allow users to insert/update own profile" ON public.profiles FOR ALL TO authenticated USING (id = auth.uid()::text) WITH CHECK (id = auth.uid()::text);
 
--- Doctors can read profiles of patients they have approved access to
-DROP POLICY IF EXISTS "Allow doctors to read approved patient profiles" ON public.profiles;
-CREATE POLICY "Allow doctors to read approved patient profiles" ON public.profiles FOR SELECT TO authenticated USING (
-  has_approved_access(auth.uid()::text, id)
-);
+-- Profile Discovery (UNIFIED IDENTITY MODEL)
+-- We allow all authenticated users to read profiles for discovery (linking Health ID to UID).
+-- Sensitive medical data is kept in clinical_data, not in the profiles table.
+DROP POLICY IF EXISTS "Allow profile discovery" ON public.profiles;
+CREATE POLICY "Allow profile discovery" ON public.profiles FOR SELECT TO authenticated USING (true);
 
 -- CLINICAL DATA (Standardized on Auth UID)
 DROP POLICY IF EXISTS "Allow anon read/write clinical by ID" ON public.clinical_data;

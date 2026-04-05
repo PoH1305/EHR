@@ -402,11 +402,21 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             }
 
             console.log(`[ClinicalStore] Syncing atomicaly: ${key} for patient ${targetUid}`)
-            const { error } = await supabase.rpc('append_clinical_data', {
-              p_patient_id: targetUid,
-              p_key: key,
-              p_value: value
-            })
+            const { firebaseUid, role } = useUserStore.getState()
+          
+          // IDENTITY HEALING: Always use the authenticated UUID for clinical storage.
+          // We must ensure the patient_id in our clinical_data table is the one Supabase Auth knows.
+          const finalPatientId = (role === 'patient' && firebaseUid) ? firebaseUid : targetUid
+          
+          if (finalPatientId.startsWith('pat-')) {
+            console.warn('[ClinicalStore] Identity Healing (Atomic): Cleaning legacy ID:', finalPatientId, '->', firebaseUid)
+          }
+
+          const { data, error } = await supabase.rpc('append_clinical_data', {
+            p_patient_id: finalPatientId,
+            p_key: key,
+            p_value: value
+          })
             
             if (error) {
               console.error(`[ClinicalStore] Atomic Sync (RPC) Error:`, error)
@@ -729,7 +739,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             return typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:'))
           }
 
-          const clinicalPayload = {
+          const fullData = {
             vitals: state.vitals,
             conditions: state.conditions,
             medications: state.medications,
@@ -745,15 +755,22 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             auditEvents: state.auditEvents,
           }
 
-          const { error } = await supabase
+          const { firebaseUid, role } = useUserStore.getState()
+          const syncId = (role === 'patient' && firebaseUid) ? firebaseUid : targetId
+          
+          if (syncId.startsWith('pat-')) {
+            console.warn('[ClinicalStore] Identity Healing: Converting legacy ID to current Auth UID:', syncId, '->', firebaseUid)
+          }
+
+          const { error: upsertError } = await supabase
             .from('clinical_data')
             .upsert({
-              patient_id: targetId,
-              data: clinicalPayload,
+              patient_id: syncId,
+              data: fullData,
               last_synced_at: new Date().toISOString()
             })
 
-          if (error) throw error
+          if (upsertError) throw upsertError
           
           set((state) => {
             state.lastUpdated = new Date().toISOString()

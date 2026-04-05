@@ -279,6 +279,15 @@ export const useUserStore = create<UserState & UserActions>()(
             .single()
             
           if (error || !data) return null
+          
+          // IDENTITY HEALING: If we accidentally find a legacy 'pat-' ID in the lookup, 
+          // we should ideally ignore it and wait for the real Auth UID record to be created, 
+          // or at least log a warning.
+          if (data.id.startsWith('pat-')) {
+            console.warn('[UserStore] Discovery resolved to a legacy ID (pat-...). Waiting for patient to perform cloud sync.', data.id)
+            return null // Don't bridge to a legacy ID that will fail RLS
+          }
+
           return data.id
         } catch (e) {
           console.error('[UserStore] Failed to resolve Health ID to UID:', e)

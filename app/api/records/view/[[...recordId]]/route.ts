@@ -18,7 +18,7 @@ export async function GET(
   const filePath = recordSegments.map(decodeURIComponent).join('/')
   const patientId = recordSegments[0]
 
-  if (!filePath) {
+  if (!patientId || !filePath) {
     return NextResponse.json({ error: 'Missing Record Path' }, { status: 400 })
   }
 
@@ -27,22 +27,32 @@ export async function GET(
 
     // 3. Permission Check
     // ALLOW if:
-    // a) The authenticated user IS the patient who owns the folder
-    // b) The authenticated user is a doctor with a valid 'view' permission
+    // a) The authenticated user IS the patient who owns the folder (Checked via UID resolution)
+    // b) The authenticated user is a doctor with an approved access request (has_approved_access)
+    // c) The authenticated user has explicit record-level permission (check_record_access)
     let hasAccess = false
     let tokenId: string | null = null
 
-    if (userId === patientId) {
+    // Resolve patient UID from Health ID if needed for ownership comparison
+    let resolvedPatientUid = patientId
+    if (patientId.startsWith('EHI-')) {
+      const { data: uid } = await supabase.rpc('get_user_id_by_health_id', { p_health_id: patientId })
+      if (uid) resolvedPatientUid = uid
+    }
+
+    // A. Ownership Check
+    if (userId === resolvedPatientUid) {
       hasAccess = true
     } else {
-      const { data: rpcAccess, error: rpcError } = await supabase.rpc('check_record_access', {
-        p_user_id: userId,
-        p_record_id: filePath,
-        p_type: 'view'
+      // B. Approved Consent Check (Primary for Doctors)
+      const { data: hasApprovedConsent } = await supabase.rpc('has_approved_access', {
+        p_doctor_id: userId,
+        p_patient_id_or_health_id: patientId
       })
-      if (!rpcError && rpcAccess) {
-        hasAccess = true
 
+      if (hasApprovedConsent) {
+        hasAccess = true
+        
         // Resolve consent token for audit logging
         const { data: tokenData } = await supabase
           .from('consent_tokens')
@@ -54,6 +64,14 @@ export async function GET(
           .single()
 
         tokenId = tokenData?.id || null
+      } else {
+        // C. Record-Level Permission Check (Specific permissions)
+        const { data: rpcAccess } = await supabase.rpc('check_record_access', {
+          p_user_id: userId,
+          p_record_id: filePath,
+          p_type: 'view'
+        })
+        if (rpcAccess) hasAccess = true
       }
     }
 

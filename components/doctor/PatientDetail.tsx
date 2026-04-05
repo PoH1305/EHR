@@ -85,8 +85,10 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
       setResolvedPatientId(targetUid)
       
       // Unify: All clinical storage and DB calls use the Auth UID
-      void loadClinicalData(targetUid)
-      void loadPatientMetadata(targetUid)
+      // We also pass the original Health ID to ensure the store can perform 
+      // permission lookups even before the profile is fully hydrated.
+      void loadClinicalData(targetUid, patientId)
+      void loadPatientMetadata(targetUid, patientId)
       void loadAuditLog(targetUid)
       
       setIsResolving(false)
@@ -200,7 +202,10 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
 
       {/* Main Content Area */}
       <div className="animate-in fade-in duration-700 max-w-4xl">
-         <DoctorRecords patientId={resolvedPatientId || patientId} />
+         <DoctorRecords 
+           patientId={resolvedPatientId || patientId} 
+           healthId={patientId}
+         />
       </div>
 
       {/* Floating Action Button (FAB) */}

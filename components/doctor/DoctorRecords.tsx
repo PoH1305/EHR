@@ -28,6 +28,7 @@ import { logClinicalAccess } from '@/lib/anomalyLogger'
 
 interface DoctorRecordsProps {
    patientId?: string | null
+   healthId?: string | null
 }
 
 interface Permission {
@@ -46,7 +47,7 @@ const VIEW_ONLY_CATEGORIES = [
   { key: 'clinicalNotes', label: 'Notes', icon: Edit3, color: 'indigo' },
 ]
 
-export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
+export default function DoctorRecords({ patientId, healthId }: DoctorRecordsProps) {
    const [activeTab, setActiveTab] = useState('attachments')
    const [permissions, setPermissions] = useState<Permission[]>([])
    const [isPermissionsLoading, setIsPermissionsLoading] = useState(true)
@@ -184,7 +185,7 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    }
 
    const approvedRequest = accessRequests.find(r => 
-      (r.patientId === patientId || r.patientId === selectedPatientProfile?.healthId) && 
+      (r.patientId === patientId || r.patientId === healthId || r.patientId === selectedPatientProfile?.healthId) && 
       r.status === 'APPROVED'
    )
    const sharedCats: string[] = approvedRequest?.sharedCategories || []

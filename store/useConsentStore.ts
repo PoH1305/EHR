@@ -273,19 +273,25 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         sharedCategories = [],
         requestedDuration = null
       ) => {
+        // IDENTITY STANDARDIZATION:
+        // Always use the given doctorId (which should be the Auth UID)
+        // Always use the given patientId (which should be the Health ID)
+        console.log('[ConsentStore] Creating access request for IDs:', { doctorId, patientId })
+        
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
           doctorId,
           doctorName,
           doctorSpecialty,
           organization,
-          patientId,
+          patientId, // Standardized on Health ID
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
-          patientName: patientName || null,
-          sharedCategories: sharedCategories || [],
-          reason: reason || null,
-          requestedDuration: requestedDuration || null
+          patientName,
+          reason,
+          sharedCategories,
+          requestedDuration,
+          metadata: {}
         }
         
         set((state) => {

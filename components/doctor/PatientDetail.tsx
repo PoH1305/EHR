@@ -124,21 +124,21 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
     )
   }
 
-  // Fallback when Supabase found no data (patient has no cloud record yet)
-  if (loadTimedOut) {
+  // Fallback when Supabase found no data or access was not granted
+  if (loadTimedOut || (!isClinicalLoading && resolvedPatientId && !useClinicalStore.getState().vitals.length && !useClinicalStore.getState().attachments.length)) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0d1117]">
         <div className="flex flex-col items-center gap-4 text-center px-6">
           <div className="w-14 h-14 rounded-[20px] bg-white/5 flex items-center justify-center">
-            <AlertCircle className="w-7 h-7 text-white/30" />
+            <ShieldAlert className="w-7 h-7 text-[#FFB155]" />
           </div>
-          <p className="text-sm font-bold text-white/40">No clinical records found</p>
-          <p className="text-[10px] text-white/20 uppercase tracking-widest max-w-[220px]">
-            This patient has not synced any records yet, or access has not been granted.
+          <p className="text-sm font-bold text-white/40">Access has not been granted</p>
+          <p className="text-[10px] text-white/20 uppercase tracking-widest max-w-[220px] leading-relaxed">
+            Please ask the patient to approve your access request in their Medical Vault dashboard.
           </p>
           <button
             onClick={onBack}
-            className="mt-2 px-5 py-2 rounded-xl bg-white/5 text-white/40 text-xs font-bold hover:bg-white/10 transition-all"
+            className="mt-2 px-5 py-2 rounded-xl bg-white/5 text-white/40 text-xs font-bold hover:bg-white/10 transition-all border border-white/5"
           >
             Go back
           </button>

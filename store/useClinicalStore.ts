@@ -169,6 +169,8 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           let sharedCats: string[] | null = null
           
           if (role === 'doctor' && firebaseUid && supabase) {
+            // Enhanced lookup: check both Auth UID and Health ID in access_requests
+            // because records are stored by UID, but requests are often made via Health ID.
             const pHealthId = healthId || get().selectedPatientProfile?.healthId
             
             console.log(`[ClinicalStore] Loading for UID: ${resolvedId} HealthID: ${pHealthId}`)
@@ -185,7 +187,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               sharedCats = accessData.shared_categories
               console.log('[ClinicalStore] Filtering records by shared categories:', sharedCats)
             } else {
-              console.warn('[ClinicalStore] No approved access request found for IDs:', { resolvedId, pHealthId })
+              console.warn(`[ClinicalStore] No approved access request found for Doctor UID: ${firebaseUid} and Patient ID: ${resolvedId} / ${pHealthId}`)
             }
           }
 
@@ -358,19 +360,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       loadAuditLog: async (userId: string) => {
-        if (
-          !userId || 
-          typeof userId !== 'string' || 
-          userId === '[object Object]' ||
-          userId.trim() === '' ||
-          userId.startsWith('pat-') ||
-          !db
-        ) {
-          console.warn('[ClinicalStore] Invalid userId in loadAuditLog, aborting:', userId);
-          return;
+        // HYGIENE GUARD: Scrub legacy 'pat-' IDs that still haunt local storage
+        if (!userId || userId.startsWith('pat-')) {
+          console.warn('[ClinicalStore] loadAuditLog blocked for legacy/empty ID:', userId)
+          return
         }
-
+        
         try {
+          if (!db) return
           const events = await db.audit_log.where('userId').equals(userId).toArray()
           set((state) => {
             state.auditEvents = events.sort((a, b) => 

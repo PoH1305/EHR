@@ -158,8 +158,17 @@ CREATE POLICY "Allow authenticated read/write secrets" ON public.shared_secrets 
 DROP POLICY IF EXISTS "Allow anon read/write permissions" ON public.record_access_permissions;
 DROP POLICY IF EXISTS "Allow doctors to read permissions" ON public.record_access_permissions;
 DROP POLICY IF EXISTS "Allow patients to read/write permissions" ON public.record_access_permissions;
-CREATE POLICY "Allow doctors to read permissions" ON public.record_access_permissions FOR SELECT TO authenticated USING (doctor_id = auth.uid()::text);
-CREATE POLICY "Allow patients to read/write permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (patient_id = auth.uid()::text) WITH CHECK (patient_id = auth.uid()::text);
+CREATE POLICY "Allow doctors to manage permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (
+  doctor_id = auth.uid()::text AND has_approved_access(auth.uid()::text, patient_id)
+) WITH CHECK (
+  doctor_id = auth.uid()::text AND has_approved_access(auth.uid()::text, patient_id)
+);
+
+CREATE POLICY "Allow patients to read/write permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (
+  patient_id = auth.uid()::text
+) WITH CHECK (
+  patient_id = auth.uid()::text
+);
 
 -- 6. Enable Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.access_requests;

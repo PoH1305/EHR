@@ -104,17 +104,36 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      loadPatientMetadata: async (patientId: string) => {
-        if (!db) return
+      loadPatientMetadata: async (patientId: any) => {
+        const raw = patientId;
+        const resolvedId = typeof patientId === 'string'
+          ? patientId
+          : (patientId as any)?.id 
+            || (patientId as any)?.patientId 
+            || (patientId as any)?.healthId;
+
+        console.log('[ClinicalStore] loadPatientMetadata called with:', { raw, resolvedId });
+
+        if (
+          !resolvedId || 
+          typeof resolvedId !== 'string' || 
+          resolvedId === '[object Object]' ||
+          resolvedId.trim() === ''
+        ) {
+          console.warn('[ClinicalStore] Invalid patientId in loadPatientMetadata, aborting:', raw);
+          return;
+        }
+
         try {
-          let profile = await db.patient_profiles.get(patientId)
+          if (!db) return
+          let profile = await db.patient_profiles.get(resolvedId)
           
           if (!profile) {
             if (supabase) {
               const { data, error } = await supabase
                 .from('profiles')
                 .select('data')
-                .eq('id', patientId)
+                .eq('id', resolvedId)
                 .maybeSingle()
               
               if (error) {
@@ -133,11 +152,30 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         }
       },
 
-      loadClinicalData: async (patientId: string) => {
-        if (typeof window === 'undefined' || !db) return
+      loadClinicalData: async (patientIdInput: any) => {
+        const raw = patientIdInput;
+        const resolvedId = typeof patientIdInput === 'string'
+          ? patientIdInput
+          : (patientIdInput as any)?.id 
+            || (patientIdInput as any)?.patientId 
+            || (patientIdInput as any)?.healthId;
+
+        console.log('[ClinicalStore] loadClinicalData called with:', { raw, resolvedId });
+
+        if (
+          !resolvedId || 
+          typeof resolvedId !== 'string' || 
+          resolvedId === '[object Object]' ||
+          resolvedId.trim() === '' || 
+          typeof window === 'undefined' || 
+          !db
+        ) {
+          console.warn('[ClinicalStore] Invalid patientId in loadClinicalData, aborting:', raw);
+          return;
+        }
         
         if (get().isLoading) {
-          console.log('[ClinicalStore] Skipping duplicate loadClinicalData call for:', patientId)
+          console.log('[ClinicalStore] Skipping duplicate loadClinicalData call for:', resolvedId)
           return
         }
         
@@ -160,7 +198,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               .from('access_requests')
               .select('shared_categories')
               .eq('doctor_id', firebaseUid)
-              .eq('patient_id', patientId)
+              .eq('patient_id', resolvedId)
               .eq('status', 'APPROVED')
               .maybeSingle()
             
@@ -170,17 +208,24 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             }
           }
 
-          const [vitals, conditions, medications, allergies, clinicalNotes, medicalImages, riskAnalyses, attachments, auditEvents] = await Promise.all([
-            db.vitals.where('patientId').equals(patientId).toArray(),
-            db.conditions.where('patientId').equals(patientId).toArray(),
-            db.medications.where('patientId').equals(patientId).toArray(),
-            db.allergies.where('patientId').equals(patientId).toArray(),
-            db.clinical_notes.where('patientId').equals(patientId).toArray(),
-            db.medical_images.where('patientId').equals(patientId).toArray(),
-            db.risk_analysis.where('patientId').equals(patientId).toArray(),
-            db.patient_attachments.where('patientId').equals(patientId).toArray(),
-            db.audit_log.where('userId').equals(patientId).toArray()
-          ])
+          let vitals: any[] = [], conditions: any[] = [], medications: any[] = [], allergies: any[] = [], clinicalNotes: any[] = [], medicalImages: any[] = [], riskAnalyses: any[] = [], attachments: any[] = [], auditEvents: any[] = []
+          
+          try {
+            const results = await Promise.all([
+              db.vitals.where('patientId').equals(resolvedId).toArray(),
+              db.conditions.where('patientId').equals(resolvedId).toArray(),
+              db.medications.where('patientId').equals(resolvedId).toArray(),
+              db.allergies.where('patientId').equals(resolvedId).toArray(),
+              db.clinical_notes.where('patientId').equals(resolvedId).toArray(),
+              db.medical_images.where('patientId').equals(resolvedId).toArray(),
+              db.risk_analysis.where('patientId').equals(resolvedId).toArray(),
+              db.patient_attachments.where('patientId').equals(resolvedId).toArray(),
+              db.audit_log.where('userId').equals(resolvedId).toArray()
+            ])
+            vitals = results[0]; conditions = results[1]; medications = results[2]; allergies = results[3]; clinicalNotes = results[4]; medicalImages = results[5]; riskAnalyses = results[6]; attachments = results[7]; auditEvents = results[8]
+          } catch (dexieError) {
+            console.warn('[ClinicalStore] Dexie pre-load failed (likely invalid key), skipping local and forcing cloud sync if available:', dexieError)
+          }
 
           const isMinimization = get().isMinimizationActive
           
@@ -190,7 +235,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             const { data: cloudRow, error } = await supabase
               .from('clinical_data')
               .select('data, last_synced_at')
-              .eq('patient_id', patientId)
+              .eq('patient_id', resolvedId)
               .maybeSingle()
               
             if (!error && cloudRow?.data) {
@@ -260,7 +305,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           // 3. Real-time "Pulse" Listener for Patients (to detect doctor uploads)
           if (role !== 'doctor' && supabase) {
             try {
-              const channelName = `clinical-pulse:${patientId}`
+              const channelName = `clinical-pulse:${resolvedId}`
               const existingChannel = supabase.channel(channelName)
               await supabase.removeChannel(existingChannel)
               
@@ -270,14 +315,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                   event: '*',
                   schema: 'public',
                   table: 'clinical_data',
-                  filter: `patient_id=eq.${patientId}`
+                  filter: `patient_id=eq.${resolvedId}`
                 }, (payload) => {
                   console.log('[ClinicalPulse] Change detected in cloud vault, re-syncing...')
                   const fetchAndMerge = async () => {
                     const { data: updatedCloud } = await supabase
                       .from('clinical_data')
                       .select('data')
-                      .eq('patient_id', patientId)
+                      .eq('patient_id', resolvedId)
                       .maybeSingle()
                     
                     if (updatedCloud?.data?.attachments) {
@@ -303,7 +348,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               const { data: cloudRec } = await supabase
                 .from('clinical_data')
                 .select('data')
-                .eq('patient_id', patientId)
+                .eq('patient_id', resolvedId)
                 .maybeSingle()
 
               if (cloudRec?.data?.attachments) {
@@ -336,14 +381,37 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         }
       },
 
-      loadAuditLog: async (userId: string) => {
-        if (!db) return
-        const events = await db.audit_log.where('userId').equals(userId).toArray()
-        set((state) => {
-          state.auditEvents = events.sort((a, b) => 
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          )
-        })
+      loadAuditLog: async (userId: any) => {
+        const raw = userId;
+        const resolvedId = typeof userId === 'string'
+          ? userId
+          : (userId as any)?.id 
+            || (userId as any)?.userId 
+            || (userId as any)?.patientId;
+
+        console.log('[ClinicalStore] loadAuditLog called with:', { raw, resolvedId });
+
+        if (
+          !resolvedId || 
+          typeof resolvedId !== 'string' || 
+          resolvedId === '[object Object]' ||
+          resolvedId.trim() === '' ||
+          !db
+        ) {
+          console.warn('[ClinicalStore] Invalid userId in loadAuditLog, aborting:', raw);
+          return;
+        }
+
+        try {
+          const events = await db.audit_log.where('userId').equals(resolvedId).toArray()
+          set((state) => {
+            state.auditEvents = events.sort((a, b) => 
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            )
+          })
+        } catch (dexieError) {
+          console.warn('[ClinicalStore] Dexie loadAuditLog failed:', dexieError)
+        }
       },
 
       syncAtomic: async (patientId: string, key: string, value: any) => {

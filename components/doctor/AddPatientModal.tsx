@@ -136,14 +136,8 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     try {
       // UNIFIED IDENTITY: We must resolve the Health ID to the Auth UID 
       // before creating the request, so the DB only ever sees one ID.
-      let targetUid: string | null = null
-      
-      if (foundPatient && (foundPatient as any).id) {
-        targetUid = (foundPatient as any).id
-      } else {
-        const { getUserIdByHealthId } = useUserStore.getState()
-        targetUid = await getUserIdByHealthId(normalizedHealthId)
-      }
+      const { getUserIdByHealthId } = useUserStore.getState()
+      const targetUid = await getUserIdByHealthId(normalizedHealthId)
 
       if (!targetUid) {
         throw new Error('Patient account not found. Please verify the Health ID.')

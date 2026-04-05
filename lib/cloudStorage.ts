@@ -1,11 +1,11 @@
 import { supabase } from './supabase'
 
 /**
- * Uploads a file (Blob or File) to Supabase Storage under a patient-specific path.
- * Returns the public download URL and the internal storage path.
+ * Uploads a file to Supabase Storage under a patient-specific path.
+ * IMPORTANT: patientId MUST be the Supabase Auth UID (UUID), not the Health ID.
  */
 export async function uploadMedicalFile(
-  patientId: string,
+  patientId: string, // Standardized to Auth UID
   fileId: string,
   file: Blob | File
 ): Promise<{ publicUrl: string; storagePath: string }> {

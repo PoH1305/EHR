@@ -52,6 +52,7 @@ interface UserActions {
   updateDoctor: (profile: Partial<DoctorProfile>) => Promise<void>
   fetchDoctorProfile: (id: string) => Promise<void>
   checkHealthIdUnique: (healthId: string) => Promise<boolean>
+  getUserIdByHealthId: (healthId: string) => Promise<string | null>
 }
 
 import { db } from '@/lib/db'
@@ -251,7 +252,27 @@ export const useUserStore = create<UserState & UserActions>()(
         set((state) => {
           state.firebaseUid = uid
           state.firebaseEmail = email
+          state.sessionState = uid ? 'AUTHENTICATED' : 'UNAUTHENTICATED'
         })
+      },
+
+      getUserIdByHealthId: async (healthId: string): Promise<string | null> => {
+        const { supabase } = await import('@/lib/supabase')
+        if (!supabase) return null
+        
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('health_id', healthId)
+            .single()
+            
+          if (error || !data) return null
+          return data.id
+        } catch (e) {
+          console.error('[UserStore] Failed to resolve Health ID to UID:', e)
+          return null
+        }
       },
       
       setDoctor: (profile) => {

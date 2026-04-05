@@ -347,7 +347,17 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       syncAtomic: async (patientId: string, key: string, value: any) => {
-        const { role } = useUserStore.getState()
+        const { role, firebaseUid, getUserIdByHealthId } = useUserStore.getState()
+        
+        // Ensure we use the Auth UID for the cloud sync
+        let targetUid = patientId
+        if (patientId.startsWith('EHI-')) {
+          const resolved = await getUserIdByHealthId(patientId)
+          if (resolved) targetUid = resolved
+        } else if (patientId === 'self' && firebaseUid) {
+          targetUid = firebaseUid
+        }
+
         if (role === 'doctor') {
           try {
             if (!supabase) return
@@ -363,9 +373,9 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               return
             }
 
-            console.log(`[ClinicalStore] Syncing atomicaly: ${key} for patient ${patientId}`)
+            console.log(`[ClinicalStore] Syncing atomicaly: ${key} for patient ${targetUid}`)
             const { error } = await supabase.rpc('append_clinical_data', {
-              p_patient_id: patientId,
+              p_patient_id: targetUid,
               p_key: key,
               p_value: value
             })
@@ -378,7 +388,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             console.error('[ClinicalStore] Failed atomic sync:', err)
           }
         } else {
-          void get().syncToCloud(patientId)
+          void get().syncToCloud(targetUid)
         }
       },
 
@@ -463,13 +473,25 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
             console.log('[ClinicalStore] digitizing image to cloud storage...')
             const blob = await blobUrlToBlob(image.imageUrl)
-            const uploadResult = await uploadMedicalFile(image.patientId, image.id, blob)
+            
+            // Resolve correct Auth UID for the storage path
+            const { firebaseUid, role, getUserIdByHealthId } = useUserStore.getState()
+            let targetUid = image.patientId
+            if (role === 'doctor' && image.patientId.startsWith('EHI-')) {
+               const resolved = await getUserIdByHealthId(image.patientId)
+               if (resolved) targetUid = resolved
+            } else if (role === 'patient') {
+               targetUid = firebaseUid || image.patientId
+            }
+
+            const uploadResult = await uploadMedicalFile(targetUid, image.id, blob)
             
             // Critical: Ensure we have a permanent storagePath
             if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
             
             finalImage.imageUrl = uploadResult.storagePath
             finalImage.storagePath = uploadResult.storagePath
+            finalImage.patientId = targetUid // Use Auth UID for metadata consistency
             storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to digitize image to Cloud:', error)
@@ -531,13 +553,25 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
             const { uploadMedicalFile, blobUrlToBlob } = await import('@/lib/cloudStorage')
             console.log('[ClinicalStore] digitizing attachment to cloud storage...')
             const blob = await blobUrlToBlob(attachment.fileUrl)
-            const uploadResult = await uploadMedicalFile(attachment.patientId, attachment.id, blob)
+            
+            // Resolve correct Auth UID for the storage path
+            const { firebaseUid, role, getUserIdByHealthId } = useUserStore.getState()
+            let targetUid = attachment.patientId
+            if (role === 'doctor' && attachment.patientId.startsWith('EHI-')) {
+               const resolved = await getUserIdByHealthId(attachment.patientId)
+               if (resolved) targetUid = resolved
+            } else if (role === 'patient') {
+               targetUid = firebaseUid || attachment.patientId
+            }
+
+            const uploadResult = await uploadMedicalFile(targetUid, attachment.id, blob)
             
             // Critical: Ensure we have a permanent storagePath
             if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
             
             finalAttachment.fileUrl = uploadResult.storagePath
             finalAttachment.storagePath = uploadResult.storagePath
+            finalAttachment.patientId = targetUid // IMPORTANT: Standardize on Auth UID
             storagePath = uploadResult.storagePath
           } catch (error) {
             console.error('[ClinicalStore] Failed to digitize attachment to Cloud:', error)
@@ -565,14 +599,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
            await supabase.from('record_access_permissions').upsert([
               { 
                 record_id: storagePath, 
-                patient_id: attachment.patientId, 
+                patient_id: finalAttachment.patientId, 
                 doctor_id: firebaseUid, 
                 permission_type: 'view', 
                 expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
               },
               { 
                 record_id: storagePath, 
-                patient_id: attachment.patientId, 
+                patient_id: finalAttachment.patientId, 
                 doctor_id: firebaseUid, 
                 permission_type: 'download', 
                 expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
@@ -630,8 +664,17 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         const state = get()
         if (!state.isLoaded) return
 
-        const patient = useUserStore.getState().patient
-        const targetId = explicitPatientId || patient?.healthId
+        const { firebaseUid, patient, getUserIdByHealthId } = useUserStore.getState()
+        let targetId = explicitPatientId || patient?.healthId
+        
+        // Ensure we use the Auth UID (targetUid) for the database primary key
+        if (targetId && targetId.startsWith('EHI-')) {
+          const resolved = await getUserIdByHealthId(targetId)
+          if (resolved) targetId = resolved
+        } else if (!explicitPatientId && firebaseUid) {
+          targetId = firebaseUid
+        }
+
         if (!targetId) return
 
         try {

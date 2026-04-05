@@ -33,11 +33,14 @@ export default function DashboardPage() {
         await initializeKeys()
       }
       
-      if (patient && !hasLoadedRef.current) {
+      const { firebaseUid } = useUserStore.getState()
+      const targetId = firebaseUid || patient?.id
+
+      if (targetId && !hasLoadedRef.current && !targetId.startsWith('pat-')) {
         hasLoadedRef.current = true
-        // UNIFIED KEY: Always use the Auth UID (patient.id) for clinical data lookups
-        void loadClinicalData(patient.id)
-        void loadAuditLog(patient.id)
+        // UNIFIED KEY: Always use the Auth UID for clinical data lookups
+        void loadClinicalData(targetId)
+        void loadAuditLog(targetId)
         void loadTokens()
       }
     }

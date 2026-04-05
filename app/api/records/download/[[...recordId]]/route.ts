@@ -16,7 +16,14 @@ export async function GET(
   // 2. Resolve storage path from catch-all segments
   const recordSegments = params.recordId || []
   const filePath = recordSegments.map(decodeURIComponent).join('/')
-  const patientId = recordSegments[0]
+  
+  // NEW ARCHITECTURE RESOLVER:
+  // Legacy: {patientId}/{fileId} (2 segments, patientId is at [0])
+  // Doctor: {doctorId}/for-patient/{patientId}/{fileId} (4 segments, patientId is at [2])
+  let patientId = recordSegments[0]
+  if (recordSegments.length >= 4 && recordSegments[1] === 'for-patient') {
+    patientId = recordSegments[2]
+  }
 
   if (!filePath) {
     return NextResponse.json({ error: 'Missing Record Path' }, { status: 400 })

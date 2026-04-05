@@ -118,9 +118,10 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           !resolvedId || 
           typeof resolvedId !== 'string' || 
           resolvedId === '[object Object]' ||
-          resolvedId.trim() === ''
+          resolvedId.trim() === '' ||
+          resolvedId.startsWith('pat-')
         ) {
-          console.warn('[ClinicalStore] Invalid patientId in loadPatientMetadata, aborting:', raw);
+          console.warn('[ClinicalStore] Invalid patientId formatting (skipping):', { raw, resolvedId });
           return;
         }
 
@@ -166,7 +167,8 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           !resolvedId || 
           typeof resolvedId !== 'string' || 
           resolvedId === '[object Object]' ||
-          resolvedId.trim() === '' || 
+          resolvedId.trim() === '' ||
+          resolvedId.startsWith('pat-') ||
           typeof window === 'undefined' || 
           !db
         ) {
@@ -396,6 +398,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           typeof resolvedId !== 'string' || 
           resolvedId === '[object Object]' ||
           resolvedId.trim() === '' ||
+          resolvedId.startsWith('pat-') ||
           !db
         ) {
           console.warn('[ClinicalStore] Invalid userId in loadAuditLog, aborting:', raw);
@@ -552,7 +555,12 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                targetUid = firebaseUid || image.patientId
             }
 
-            const uploadResult = await uploadMedicalFile(targetUid, image.id, blob)
+            const uploadResult = await uploadMedicalFile(
+              targetUid, 
+              image.id, 
+              blob,
+              role === 'doctor' ? firebaseUid || undefined : undefined
+            )
             
             // Critical: Ensure we have a permanent storagePath
             if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
@@ -583,7 +591,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         void get().syncAtomic(finalImage.patientId, 'medicalImages', finalImage)
         
         if (role === 'doctor' && firebaseUid && storagePath && supabase) {
-          console.log('[ClinicalStore] Generating 7-day image permissions for doctor:', firebaseUid)
+          console.log('[ClinicalStore] Granting 7-day image permissions for patient_id:', finalImage.patientId)
           await supabase.from('record_access_permissions').upsert([
             { 
               record_id: storagePath, 
@@ -632,7 +640,12 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                targetUid = firebaseUid || attachment.patientId
             }
 
-            const uploadResult = await uploadMedicalFile(targetUid, attachment.id, blob)
+            const uploadResult = await uploadMedicalFile(
+              targetUid, 
+              attachment.id, 
+              blob,
+              role === 'doctor' ? firebaseUid || undefined : undefined
+            )
             
             // Critical: Ensure we have a permanent storagePath
             if (!uploadResult.storagePath) throw new Error('Cloud storage failed to return path')
@@ -663,7 +676,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
         // Generate initial permissions for doctor-uploaded files
         if (role === 'doctor' && firebaseUid && storagePath && supabase) {
-           console.log('[ClinicalStore] Generating 7-day permissions for new attachment:', storagePath)
+           console.log('[ClinicalStore] Granting 7-day permissions for patient_id:', finalAttachment.patientId)
            await supabase.from('record_access_permissions').upsert([
               { 
                 record_id: storagePath, 

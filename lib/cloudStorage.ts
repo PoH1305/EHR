@@ -7,9 +7,15 @@ import { supabase } from './supabase'
 export async function uploadMedicalFile(
   patientId: string, // Standardized to Auth UID
   fileId: string,
-  file: Blob | File
+  file: Blob | File,
+  uploaderId?: string // Optional: Supabase Auth UID of the uploader (Doctor)
 ): Promise<{ publicUrl: string; storagePath: string }> {
-  const filePath = `${patientId}/${fileId}`
+  // NEW ARCHITECTURE:
+  // Patient-only: {patientId}/{fileId}
+  // Doctor-for-patient: {doctorId}/for-patient/{patientId}/{fileId}
+  const filePath = uploaderId 
+    ? `${uploaderId}/for-patient/${patientId}/${fileId}`
+    : `${patientId}/${fileId}`
   
   const { data, error: uploadError } = await supabase.storage
     .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Patient-Files')

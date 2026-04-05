@@ -42,12 +42,15 @@ function RecordsPageContent() {
 
    useEffect(() => {
     setMounted(true)
-    if (patient?.id && !hasLoadedRef.current) {
+    const { firebaseUid } = useUserStore.getState()
+    const targetId = firebaseUid || patient?.id
+
+    if (targetId && !hasLoadedRef.current && !targetId.startsWith('pat-')) {
       hasLoadedRef.current = true
-      void loadClinicalData(patient.id).then(() => {
+      void loadClinicalData(targetId).then(() => {
         // After data loads into store, push any local-only records to Supabase
         // so the doctor always sees the most up-to-date record set
-        setTimeout(() => void syncToCloud(patient.id), 300)
+        setTimeout(() => void syncToCloud(targetId), 300)
       })
     }
     

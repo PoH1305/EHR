@@ -109,6 +109,17 @@ export const useUserStore = create<UserState & UserActions>()(
 
         try {
           const { generateDataKey, generatePatientKeyPair } = await import('@/lib/crypto')
+          
+          // Identity Hygiene: Purge any legacy IDs ('pat-') from Dexie during initialization
+          if (typeof window !== 'undefined' && db) {
+            const staleKeys = await db.patient_profiles.toCollection().primaryKeys()
+            const legacyKeys = staleKeys.filter(k => typeof k === 'string' && k.startsWith('pat-'))
+            if (legacyKeys.length > 0) {
+              console.log('[UserStore] Purging legacy patient profiles:', legacyKeys)
+              await db.patient_profiles.bulkDelete(legacyKeys as string[])
+            }
+          }
+
           const dataKey = await generateDataKey()
           const { publicKey, privateKey } = await generatePatientKeyPair()
 

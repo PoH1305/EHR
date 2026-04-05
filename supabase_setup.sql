@@ -161,12 +161,14 @@ DROP POLICY IF EXISTS "Allow patients to read/write permissions" ON public.recor
 CREATE POLICY "Allow doctors to manage permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (
   doctor_id = auth.uid()::text AND (
     has_approved_access(auth.uid()::text, patient_id) OR
-    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id))
+    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id)) OR
+    has_approved_access(auth.uid()::text, get_user_health_id(patient_id))
   )
 ) WITH CHECK (
   doctor_id = auth.uid()::text AND (
     has_approved_access(auth.uid()::text, patient_id) OR
-    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id))
+    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id)) OR
+    has_approved_access(auth.uid()::text, get_user_health_id(patient_id))
   )
 );
 
@@ -182,27 +184,31 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.record_access_permissions;
 
 -- 7. Storage Bucket Setup (Standardized on Auth UID)
-DROP POLICY IF EXISTS "Allow patient to read own files" ON storage.objects;
+-- Patients can read their own files. They can also read files in doctor folders if they are the target patient.
+-- Storage path structure for doctor files: {doctor_uid}/for-patient/{patient_uid}/{file_id}
 CREATE POLICY "Allow patient to read own files" ON storage.objects FOR SELECT TO authenticated USING (
   bucket_id = 'Patient-Files' AND (
     (storage.foldername(name))[1] = auth.uid()::text OR
-    has_approved_access(auth.uid()::text, (storage.foldername(name))[1])
+    has_approved_access(auth.uid()::text, (storage.foldername(name))[1]) OR
+    (
+      (storage.foldername(name))[2] = 'for-patient' AND
+      (storage.foldername(name))[3] = auth.uid()::text
+    )
   )
 );
 
-DROP POLICY IF EXISTS "Allow patient to upload own files" ON storage.objects;
+-- Patients can only upload to their own folder.
+-- Doctors can only upload to their own folder (which includes the /for-patient/ subfolder).
 CREATE POLICY "Allow patient to upload own files" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
   bucket_id = 'Patient-Files' AND (
-    (storage.foldername(name))[1] = auth.uid()::text OR
-    has_approved_access(auth.uid()::text, (storage.foldername(name))[1])
+    (storage.foldername(name))[1] = auth.uid()::text
   )
 );
 
-DROP POLICY IF EXISTS "Allow patient to update own files" ON storage.objects;
+-- Update policy follows the same ownership rules.
 CREATE POLICY "Allow patient to update own files" ON storage.objects FOR UPDATE TO authenticated USING (
   bucket_id = 'Patient-Files' AND (
-    (storage.foldername(name))[1] = auth.uid()::text OR
-    has_approved_access(auth.uid()::text, (storage.foldername(name))[1])
+    (storage.foldername(name))[1] = auth.uid()::text
   )
 );
 

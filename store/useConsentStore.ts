@@ -263,7 +263,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       },
 
       createAccessRequest: async (
-        patientId, 
+        patientId, // Should be the Auth UID
         doctorId, 
         doctorName, 
         doctorSpecialty, 
@@ -274,9 +274,9 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         requestedDuration = null
       ) => {
         // IDENTITY STANDARDIZATION:
-        // Always use the given doctorId (which should be the Auth UID)
-        // Always use the given patientId (which should be the Health ID)
-        console.log('[ConsentStore] Creating access request for IDs:', { doctorId, patientId })
+        // Everything internal must now use the Supabase Auth UID.
+        // If a Health ID is passed, it should have been resolved by the caller.
+        console.log('[ConsentStore] Standardizing request for Patient UID:', patientId)
         
         const newReq: AccessRequest = {
           id: `req-${Date.now()}`,
@@ -284,7 +284,7 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           doctorName,
           doctorSpecialty,
           organization,
-          patientId, // Standardized on Health ID
+          patientId, // Standardized on Auth UID
           requestedAt: new Date().toISOString(),
           status: 'PENDING',
           patientName,

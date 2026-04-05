@@ -40,9 +40,9 @@ interface ClinicalState {
 }
 
 interface ClinicalActions {
-  loadClinicalData: (patientId: string, healthId?: string) => Promise<void>
-  loadPatientMetadata: (patientId: string, healthId?: string) => Promise<void>
-  loadAuditLog: (userId: string) => Promise<void>
+  loadClinicalData: (patientId: string) => Promise<void>
+  loadPatientMetadata: (patientId: string) => Promise<void>
+  loadAuditLog: (patientId: string) => Promise<void>
   addVital: (patientId: string, vital: VitalSeries) => Promise<void>
   addCondition: (patientId: string, condition: Condition) => Promise<void>
   addMedication: (patientId: string, medication: MedicationRequest) => Promise<void>
@@ -104,7 +104,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         })
       },
 
-      loadPatientMetadata: async (id: string, healthId?: string) => {
+      loadPatientMetadata: async (id: string) => {
         const { supabase } = await import('@/lib/supabase')
         if (!supabase) return
         
@@ -112,11 +112,11 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         set((state) => { state.isLoading = true })
         
         try {
-          // Standardized lookup with dual-identity resolution
+          // Standardized lookup with Unified Identity
           const { data, error } = await supabase
             .from('profiles')
             .select('id, health_id, data, created_at')
-            .or(`id.eq.${finalId}${healthId ? `,health_id.eq.${healthId}` : ''}`)
+            .eq('id', finalId)
             .maybeSingle()
 
           if (error) throw error
@@ -169,25 +169,22 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           let sharedCats: string[] | null = null
           
           if (role === 'doctor' && firebaseUid && supabase) {
-            // Enhanced lookup: check both Auth UID and Health ID in access_requests
-            // because records are stored by UID, but requests are often made via Health ID.
-            const pHealthId = healthId || get().selectedPatientProfile?.healthId
-            
-            console.log(`[ClinicalStore] Loading for UID: ${resolvedId} HealthID: ${pHealthId}`)
+            // UNIFIED IDENTITY: Fetch categories using ONLY the resolved Auth UID
+            console.log(`[ClinicalStore] Loading for Patient UID: ${resolvedId}`)
             
             const { data: accessData } = await supabase
               .from('access_requests')
               .select('shared_categories')
               .eq('doctor_id', firebaseUid)
               .eq('status', 'APPROVED')
-              .or(`patient_id.eq.${resolvedId}${pHealthId ? `,patient_id.eq.${pHealthId}` : ''}`)
+              .eq('patient_id', resolvedId)
               .maybeSingle()
             
             if (accessData) {
               sharedCats = accessData.shared_categories
               console.log('[ClinicalStore] Filtering records by shared categories:', sharedCats)
             } else {
-              console.warn(`[ClinicalStore] No approved access request found for Doctor UID: ${firebaseUid} and Patient ID: ${resolvedId} / ${pHealthId}`)
+              console.warn(`[ClinicalStore] No approved access found for Doctor UID: ${firebaseUid} and Patient UID: ${resolvedId}`)
             }
           }
 

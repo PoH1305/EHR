@@ -83,19 +83,20 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE;
 -- Returns TRUE if doctor has an approved access request for a patient_id (bypasses access_requests RLS)
 -- Handles both Auth UID and Health ID as inputs
 DROP FUNCTION IF EXISTS has_approved_access(text,text) CASCADE;
-CREATE OR REPLACE FUNCTION has_approved_access(p_doctor_id TEXT, p_patient_id_or_health_id TEXT)
+CREATE OR REPLACE FUNCTION public.has_approved_access(p_doctor_id TEXT, p_patient_id TEXT)
 RETURNS BOOLEAN AS $$
-  SELECT EXISTS (
+BEGIN
+  -- UNIFIED IDENTITY MODEL: 
+  -- We strictly use the Supabase Auth UID for all database relationships.
+  -- The Health ID (EHI-...) is resolved at the app layer during search.
+  RETURN EXISTS (
     SELECT 1 FROM public.access_requests
     WHERE doctor_id = p_doctor_id
+    AND patient_id = p_patient_id
     AND status = 'APPROVED'
-    AND (
-      patient_id = p_patient_id_or_health_id -- Direct match (UID or Health ID)
-      OR patient_id = (SELECT health_id FROM public.profiles WHERE id = p_patient_id_or_health_id) -- Local ID is UID, request uses Health ID
-      OR patient_id = (SELECT id FROM public.profiles WHERE health_id = p_patient_id_or_health_id) -- Local ID is Health ID, request uses UID
-    )
   );
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5. Create Policies (Strict row level security — no circular dependencies)
 
@@ -114,7 +115,7 @@ CREATE POLICY "Allow users to insert/update own profile" ON public.profiles FOR 
 -- Doctors can read profiles of patients they have approved access to
 DROP POLICY IF EXISTS "Allow doctors to read approved patient profiles" ON public.profiles;
 CREATE POLICY "Allow doctors to read approved patient profiles" ON public.profiles FOR SELECT TO authenticated USING (
-  has_approved_access(auth.uid()::text, health_id)
+  has_approved_access(auth.uid()::text, id)
 );
 
 -- CLINICAL DATA (Standardized on Auth UID)
@@ -180,15 +181,11 @@ DROP POLICY IF EXISTS "Allow doctors to read permissions" ON public.record_acces
 DROP POLICY IF EXISTS "Allow patients to read/write permissions" ON public.record_access_permissions;
 CREATE POLICY "Allow doctors to manage permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (
   doctor_id = auth.uid()::text AND (
-    has_approved_access(auth.uid()::text, patient_id) OR
-    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id)) OR
-    has_approved_access(auth.uid()::text, get_user_health_id(patient_id))
+    has_approved_access(auth.uid()::text, patient_id)
   )
 ) WITH CHECK (
   doctor_id = auth.uid()::text AND (
-    has_approved_access(auth.uid()::text, patient_id) OR
-    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id)) OR
-    has_approved_access(auth.uid()::text, get_user_health_id(patient_id))
+    has_approved_access(auth.uid()::text, patient_id)
   )
 );
 

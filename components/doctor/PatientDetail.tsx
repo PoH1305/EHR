@@ -84,11 +84,10 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
       
       setResolvedPatientId(targetUid)
       
-      // Unify: All clinical storage and DB calls use the Auth UID
-      // We also pass the original Health ID to ensure the store can perform 
-      // permission lookups even before the profile is fully hydrated.
-      void loadClinicalData(targetUid, patientId)
-      void loadPatientMetadata(targetUid, patientId)
+      // UNIFIED IDENTITY: All clinical storage and DB calls use the Auth UID.
+      // The Health ID is only used as a search alias in the AddPatient flow.
+      void loadClinicalData(targetUid)
+      void loadPatientMetadata(targetUid)
       void loadAuditLog(targetUid)
       
       setIsResolving(false)

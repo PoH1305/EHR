@@ -131,11 +131,28 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
     await new Promise(r => setTimeout(r, 1000))
     
     const { patient: doctorProfile } = useUserStore.getState()
-    const normalizedPatientId = patientId.trim().toUpperCase()
+    const normalizedHealthId = patientId.trim().toUpperCase()
     
     try {
+      // UNIFIED IDENTITY: We must resolve the Health ID to the Auth UID 
+      // before creating the request, so the DB only ever sees one ID.
+      let targetUid: string | null = null
+      
+      if (foundPatient && (foundPatient as any).id) {
+        targetUid = (foundPatient as any).id
+      } else {
+        const { getUserIdByHealthId } = useUserStore.getState()
+        targetUid = await getUserIdByHealthId(normalizedHealthId)
+      }
+
+      if (!targetUid) {
+        throw new Error('Patient account not found. Please verify the Health ID.')
+      }
+
+      console.log('[AddPatientModal] Standardizing request on Auth UID:', targetUid)
+
       await createAccessRequest(
-        normalizedPatientId, 
+        targetUid, // Pass the Auth UID
         firebaseUid || 'doc-unknown', 
         doctorProfile?.name || firebaseEmail?.split('@')[0] || 'Medical Practitioner', 
         (doctorProfile as any)?.specialty || DoctorSpecialty.GENERAL_PRACTITIONER, 

@@ -35,8 +35,8 @@ export default function DashboardPage() {
       
       if (patient && !hasLoadedRef.current) {
         hasLoadedRef.current = true
-        // UNIFIED KEY: Use healthId (EHI ID) for all clinical data lookups
-        void loadClinicalData(patient.healthId)
+        // UNIFIED KEY: Always use the Auth UID (patient.id) for clinical data lookups
+        void loadClinicalData(patient.id)
         void loadAuditLog(patient.id)
         void loadTokens()
       }
@@ -152,7 +152,7 @@ export default function DashboardPage() {
           <AISummaryModal
             isOpen={showSummary}
             onClose={() => setShowSummary(false)}
-            patientId={patient.healthId} // Changed to patient.healthId
+            patientId={patient.id} // Standardized to Auth UID
           />
           <AccessCenterModal
             isOpen={showAccessCenter}

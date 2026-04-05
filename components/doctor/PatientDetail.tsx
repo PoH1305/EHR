@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
+import { useUserStore } from '@/store/useUserStore'
 import { AddPrescriptionModal } from './AddPrescriptionModal'
 import { AddNoteModal } from './AddNoteModal'
 import FileUploadModal from './FileUploadModal'
@@ -38,10 +39,15 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
     medications,
     loadClinicalData,
     loadPatientMetadata,
+    loadAuditLog,
     clearClinicalState,
     selectedPatientProfile,
-    isLoading
+    isLoading: isClinicalLoading
   } = useClinicalStore()
+  const { getUserIdByHealthId } = useUserStore()
+  
+  const [resolvedPatientId, setResolvedPatientId] = useState<string | null>(null)
+  const [isResolving, setIsResolving] = useState(false)
   const [showPrescribe, setShowPrescribe] = useState(false)
   const [showNote, setShowNote] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
@@ -49,31 +55,67 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
   const [loadTimedOut, setLoadTimedOut] = useState(false)
 
   useEffect(() => {
-    setLoadTimedOut(false)
-    // Clear any stale data from a previous patient before loading new one
-    clearClinicalState()
-    if (patientId) {
-      void loadClinicalData(patientId)
-      void loadPatientMetadata(patientId)
+    const resolveAndLoad = async () => {
+      if (!patientId) {
+        setResolvedPatientId(null)
+        setIsResolving(false)
+        return
+      }
+      
+      setIsResolving(true)
+      setLoadTimedOut(false)
+      clearClinicalState()
+      
+      let targetUid = patientId
+      
+      // If it's a Health ID (starts with EHI-), we MUST resolve it to Auth UID
+      // because Dexie and clinical_data table use Auth UID as the key.
+      if (patientId.startsWith('EHI-')) {
+        console.log('[PatientDetail] Resolving Health ID to Auth UID:', patientId)
+        const resolved = await getUserIdByHealthId(patientId)
+        if (resolved) {
+          targetUid = resolved
+          console.log('[PatientDetail] Resolved to UID:', resolved)
+        } else {
+          console.warn('[PatientDetail] Resolution failed for Health ID:', patientId)
+          // Resolution failed, but we continue with Health ID (which will trigger the store's guards)
+        }
+      }
+      
+      setResolvedPatientId(targetUid)
+      
+      // Unify: All clinical storage and DB calls use the Auth UID
+      void loadClinicalData(targetUid)
+      void loadPatientMetadata(targetUid)
+      void loadAuditLog(targetUid)
+      
+      setIsResolving(false)
     }
+
+    void resolveAndLoad()
+
     const timer = setTimeout(() => {
       if (useClinicalStore.getState().isLoading) {
         useClinicalStore.setState({ isLoading: false })
         setLoadTimedOut(true)
       }
-    }, 6000)
+    }, 10000) // Increased timeout for identity resolution + sync
+    
     return () => clearTimeout(timer)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId])
+  }, [patientId, getUserIdByHealthId, loadClinicalData, loadPatientMetadata, loadAuditLog, clearClinicalState])
 
-  if (isLoading) {
+  if (isResolving || (isClinicalLoading && !resolvedPatientId)) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0d1117]">
         <div className="flex flex-col items-center gap-6">
            <Loader2 className="w-10 h-10 text-[#5B8DEF] animate-spin" />
            <div className="text-center space-y-2">
-              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">Synchronizing Clinical Node</p>
-              <p className="text-[8px] text-white/10 uppercase tracking-widest">Waiting for decentralized handshake...</p>
+              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">
+                {isResolving ? 'Resolving Identity' : 'Synchronizing Clinical Node'}
+              </p>
+              <p className="text-[8px] text-white/10 uppercase tracking-widest">
+                {isResolving ? 'Resolving Health ID to Clinical UID...' : 'Waiting for decentralized handshake...'}
+              </p>
            </div>
         </div>
       </div>
@@ -136,6 +178,9 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
             <h1 className="text-4xl font-bold text-white tracking-tight leading-tight">{selectedPatientProfile?.name || 'Patient'}</h1>
             <div className="flex flex-wrap items-center gap-3 mt-2">
                <span className="text-[10px] text-[#5B8DEF] font-bold font-mono tracking-tighter bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 px-2.5 py-1 rounded-lg">ID: {patientId}</span>
+               {resolvedPatientId && resolvedPatientId !== patientId && (
+                 <span className="text-[9px] text-white/10 font-mono tracking-tighter uppercase">UID: {resolvedPatientId.substring(0, 8)}...</span>
+               )}
                <span className="text-xs text-white/30 font-medium tracking-tight bg-white/5 px-2.5 py-1 rounded-lg">
                  {selectedPatientProfile?.age || '??'}{selectedPatientProfile?.gender?.[0]?.toUpperCase() || ''} • {selectedPatientProfile?.bloodGroup || 'UNK'} • {selectedPatientProfile?.location || 'Remote'}
                </span>
@@ -155,7 +200,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
 
       {/* Main Content Area */}
       <div className="animate-in fade-in duration-700 max-w-4xl">
-         <DoctorRecords patientId={patientId} />
+         <DoctorRecords patientId={resolvedPatientId || patientId} />
       </div>
 
       {/* Floating Action Button (FAB) */}
@@ -169,13 +214,13 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
       <AddPrescriptionModal 
         isOpen={showPrescribe}
         onClose={() => setShowPrescribe(false)}
-        patientId={patientId}
+        patientId={resolvedPatientId || patientId}
         patientName={selectedPatientProfile?.name || 'Patient'}
       />
       <AddNoteModal
         isOpen={showNote}
         onClose={() => setShowNote(false)}
-        patientId={patientId}
+        patientId={resolvedPatientId || patientId}
         patientName={selectedPatientProfile?.name || 'Patient'}
       />
       <FileUploadModal 
@@ -184,7 +229,7 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
           setShowUpload(false)
           setRefreshAttachments(prev => prev + 1)
         }}
-        patientId={patientId}
+        patientId={resolvedPatientId || patientId}
       />
     </div>
   )

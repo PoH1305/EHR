@@ -47,7 +47,7 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
     isGenerating
   } = useConsentStore()
   
-  const { patient, healthId } = useUserStore()
+  const { patient, healthId, firebaseUid } = useUserStore()
 
   // Multi-Step Acceptance State
   const [acceptingRequest, setAcceptingRequest] = useState<AccessRequest | null>(null)
@@ -88,11 +88,12 @@ export function AccessCenterModal({ isOpen, onClose }: AccessCenterModalProps) {
   ]
 
   useEffect(() => {
-    const effectiveId = patient?.healthId || healthId
-    if (effectiveId && isOpen) {
-      loadAccessRequests(effectiveId, false)
+    const pHealthId = patient?.healthId || healthId
+    // UNIFIED IDENTITY: Fetch requests sent to our UUID OR our Health ID
+    if (isOpen && firebaseUid) {
+      loadAccessRequests(firebaseUid, false, pHealthId || undefined)
     }
-  }, [isOpen, healthId, patient?.healthId, loadAccessRequests])
+  }, [isOpen, firebaseUid, healthId, patient?.healthId, loadAccessRequests])
 
   const pendingRequests = accessRequests.filter(r => r.status === 'PENDING')
 

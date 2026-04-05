@@ -45,7 +45,7 @@ interface ConsentActions {
     requestedDuration?: number | null
   ) => Promise<void>
   requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, reason?: string | null, patientName?: string | null) => Promise<void>
-  loadAccessRequests: (uid: string, isDoctor: boolean) => void
+  loadAccessRequests: (uid: string, isDoctor: boolean, altId?: string) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
 }
@@ -383,29 +383,39 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         }
       },
 
-      loadAccessRequests: (uid: string, isDoctor: boolean) => {
-        if (get().activeListenerId === uid) return
+      loadAccessRequests: (uid: string, isDoctor: boolean, altId?: string) => {
+        // Prevent duplicate initializations for the same identity set
+        const identityKey = altId ? `${uid}:${altId}` : uid
+        if (get().activeListenerId === identityKey) return
         
         const field = isDoctor ? 'doctor_id' : 'patient_id'
-        console.log(`[ConsentStore] Initializing Supabase sync for ${field}:`, uid)
+        console.log(`[ConsentStore] Initializing Supabase sync for ${field}:`, { uid, altId })
 
-        set({ activeListenerId: uid, isLoading: true })
+        set({ activeListenerId: identityKey, isLoading: true })
 
-        let isFetching = false // Guard against re-entrant realtime callbacks
+        let isFetching = false 
 
         const fetchRequests = async () => {
-          if (isFetching) return // Skip if already in-flight
+          if (isFetching) return 
           isFetching = true
           try {
             const { supabase } = await import('@/lib/supabase')
             if (!supabase) return
 
-            // 1. Initial Fetch
-            const { data, error } = await supabase
+            // 1. Initial Fetch with Dual-Identity support for patients
+            const query = supabase
               .from('access_requests')
               .select('*')
-              .eq(field, uid)
               .order('requested_at', { ascending: false })
+
+            if (isDoctor) {
+              query.eq('doctor_id', uid)
+            } else {
+              // For patients, we fetch requests sent to their UID OR their Health ID
+              query.or(`patient_id.eq.${uid}${altId ? `,patient_id.eq.${altId}` : ''}`)
+            }
+
+            const { data, error } = await query
 
             if (error) throw error
 
@@ -430,22 +440,27 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               state.isLoading = false
             })
 
-            // 2. Subscribe to changes (Realtime) — only register once
-            const channelName = `public:access_requests:${field}=${uid}`
-            const existingChannel = supabase.channel(channelName)
-            // Remove & re-subscribe to avoid duplicate listeners
-            await supabase.removeChannel(existingChannel)
-            supabase
-              .channel(channelName)
-              .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'access_requests',
-                filter: `${field}=eq.${uid}` 
-              }, () => {
-                void fetchRequests() // Guard prevents re-entrant loops
-              })
-              .subscribe()
+            // 2. Subscribe to changes (Realtime) — standardizing on the UID channel
+            // We register listeners for both IDs if applicable
+            const idsToMonitor = altId ? [uid, altId] : [uid]
+            
+            for (const targetId of idsToMonitor) {
+              const channelName = `public:access_requests:${field}=${targetId}`
+              const existingChannel = supabase.channel(channelName)
+              await supabase.removeChannel(existingChannel)
+              
+              supabase
+                .channel(channelName)
+                .on('postgres_changes', { 
+                  event: '*', 
+                  schema: 'public', 
+                  table: 'access_requests',
+                  filter: `${field}=eq.${targetId}` 
+                }, () => {
+                  void fetchRequests() 
+                })
+                .subscribe()
+            }
 
           } catch (err) {
             console.error('[ConsentStore] Supabase sync error:', err)

@@ -88,11 +88,12 @@ RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.access_requests
     WHERE doctor_id = p_doctor_id
-    AND (
-      patient_id = p_patient_id_or_health_id OR 
-      patient_id = (SELECT health_id FROM public.profiles WHERE id = p_patient_id_or_health_id)
-    )
     AND status = 'APPROVED'
+    AND (
+      patient_id = p_patient_id_or_health_id -- Direct match (UID or Health ID)
+      OR patient_id = (SELECT health_id FROM public.profiles WHERE id = p_patient_id_or_health_id) -- Local ID is UID, request uses Health ID
+      OR patient_id = (SELECT id FROM public.profiles WHERE health_id = p_patient_id_or_health_id) -- Local ID is Health ID, request uses UID
+    )
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
@@ -104,9 +105,14 @@ DROP POLICY IF EXISTS "Allow users to read own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Allow users to insert/update own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Allow doctors to read approved patient profiles" ON public.profiles;
 -- User can read and write their own profile
+DROP POLICY IF EXISTS "Allow users to read own profile" ON public.profiles;
 CREATE POLICY "Allow users to read own profile" ON public.profiles FOR SELECT TO authenticated USING (id = auth.uid()::text);
+
+DROP POLICY IF EXISTS "Allow users to insert/update own profile" ON public.profiles;
 CREATE POLICY "Allow users to insert/update own profile" ON public.profiles FOR ALL TO authenticated USING (id = auth.uid()::text) WITH CHECK (id = auth.uid()::text);
--- Doctors can read profiles of patients they have approved access to (uses helper fn, no recursion)
+
+-- Doctors can read profiles of patients they have approved access to
+DROP POLICY IF EXISTS "Allow doctors to read approved patient profiles" ON public.profiles;
 CREATE POLICY "Allow doctors to read approved patient profiles" ON public.profiles FOR SELECT TO authenticated USING (
   has_approved_access(auth.uid()::text, health_id)
 );
@@ -121,17 +127,27 @@ DROP POLICY IF EXISTS "Allow doctors to insert approved clinical data" ON public
 DROP POLICY IF EXISTS "Allow doctors to update approved clinical data" ON public.clinical_data;
 
 -- Patient can read/write own data (patient_id is Auth UID)
+DROP POLICY IF EXISTS "Allow patient to read own clinical data" ON public.clinical_data;
 CREATE POLICY "Allow patient to read own clinical data" ON public.clinical_data FOR SELECT TO authenticated USING (patient_id = auth.uid()::text);
+
+DROP POLICY IF EXISTS "Allow patient to insert own clinical data" ON public.clinical_data;
 CREATE POLICY "Allow patient to insert own clinical data" ON public.clinical_data FOR INSERT TO authenticated WITH CHECK (patient_id = auth.uid()::text);
+
+DROP POLICY IF EXISTS "Allow patient to update own clinical data" ON public.clinical_data;
 CREATE POLICY "Allow patient to update own clinical data" ON public.clinical_data FOR UPDATE TO authenticated USING (patient_id = auth.uid()::text);
 
 -- Doctors can read/insert/update clinical data if they have approved access
+DROP POLICY IF EXISTS "Allow doctors to read approved clinical data" ON public.clinical_data;
 CREATE POLICY "Allow doctors to read approved clinical data" ON public.clinical_data FOR SELECT TO authenticated USING (
   has_approved_access(auth.uid()::text, patient_id)
 );
+
+DROP POLICY IF EXISTS "Allow doctors to insert approved clinical data" ON public.clinical_data;
 CREATE POLICY "Allow doctors to insert approved clinical data" ON public.clinical_data FOR INSERT TO authenticated WITH CHECK (
   has_approved_access(auth.uid()::text, patient_id)
 );
+
+DROP POLICY IF EXISTS "Allow doctors to update approved clinical data" ON public.clinical_data;
 CREATE POLICY "Allow doctors to update approved clinical data" ON public.clinical_data FOR UPDATE TO authenticated USING (
   has_approved_access(auth.uid()::text, patient_id)
 );
@@ -141,8 +157,11 @@ DROP POLICY IF EXISTS "Allow anon read/write lookup" ON public.access_requests;
 DROP POLICY IF EXISTS "Allow doctor read/write own requests" ON public.access_requests;
 DROP POLICY IF EXISTS "Allow patient to view and update incoming requests" ON public.access_requests;
 -- Doctors can insert their own requests and see their own requests
+DROP POLICY IF EXISTS "Allow doctor read/write own requests" ON public.access_requests;
 CREATE POLICY "Allow doctor read/write own requests" ON public.access_requests FOR ALL TO authenticated USING (doctor_id = auth.uid()::text) WITH CHECK (doctor_id = auth.uid()::text);
--- Patients can read and update requests targeted at them (uses helper fn, no recursion)
+
+-- Patients can read and update requests targeted at them
+DROP POLICY IF EXISTS "Allow patient to view and update incoming requests" ON public.access_requests;
 CREATE POLICY "Allow patient to view and update incoming requests" ON public.access_requests FOR ALL TO authenticated USING (
   patient_id = get_user_health_id(auth.uid()::text)
 ) WITH CHECK (
@@ -151,6 +170,7 @@ CREATE POLICY "Allow patient to view and update incoming requests" ON public.acc
 
 -- SHARED SECRETS
 DROP POLICY IF EXISTS "Allow anon read/write secrets" ON public.shared_secrets;
+DROP POLICY IF EXISTS "Allow authenticated read/write secrets" ON public.shared_secrets;
 DROP POLICY IF EXISTS "Allow authenticated read/write secrets" ON public.shared_secrets;
 CREATE POLICY "Allow authenticated read/write secrets" ON public.shared_secrets FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
@@ -172,6 +192,7 @@ CREATE POLICY "Allow doctors to manage permissions" ON public.record_access_perm
   )
 );
 
+DROP POLICY IF EXISTS "Allow patients to read/write permissions" ON public.record_access_permissions;
 CREATE POLICY "Allow patients to read/write permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (
   patient_id = auth.uid()::text
 ) WITH CHECK (
@@ -186,6 +207,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.record_access_permissions;
 -- 7. Storage Bucket Setup (Standardized on Auth UID)
 -- Patients can read their own files. They can also read files in doctor folders if they are the target patient.
 -- Storage path structure for doctor files: {doctor_uid}/for-patient/{patient_uid}/{file_id}
+DROP POLICY IF EXISTS "Allow patient to read own files" ON storage.objects;
 CREATE POLICY "Allow patient to read own files" ON storage.objects FOR SELECT TO authenticated USING (
   bucket_id = 'Patient-Files' AND (
     (storage.foldername(name))[1] = auth.uid()::text OR
@@ -199,6 +221,7 @@ CREATE POLICY "Allow patient to read own files" ON storage.objects FOR SELECT TO
 
 -- Patients can only upload to their own folder.
 -- Doctors can only upload to their own folder (which includes the /for-patient/ subfolder).
+DROP POLICY IF EXISTS "Allow patient to upload own files" ON storage.objects;
 CREATE POLICY "Allow patient to upload own files" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
   bucket_id = 'Patient-Files' AND (
     (storage.foldername(name))[1] = auth.uid()::text
@@ -206,6 +229,7 @@ CREATE POLICY "Allow patient to upload own files" ON storage.objects FOR INSERT 
 );
 
 -- Update policy follows the same ownership rules.
+DROP POLICY IF EXISTS "Allow patient to update own files" ON storage.objects;
 CREATE POLICY "Allow patient to update own files" ON storage.objects FOR UPDATE TO authenticated USING (
   bucket_id = 'Patient-Files' AND (
     (storage.foldername(name))[1] = auth.uid()::text

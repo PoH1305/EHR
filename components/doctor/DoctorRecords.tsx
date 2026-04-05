@@ -184,7 +184,8 @@ export default function DoctorRecords({ patientId }: DoctorRecordsProps) {
    }
 
    const approvedRequest = accessRequests.find(r => 
-      r.patientId === patientId && r.status === 'APPROVED'
+      (r.patientId === patientId || r.patientId === selectedPatientProfile?.healthId) && 
+      r.status === 'APPROVED'
    )
    const sharedCats: string[] = approvedRequest?.sharedCategories || []
 

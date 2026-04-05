@@ -196,12 +196,16 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           let sharedCats: string[] | null = null
           
           if (role === 'doctor' && firebaseUid && supabase) {
+            // Enhanced lookup: check both Auth UID and Health ID in access_requests
+            // because records are stored by UID, but requests are often made via Health ID.
+            const pHealthId = get().selectedPatientProfile?.healthId
+            
             const { data: accessData } = await supabase
               .from('access_requests')
               .select('shared_categories')
               .eq('doctor_id', firebaseUid)
-              .eq('patient_id', resolvedId)
               .eq('status', 'APPROVED')
+              .or(`patient_id.eq.${resolvedId}${pHealthId ? `,patient_id.eq.${pHealthId}` : ''}`)
               .maybeSingle()
             
             if (accessData) {
@@ -745,7 +749,15 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         const state = get()
         if (!state.isLoaded) return
 
-        const { firebaseUid, patient, getUserIdByHealthId } = useUserStore.getState()
+        const { firebaseUid, patient, role, getUserIdByHealthId } = useUserStore.getState()
+        
+        // SECURITY GUARD: Doctors must NEVER perform a full-blob syncToCloud for a patient.
+        // Doing so overwrites keys the doctor cannot see (e.g., vitals) with empty arrays.
+        if (role === 'doctor') {
+          console.warn('[ClinicalStore] Blocking syncToCloud for doctor role. Doctors must use syncAtomic for patient records.')
+          return
+        }
+
         let targetId = explicitPatientId || patient?.healthId
         
         // Ensure we use the Auth UID (targetUid) for the database primary key

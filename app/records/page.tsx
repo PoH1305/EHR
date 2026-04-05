@@ -47,11 +47,7 @@ function RecordsPageContent() {
 
     if (targetId && !hasLoadedRef.current && !targetId.startsWith('pat-')) {
       hasLoadedRef.current = true
-      void loadClinicalData(targetId).then(() => {
-        // After data loads into store, push any local-only records to Supabase
-        // so the doctor always sees the most up-to-date record set
-        setTimeout(() => void syncToCloud(targetId), 300)
-      })
+      void loadClinicalData(targetId)
     }
     
     // Handle deep-linking from search

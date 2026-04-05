@@ -42,12 +42,12 @@ function RecordsPageContent() {
 
    useEffect(() => {
     setMounted(true)
-    if (patient?.healthId && !hasLoadedRef.current) {
+    if (patient?.id && !hasLoadedRef.current) {
       hasLoadedRef.current = true
-      void loadClinicalData(patient.healthId).then(() => {
+      void loadClinicalData(patient.id).then(() => {
         // After data loads into store, push any local-only records to Supabase
         // so the doctor always sees the most up-to-date record set
-        setTimeout(() => void syncToCloud(patient.healthId), 300)
+        setTimeout(() => void syncToCloud(patient.id), 300)
       })
     }
     
@@ -61,13 +61,13 @@ function RecordsPageContent() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !patient?.healthId) return
+    if (!file || !patient?.id) return
     setUploadFile(file)
     setShowUploadModal(true)
   }
 
   const handleUpload = async ({ category, description, file }: { category: string; description: string; file: File }) => {
-    if (!patient?.healthId) return
+    if (!patient?.id) return
 
     setIsUploading(true)
     
@@ -78,7 +78,7 @@ function RecordsPageContent() {
       // 2. Prepare the attachment record
       const attachment: PatientAttachment = {
         id: crypto.randomUUID(),
-        patientId: patient.healthId,
+        patientId: patient.id,
         fileUrl: localUrl,
         fileName: file.name,
         fileType: file.type,

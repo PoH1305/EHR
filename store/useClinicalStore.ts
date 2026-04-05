@@ -246,7 +246,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
                 for (const att of cloudData.attachments) {
                   const exists = attachments.some(a => a.id === att.id)
                   if (!exists && db) {
-                    await db.patient_attachments.add(att)
+                    await db.patient_attachments.put(att)
                     attachments.push(att) // Update local list
                   }
                 }
@@ -462,7 +462,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addVital: async (patientId: string, vital: VitalSeries) => {
         const vitalWithId = { ...vital, patientId }
-        if (db) await db.vitals.add(vitalWithId as any)
+        if (db) await db.vitals.put(vitalWithId as any)
         set((state) => {
           state.vitals.push(vital)
         })
@@ -471,7 +471,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addCondition: async (patientId: string, condition: Condition) => {
         const condWithId = { ...condition, patientId }
-        if (db) await db.conditions.add(condWithId as any)
+        if (db) await db.conditions.put(condWithId as any)
         set((state) => {
           state.conditions.push(condition)
         })
@@ -480,7 +480,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addMedication: async (patientId: string, medication: MedicationRequest) => {
         const medWithId = { ...medication, patientId }
-        if (db) await db.medications.add(medWithId as any)
+        if (db) await db.medications.put(medWithId as any)
         set((state) => {
           state.medications.push(medication)
         })
@@ -489,7 +489,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addObservation: async (patientId: string, observation: any) => {
         const obsWithId = { ...observation, patientId }
-        if (db) await db.observations.add(obsWithId)
+        if (db) await db.observations.put(obsWithId)
         set((state) => {
           state.observations.push(observation)
         })
@@ -498,7 +498,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addDiagnosticReport: async (patientId: string, report: any) => {
         const reportWithId = { ...report, patientId }
-        if (db) await db.diagnostic_reports.add(reportWithId)
+        if (db) await db.diagnostic_reports.put(reportWithId)
         set((state) => {
           state.diagnosticReports.push(report)
         })
@@ -507,7 +507,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addImmunization: async (patientId: string, immunization: any) => {
         const immWithId = { ...immunization, patientId }
-        if (db) await db.immunizations.add(immWithId)
+        if (db) await db.immunizations.put(immWithId)
         set((state) => {
           state.immunizations.push(immunization)
         })
@@ -516,7 +516,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
       addProcedure: async (patientId: string, procedure: any) => {
         const procWithId = { ...procedure, patientId }
-        if (db) await db.procedures.add(procWithId)
+        if (db) await db.procedures.put(procWithId)
         set((state) => {
           state.procedures.push(procedure)
         })
@@ -524,7 +524,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       addClinicalNote: async (note: ClinicalNote) => {
-        if (db) await db.clinical_notes.add(note)
+        if (db) await db.clinical_notes.put(note)
         set((state) => {
           state.clinicalNotes.unshift(note)
         })
@@ -587,14 +587,14 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           await supabase.from('record_access_permissions').upsert([
             { 
               record_id: storagePath, 
-              patient_id: image.patientId, 
+              patient_id: finalImage.patientId, 
               doctor_id: firebaseUid, 
               permission_type: 'view', 
               expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
             },
             { 
               record_id: storagePath, 
-              patient_id: image.patientId, 
+              patient_id: finalImage.patientId, 
               doctor_id: firebaseUid, 
               permission_type: 'download', 
               expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() 
@@ -604,7 +604,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       },
 
       addRiskAnalysis: async (analysis: RiskAnalysis) => {
-        if (db) await db.risk_analysis.add(analysis)
+        if (db) await db.risk_analysis.put(analysis)
         set((state) => {
           state.riskAnalyses.unshift(analysis)
         })
@@ -653,7 +653,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
         }
 
         // Now safe to persist metadata
-        if (db) await db.patient_attachments.add(finalAttachment)
+        if (db) await db.patient_attachments.put(finalAttachment)
         set((state) => {
           state.attachments.unshift(finalAttachment)
         })
@@ -698,7 +698,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           hash
         }
 
-        if (db) await db.audit_log.add(finalEvent)
+        if (db) await db.audit_log.put(finalEvent)
         set((state) => {
           state.auditEvents.unshift(finalEvent)
         })

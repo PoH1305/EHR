@@ -159,9 +159,15 @@ DROP POLICY IF EXISTS "Allow anon read/write permissions" ON public.record_acces
 DROP POLICY IF EXISTS "Allow doctors to read permissions" ON public.record_access_permissions;
 DROP POLICY IF EXISTS "Allow patients to read/write permissions" ON public.record_access_permissions;
 CREATE POLICY "Allow doctors to manage permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (
-  doctor_id = auth.uid()::text AND has_approved_access(auth.uid()::text, patient_id)
+  doctor_id = auth.uid()::text AND (
+    has_approved_access(auth.uid()::text, patient_id) OR
+    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id))
+  )
 ) WITH CHECK (
-  doctor_id = auth.uid()::text AND has_approved_access(auth.uid()::text, patient_id)
+  doctor_id = auth.uid()::text AND (
+    has_approved_access(auth.uid()::text, patient_id) OR
+    has_approved_access(auth.uid()::text, get_user_id_by_health_id(patient_id))
+  )
 );
 
 CREATE POLICY "Allow patients to read/write permissions" ON public.record_access_permissions FOR ALL TO authenticated USING (

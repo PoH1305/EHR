@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
-import { categorizeRecord, type BodySystem } from '@/lib/ai-categorize'
+import { categorizeRecord, getRecommendedSystemsBySpecialty, type BodySystem } from '@/lib/ai-categorize'
 import type { AccessRequest } from '@/lib/types'
 
 interface DataMinimizationViewProps {
@@ -67,10 +67,17 @@ const HISTORY_OPTIONS = [
 
 export function DataMinimizationView({ request, onClose, onConfirm }: DataMinimizationViewProps) {
   const [step, setStep] = useState(1)
-  const [duration, setDuration] = useState(86400) // 24h default
-  const [historyLimit, setHistoryLimit] = useState(999) // All history default
+  const [duration, setDuration] = useState(3600) // 1h default
+  const [historyLimit, setHistoryLimit] = useState(12) // 1 year default
   const [shieldActive, setShieldActive] = useState(true)
-  const [selectedSystems, setSelectedSystems] = useState<BodySystem[]>(SYSTEMS.map(s => s.id))
+  
+  // AI DECIDES: Pre-select systems based on specialization
+  const recommendedSystems = useMemo(() => 
+    getRecommendedSystemsBySpecialty(request.doctorSpecialty || ''), 
+    [request.doctorSpecialty]
+  )
+  const [selectedSystems, setSelectedSystems] = useState<BodySystem[]>(recommendedSystems)
+  const [isAiRecommended, setIsAiRecommended] = useState(true)
   
   const { 
     vitals, conditions, medications, allergies, attachments, 
@@ -147,6 +154,7 @@ export function DataMinimizationView({ request, onClose, onConfirm }: DataMinimi
   const handleBack = () => setStep(s => Math.max(s - 1, 1))
 
   const toggleSystem = (id: BodySystem) => {
+    setIsAiRecommended(false)
     setSelectedSystems(prev => 
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     )

@@ -72,3 +72,35 @@ export function categorizeRecord(title: string, subtitle?: string): CategorizedR
     icon: SYSTEM_ICONS[bestMatch]
   };
 }
+
+/**
+ * AI-Driven Recommendation: Maps Doctor Specialization to recommended Body Systems.
+ * Ensures the 'AI decides' logic for data minimization.
+ */
+export function getRecommendedSystemsBySpecialty(specialty: string): BodySystem[] {
+  const s = specialty.toLowerCase();
+  
+  if (s.includes('cardio')) return ['Heart', 'Blood', 'Lungs', 'General'];
+  if (s.includes('ortho') || s.includes('bone')) return ['Bones', 'Skin', 'General'];
+  if (s.includes('neuro')) return ['Brain', 'Mental', 'General'];
+  if (s.includes('psych')) return ['Mental', 'Brain', 'General'];
+  if (s.includes('gastro') || s.includes('digest')) return ['Digestive', 'Blood', 'General'];
+  if (s.includes('derma') || s.includes('skin')) return ['Skin', 'General'];
+  if (s.includes('pulmo') || s.includes('lung') || s.includes('respir')) return ['Lungs', 'Heart', 'General'];
+  if (s.includes('nephro')) return ['Blood', 'General'];
+  if (s.includes('oncology') || s.includes('cancer')) return ['Blood', 'General', 'Heart', 'Lungs', 'Digestive'];
+  
+  // High-stakes or wide-scope specialties get everything by default
+  if (
+    s.includes('emergency') || 
+    s.includes('general') || 
+    s.includes('primary') || 
+    s.includes('internal') ||
+    s.includes('surgeon')
+  ) {
+    return ['Heart', 'Bones', 'Mental', 'Lungs', 'Digestive', 'Blood', 'Brain', 'Skin', 'General'];
+  }
+
+  // Default fallback for unknown specialties
+  return ['General'];
+}

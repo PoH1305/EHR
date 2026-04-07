@@ -11,7 +11,7 @@ import { HealthIdentityCard } from '@/components/HealthIdentityCard'
 import { ConsentTokenCard } from '@/components/ConsentTokenCard'
 import { AISummaryModal } from '@/components/AISummaryModal'
 import type { ConsentTokenRequest, ConsentToken } from '@/lib/types'
-import { AccessCenterModal } from '@/components/patient/AccessCenterModal'
+import { PatientRequestInbox } from '@/components/patient/PatientRequestInbox'
 
 import dynamic from 'next/dynamic'
 const DoctorHome = dynamic(() => import('@/components/doctor/DoctorHome'), { ssr: false })
@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const { loadTokens, activeTokens, revokeToken, accessRequests } = useConsentStore()
   const { loadClinicalData, loadAuditLog, auditEvents } = useClinicalStore()
   const [showSummary, setShowSummary] = useState(false)
-  const [showAccessCenter, setShowAccessCenter] = useState(false)
+  const accessSectionRef = React.useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
 
   const pendingCount = accessRequests.filter(r => r.status === 'PENDING').length
@@ -96,7 +96,7 @@ export default function DashboardPage() {
           <span className="text-base font-bold text-white tracking-tight">AI Summary</span>
         </button>
         <button
-          onClick={() => setShowAccessCenter(true)}
+          onClick={() => accessSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
           className="flex items-center justify-center gap-2 py-4 rounded-[20px] bg-[#0d2d2d] hover:bg-[#123d3d] transition-all shadow-lg relative w-full"
         >
           <Shield className="w-5 h-5 text-[#2ed3b7]" />
@@ -126,6 +126,11 @@ export default function DashboardPage() {
         </section>
       )}
 
+      {/* Access Center — Inline Request Inbox with 6-Slide Wizard */}
+      <section ref={accessSectionRef}>
+        <PatientRequestInbox />
+      </section>
+
       {/* Recent Activity */}
       <section>
         <h3 className="text-sm font-semibold text-foreground/40 mb-3">Recent Activity</h3>
@@ -151,17 +156,11 @@ export default function DashboardPage() {
 
       {/* Modals */}
       {patient && (
-        <>
-          <AISummaryModal
-            isOpen={showSummary}
-            onClose={() => setShowSummary(false)}
-            patientId={patient.id} // Standardized to Auth UID
-          />
-          <AccessCenterModal
-            isOpen={showAccessCenter}
-            onClose={() => setShowAccessCenter(false)}
-          />
-        </>
+        <AISummaryModal
+          isOpen={showSummary}
+          onClose={() => setShowSummary(false)}
+          patientId={patient.id}
+        />
       )}
     </div>
   )

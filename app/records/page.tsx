@@ -91,7 +91,6 @@ function RecordsPageContent() {
       // 3. Use ClinicalStore to handle cloud upload and state sync
       await addAttachment(attachment)
       
-      alert(`Record stored! Category: ${category.replace('_', ' ')}`)
     } catch (error: any) {
       console.error('File upload failed:', error)
       alert(`Upload failed: ${error.message}`)

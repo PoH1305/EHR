@@ -10,16 +10,18 @@ import { GlassCard } from '@/components/GlassCard'
 
 export function PatientRequestInbox() {
   const { accessRequests, loadAccessRequests, respondToAccessRequest, isLoading } = useConsentStore()
-  const { healthId, patient } = useUserStore()
+  const { healthId, patient, firebaseUid } = useUserStore()
   const [selectedCats, setSelectedCats] = React.useState<Record<string, string[]>>({})
 
   useEffect(() => {
-    const effectiveId = (patient?.healthId || healthId)?.trim().toUpperCase()
-    if (effectiveId) {
-      console.log(`[PatientRequestInbox] Fetching requests for healthId: ${effectiveId}`)
-      loadAccessRequests(effectiveId, false)
+    // UNIFIED IDENTITY: Use Auth UID as primary (matches what doctors save),
+    // with Health ID as altId for legacy/dual-identity support
+    const pHealthId = (patient?.healthId || healthId)?.trim().toUpperCase()
+    if (firebaseUid) {
+      console.log(`[PatientRequestInbox] Fetching requests for uid: ${firebaseUid}, altId: ${pHealthId}`)
+      loadAccessRequests(firebaseUid, false, pHealthId || undefined)
     }
-  }, [healthId, patient?.healthId, loadAccessRequests])
+  }, [firebaseUid, healthId, patient?.healthId, loadAccessRequests])
 
   const categories = [
     { id: 'vitals', label: 'Vitals' },
@@ -42,6 +44,7 @@ export function PatientRequestInbox() {
   }
 
   const pendingRequests = accessRequests.filter(r => r.status === 'PENDING')
+  console.log(`[ConsentStore] Loaded ${accessRequests.length} incoming requests for patient: ${firebaseUid}`)
   console.log('[PatientRequestInbox] Rendering pendingRequests:', {
     total: accessRequests.length,
     pending: pendingRequests.length,
@@ -149,12 +152,14 @@ export function PatientRequestInbox() {
               <Shield className="w-6 h-6 text-white/10" />
            </div>
            <p className="text-sm font-bold text-white/20 tracking-tight">No pending requests</p>
-           <p className="text-[9px] text-white/10 mt-1 uppercase tracking-widest mb-4">Sync active for {patient?.healthId || healthId}</p>
+           <p className="text-[9px] text-white/10 mt-1 uppercase tracking-widest mb-4">Sync active for {firebaseUid || patient?.healthId || healthId}</p>
            
            <button 
              onClick={() => {
-                const id = patient?.healthId || healthId
-                if (id) loadAccessRequests(id, false)
+                if (firebaseUid) {
+                  const pHealthId = (patient?.healthId || healthId)?.trim().toUpperCase()
+                  loadAccessRequests(firebaseUid, false, pHealthId || undefined)
+                }
              }}
              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/40 hover:bg-white/10 transition-all uppercase tracking-widest"
            >

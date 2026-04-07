@@ -435,6 +435,8 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
               metadata: d.metadata || {}
             }))
 
+            console.log(`[ConsentStore] Loaded ${formatted.length} incoming requests for patient: ${uid}${altId ? ` (altId: ${altId})` : ''}`)
+
             set((state) => {
               state.accessRequests = formatted
               state.isLoading = false

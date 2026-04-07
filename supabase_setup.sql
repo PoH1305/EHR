@@ -162,11 +162,14 @@ DROP POLICY IF EXISTS "Allow doctor read/write own requests" ON public.access_re
 CREATE POLICY "Allow doctor read/write own requests" ON public.access_requests FOR ALL TO authenticated USING (doctor_id = auth.uid()::text) WITH CHECK (doctor_id = auth.uid()::text);
 
 -- Patients can read and update requests targeted at them
+-- DUAL-IDENTITY: Match requests where patient_id is either the Auth UID or the Health ID
 DROP POLICY IF EXISTS "Allow patient to view and update incoming requests" ON public.access_requests;
 CREATE POLICY "Allow patient to view and update incoming requests" ON public.access_requests FOR ALL TO authenticated USING (
-  patient_id = get_user_health_id(auth.uid()::text)
+  patient_id = auth.uid()::text
+  OR patient_id = get_user_health_id(auth.uid()::text)
 ) WITH CHECK (
-  patient_id = get_user_health_id(auth.uid()::text)
+  patient_id = auth.uid()::text
+  OR patient_id = get_user_health_id(auth.uid()::text)
 );
 
 -- SHARED SECRETS

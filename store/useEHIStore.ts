@@ -66,7 +66,8 @@ export const useEHIStore = create<EHIState & EHIActions>()(
         })
 
         try {
-          // In development, use mock data and seed Dexie
+          // In development, mock data logic is currently disabled due to missing dependency
+          /*
           if (process.env.NODE_ENV === 'development') {
             const { MOCK_FHIR_BUNDLE, MOCK_CONDITIONS, MOCK_MEDICATIONS, MOCK_ALLERGIES, MOCK_VITALS } =
               await import('@/lib/mockData')
@@ -98,6 +99,7 @@ export const useEHIStore = create<EHIState & EHIActions>()(
             })
             return
           }
+          */
 
           // Production: fetch from API and sync to Dexie
           const response = await fetch(`/api/fhir/records?userId=${userId}`)

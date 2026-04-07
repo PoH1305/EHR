@@ -476,19 +476,53 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
       },
 
       respondToAccessRequest: async (requestId, approved, categories = []) => {
+        const state = get()
+        const req = state.accessRequests.find(r => r.id === requestId)
+        if (!req) return
+
         const status = approved ? 'APPROVED' : 'DENIED'
         const patientName = approved ? useUserStore.getState().patient?.name || null : null
         
         set((state) => {
-          const req = state.accessRequests.find(r => r.id === requestId)
-          if (req) {
-            req.status = status
-            req.sharedCategories = approved ? categories : []
-            if (patientName) req.patientName = patientName
+          const r = state.accessRequests.find(it => it.id === requestId)
+          if (r) {
+            r.status = status
+            r.sharedCategories = approved ? categories : []
+            if (patientName) r.patientName = patientName
           }
         })
         
-        // 1. Local Update
+        // 1. Audit Logging (As shown in Diagram)
+        try {
+          const { useClinicalStore } = await import('./useClinicalStore')
+          const clinicalStore = useClinicalStore.getState()
+          const { firebaseUid } = useUserStore.getState()
+          
+          if (firebaseUid) {
+            await clinicalStore.addAuditEvent({
+              id: `audit-${Date.now()}`,
+              type: approved ? 'CONSENT_GRANTED' : 'CONSENT_REVOKED',
+              timestamp: new Date().toISOString(),
+              userId: firebaseUid,
+              description: approved 
+                ? `Granted ${req.doctorSpecialty} (${req.doctorName}) access to medical records.`
+                : `Denied access request from ${req.doctorName} (${req.organization}).`,
+              metadata: {
+                requestId,
+                doctorId: req.doctorId,
+                doctorName: req.doctorName,
+                specialty: req.doctorSpecialty,
+                organization: req.organization,
+                categories: approved ? categories : [],
+                action: approved ? 'APPROVE' : 'DENY'
+              }
+            }, firebaseUid)
+          }
+        } catch (auditErr) {
+          console.error('[ConsentStore] Failed to log audit event:', auditErr)
+        }
+
+        // 2. Local Update
         if (typeof window !== 'undefined' && db) {
           void db.access_requests.update(requestId, { 
             status, 

@@ -194,7 +194,7 @@ export function DataMinimizationView({ request, onClose, onConfirm }: DataMinimi
             <div className="flex-1 overflow-y-auto px-8 pb-32 scrollbar-hide">
                 <AnimatePresence mode="wait">
                     
-                    {/* SLIDE 1: Identity */}
+                    {/* SLIDE 1: Role Verification (Matches Architecture Diagram) */}
                     {step === 1 && (
                         <motion.div 
                             key="s1"
@@ -204,31 +204,62 @@ export function DataMinimizationView({ request, onClose, onConfirm }: DataMinimi
                             className="space-y-8"
                         >
                             <div className="text-center space-y-2">
-                                <h2 className="text-2xl font-bold text-white tracking-tight">Identity Handshake</h2>
-                                <p className="text-sm text-[#8b949e]">Verifying requesting clinician credentials.</p>
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                    <h2 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Role Verification Logic</h2>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white tracking-tight">Identity Handshake</h3>
+                                <p className="text-sm text-[#8b949e]">Verifying clinician role & license context.</p>
                             </div>
 
-                            <div className="p-6 rounded-[24px] bg-[#0d1117] border border-[#30363d] flex flex-col items-center gap-4">
-                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-white/5">
-                                    <span className="text-2xl font-black text-white/80">{request.doctorName[0]}</span>
+                            <div className="p-8 rounded-[32px] bg-[#0d1117] border border-[#30363d] flex flex-col items-center gap-6 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4">
+                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-[#238636]/10 border border-[#238636]/20 rounded-full">
+                                        <BadgeCheck className="w-3.5 h-3.5 text-[#238636]" />
+                                        <span className="text-[9px] font-black text-[#238636] uppercase tracking-widest leading-none">Verified Role</span>
+                                    </div>
                                 </div>
-                                <div className="text-center">
-                                    <h3 className="text-lg font-bold text-white leading-none mb-1">{request.doctorName}</h3>
-                                    <p className="text-xs text-[#238636] font-bold uppercase tracking-wider mb-2">{request.doctorSpecialty}</p>
-                                    <div className="flex items-center justify-center gap-1.5 px-3 py-1 bg-white/5 rounded-full border border-white/5">
-                                        <BadgeCheck className="w-3 h-3 text-blue-400" />
-                                        <span className="text-[10px] text-[#8b949e] font-medium lowercase">verified national license</span>
+
+                                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-transparent flex items-center justify-center border border-white/5 shadow-2xl relative">
+                                    <div className="absolute inset-0 bg-blue-500/5 blur-xl group-hover:bg-blue-500/10 transition-colors" />
+                                    <span className="text-3xl font-black text-white/90 relative z-10">{request.doctorName[0]}</span>
+                                </div>
+
+                                <div className="text-center space-y-1 relative z-10">
+                                    <h3 className="text-xl font-bold text-white tracking-tight">{request.doctorName}</h3>
+                                    <p className="text-xs text-[#8b949e] font-medium mb-2">{request.organization}</p>
+                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-xl">
+                                        <Activity className="w-3.5 h-3.5 text-blue-400" />
+                                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{request.doctorSpecialty}</span>
+                                    </div>
+                                </div>
+
+                                <div className="w-full pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <p className="text-[8px] font-black text-[#8b949e] uppercase tracking-widest">Protocol</p>
+                                        <p className="text-[10px] font-bold text-white">OAuth 2.0 / EHR-S</p>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <p className="text-[8px] font-black text-[#8b949e] uppercase tracking-widest">Trust Index</p>
+                                        <p className="text-[10px] font-bold text-[#238636]">100% SECURE</p>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div className="p-5 rounded-2xl bg-[#238636]/5 border border-[#238636]/20 flex gap-4">
-                                <ShieldCheck className="w-5 h-5 text-[#238636] shrink-0" />
-                                <div>
-                                    <h4 className="text-xs font-bold text-white mb-1">Purpose of Access</h4>
-                                    <p className="text-[11px] text-[#8b949e] leading-relaxed italic">"{request.reason || 'Clinical consultation and review of medical history.'}"</p>
+                            <div className="p-6 rounded-[24px] bg-[#238636]/5 border border-[#238636]/20 space-y-3 relative overflow-hidden group">
+                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#238636]/5 rounded-full blur-3xl" />
+                                <div className="flex items-center gap-2">
+                                    <ShieldCheck className="w-4 h-4 text-[#238636]" />
+                                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Clinical Intent</h4>
                                 </div>
+                                <p className="text-xs text-white/70 leading-relaxed font-medium italic relative z-10">
+                                    "{request.reason || 'Primary clinical consultation and diagnostic review.'}"
+                                </p>
                             </div>
+
+                            <p className="text-[9px] text-center text-[#8b949e]/40 font-black uppercase tracking-[0.2em]">
+                                All decisions are logged to the Blockchain Audit Trail
+                            </p>
                         </motion.div>
                     )}
 

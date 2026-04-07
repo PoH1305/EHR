@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { useUserStore } from '@/store/useUserStore'
+import { useConsentStore } from '@/store/useConsentStore'
 import { AddPrescriptionModal } from './AddPrescriptionModal'
 import { AddNoteModal } from './AddNoteModal'
 import FileUploadModal from './FileUploadModal'
@@ -53,6 +54,25 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
   const [showUpload, setShowUpload] = useState(false)
   const [, setRefreshAttachments] = useState(0)
   const [loadTimedOut, setLoadTimedOut] = useState(false)
+  const { accessRequests } = useConsentStore()
+  const isAccessDenied = useClinicalStore(s => s.isAccessDenied)
+
+  // Reactive Identity Healing Sync
+  // Watch for access request status changes (real-time from useConsentStore)
+  useEffect(() => {
+    if (!resolvedPatientId || !isAccessDenied) return
+
+    const idsToCheck = [resolvedPatientId, patientId].filter(Boolean) as string[]
+    const approvedRequest = accessRequests.find(r => 
+      idsToCheck.includes(r.patientId) && r.status === 'APPROVED'
+    )
+
+    if (approvedRequest) {
+      console.log(`[PatientDetail] Reactive sync triggered by status change for ID: ${approvedRequest.id}`)
+      void loadClinicalData(resolvedPatientId)
+      void loadPatientMetadata(resolvedPatientId)
+    }
+  }, [accessRequests, resolvedPatientId, patientId, isAccessDenied, loadClinicalData, loadPatientMetadata])
 
   useEffect(() => {
     const resolveAndLoad = async () => {
@@ -124,8 +144,6 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
   }
 
   // Fallback when Supabase found no data or access was not granted
-  const isAccessDenied = useClinicalStore(s => s.isAccessDenied)
-  
   if (loadTimedOut || isAccessDenied) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0d1117]">

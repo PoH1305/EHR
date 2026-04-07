@@ -175,23 +175,26 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           let sharedCats: string[] | null = null
           
           if (role === 'doctor' && firebaseUid && supabase) {
-            // UNIFIED IDENTITY: Support both Auth UID and Health ID in access check
-            // (Bridging the gap for requests sent before Identity Healing)
-            console.log(`[ClinicalStore] Verifying access for Doctor: ${firebaseUid} -> Patient: ${resolvedId} / ${healthId}`)
+            const idsToCheck = [resolvedId, healthId].filter(Boolean) as string[]
+            console.log(`[ClinicalStore] Verifying access for Doctor: ${firebaseUid} against identities:`, idsToCheck)
             
-            const { data: accessData } = await supabase
+            const { data: accessData, error: accessError } = await supabase
               .from('access_requests')
-              .select('shared_categories')
+              .select('*')
               .eq('doctor_id', firebaseUid)
               .eq('status', 'APPROVED')
-              .or(`patient_id.eq.${resolvedId}${healthId ? `,patient_id.eq.${healthId}` : ''}`)
+              .in('patient_id', idsToCheck)
+              .limit(1)
               .maybeSingle()
             
             if (accessData) {
               sharedCats = accessData.shared_categories
-              console.log('[ClinicalStore] Access verified. Shared categories:', sharedCats)
+              console.log('[ClinicalStore] Access verified. Shared categories:', sharedCats, 'Request ID:', accessData.id)
             } else {
-              console.warn(`[ClinicalStore] Access DENIED for Doctor UID: ${firebaseUid} and Patient ID: ${resolvedId}`)
+              if (accessError) {
+                console.error('[ClinicalStore] Access check query error:', accessError)
+              }
+              console.warn(`[ClinicalStore] Access DENIED for Doctor UID: ${firebaseUid} and identities:`, idsToCheck)
               set((state) => {
                 state.isAccessDenied = true
                 state.isLoading = false

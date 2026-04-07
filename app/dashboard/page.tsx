@@ -86,28 +86,7 @@ export default function DashboardPage() {
         <HealthIdentityCard patient={patient} />
       </section>
 
-      {/* Action buttons */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-1">
-        <button
-          onClick={() => setShowSummary(true)}
-          className="flex items-center justify-center gap-2 py-4 rounded-full bg-[#0a0f1a] border border-white/40 hover:bg-slate-900 transition-all shadow-lg w-full"
-        >
-          <Sparkles className="w-5 h-5 text-[#bf7af0]" />
-          <span className="text-base font-bold text-white tracking-tight">AI Summary</span>
-        </button>
-        <button
-          onClick={() => accessSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          className="flex items-center justify-center gap-2 py-4 rounded-[20px] bg-[#0d2d2d] hover:bg-[#123d3d] transition-all shadow-lg relative w-full"
-        >
-          <Shield className="w-5 h-5 text-[#2ed3b7]" />
-          <span className="text-base font-bold text-white tracking-tight">Access Center</span>
-          {pendingCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-[#0d2d2d] animate-bounce">
-              {pendingCount}
-            </span>
-          )}
-        </button>
-      </section>
+      {/* Action buttons removed as requested */}
 
 
       {/* Active Consent Tokens */}

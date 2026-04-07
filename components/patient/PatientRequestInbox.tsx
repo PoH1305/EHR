@@ -26,25 +26,19 @@ export function PatientRequestInbox() {
     }
   }, [firebaseUid, healthId, patient?.healthId, loadAccessRequests])
 
-  const categories = [
-    { id: 'vitals', label: 'Vitals' },
-    { id: 'conditions', label: 'Conditions' },
-    { id: 'medications', label: 'Medications' },
-    { id: 'allergies', label: 'Allergies' },
-    { id: 'clinicalNotes', label: 'Notes' },
-    { id: 'medicalImages', label: 'Images' },
-    { id: 'attachments', label: 'Reports' }
-  ]
-
-  const toggleCategory = (requestId: string, catId: string) => {
-    setSelectedCats(prev => {
-      const current = prev[requestId] || categories.map(c => c.id)
-      const next = current.includes(catId)
-        ? current.filter(c => c !== catId)
-        : [...current, catId]
-      return { ...prev, [requestId]: next }
-    })
+  const SYSTEM_TO_CAT_MAP: Record<string, string[]> = {
+    'Heart': ['vitals', 'medicalImages'],
+    'Bones': ['attachments'],
+    'Mental': ['clinicalNotes'],
+    'Lungs': ['vitals', 'attachments'],
+    'Digestive': ['attachments', 'medications'],
+    'Blood': ['attachments'],
+    'Brain': ['clinicalNotes', 'medicalImages'],
+    'Skin': ['attachments'],
+    'General': ['vitals', 'conditions', 'medications', 'allergies', 'clinicalNotes', 'attachments']
   }
+
+  // Categories are now managed exclusively via the DataMinimization Wizard
 
   const pendingRequests = accessRequests.filter(r => r.status === 'PENDING')
   console.log(`[ConsentStore] Loaded ${accessRequests.length} incoming requests for patient: ${firebaseUid}`)
@@ -69,97 +63,56 @@ export function PatientRequestInbox() {
       {pendingRequests.length > 0 ? (
         <div className="space-y-3">
           <AnimatePresence>
-            {pendingRequests.map((req) => {
-              const selected = selectedCats[req.id] || categories.map(c => c.id)
-              
-              return (
+            {pendingRequests.map((req) => (
                 <motion.div
                   key={req.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                 >
-                  <GlassCard className="p-5 border border-white/5 overflow-hidden">
+                  <div className="p-6 rounded-[32px] bg-[#161b22] border border-[#30363d] hover:border-[#8b949e]/20 transition-all group">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                      <div className="flex items-center gap-4">
-                        {/* Avatar with Initials */}
-                        <div className="w-12 h-12 rounded-full bg-[#E3F2ED] flex items-center justify-center shrink-0 border border-emerald-500/10">
-                          <span className="text-sm font-bold text-[#2D6A4F]">
-                            {req.doctorName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shrink-0 border border-white/5 shadow-inner">
+                          <span className="text-lg font-black text-white/80">
+                            {req.doctorName[0]}
                           </span>
                         </div>
                         
-                        <div className="space-y-1.5">
-                          <h4 className="text-sm font-bold text-white tracking-tight">{req.doctorName}</h4>
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-full w-fit">
-                            <Plus className="w-2.5 h-2.5 text-blue-400" />
-                            <span className="text-[10px] font-bold text-blue-400 tracking-tight">{req.doctorSpecialty}</span>
-                          </div>
+                        <div className="space-y-1">
+                          <h4 className="text-base font-bold text-white tracking-tight leading-none">{req.doctorName}</h4>
+                          <p className="text-[10px] font-black text-[#238636] uppercase tracking-[0.2em]">{req.doctorSpecialty}</p>
+                          <p className="text-[11px] text-[#8b949e] font-medium">{req.organization}</p>
                         </div>
                       </div>
 
-                      {/* Organization Center-Right */}
-                      <div className="hidden lg:block flex-1 text-center">
-                        <p className="text-[11px] text-white/40 font-medium tracking-wide">{req.organization}</p>
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
                         <button
                           onClick={() => void respondToAccessRequest(req.id, false)}
-                          className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                          className="flex-1 sm:flex-none px-6 py-3 rounded-2xl bg-white/5 border border-white/5 text-xs font-black text-[#8b949e] hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all uppercase tracking-widest"
                         >
                           Deny
                         </button>
                         <button
                           onClick={() => setMinimizingReq(req)}
-                          className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all font-medium"
+                          className="flex-1 sm:flex-none px-8 py-3 rounded-2xl bg-white text-black text-xs font-black hover:bg-white/90 transition-all uppercase tracking-widest shadow-xl shadow-white/5"
                         >
-                          Configure & share
+                          Configure Access
                         </button>
                       </div>
                     </div>
                     
                     {req.reason && (
-                      <div className="mt-4 p-3 rounded-2xl bg-[#0F172A] border border-white/5 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <p className="text-[9px] font-black text-blue-400/60 uppercase tracking-[0.2em] mb-1.5 relative z-10">Clinical Intent</p>
-                        <p className="text-[11px] text-white/80 leading-relaxed font-medium relative z-10 italic">
+                      <div className="mt-6 p-4 rounded-2xl bg-[#0d1117] border border-[#30363d] relative overflow-hidden group-hover:border-[#8b949e]/10 transition-colors">
+                        <p className="text-[9px] font-black text-[#8b949e]/40 uppercase tracking-[0.2em] mb-2">Intent</p>
+                        <p className="text-xs text-white/70 leading-relaxed font-medium italic">
                           "{req.reason}"
                         </p>
                       </div>
                     )}
-                    
-                    {/* Category Selection */}
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                       <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-3">Share categories:</p>
-                       <div className="flex flex-wrap gap-2">
-                          {categories.map(cat => (
-                            <button
-                              key={cat.id}
-                              onClick={() => toggleCategory(req.id, cat.id)}
-                              className={cn(
-                                "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border",
-                                selected.includes(cat.id)
-                                  ? "bg-blue-500/20 border-blue-500/30 text-blue-400"
-                                  : "bg-white/5 border-white/5 text-white/20"
-                              )}
-                            >
-                              {cat.label}
-                            </button>
-                          ))}
-                       </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 flex items-center justify-between opacity-30 italic">
-                       <span className="text-[8px] text-white font-bold uppercase tracking-widest leading-none">
-                         Requested: {req.requestedAt ? new Date(req.requestedAt).toLocaleDateString() : 'Recent'}
-                       </span>
-                    </div>
-                  </GlassCard>
+                  </div>
                 </motion.div>
-              )
-            })}
+              ))}
           </AnimatePresence>
         </div>
       ) : (
@@ -189,8 +142,17 @@ export function PatientRequestInbox() {
           <DataMinimizationView 
             request={minimizingReq}
             onClose={() => setMinimizingReq(null)}
-            onConfirm={(cats) => {
-              void respondToAccessRequest(minimizingReq.id, true, cats)
+            onConfirm={(payload) => {
+              // Map Wizard Payload to Store Action
+              const derivedCategories = Array.from(new Set(
+                payload.systems.flatMap(sys => SYSTEM_TO_CAT_MAP[sys] || [])
+              ))
+              
+              void respondToAccessRequest(
+                minimizingReq.id, 
+                true, 
+                derivedCategories
+              )
               setMinimizingReq(null)
             }}
           />

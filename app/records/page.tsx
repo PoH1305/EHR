@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, Upload, Loader2 } from 'lucide-react'
+import { Search, Upload, Loader2, Zap, ChevronRight } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { RecordList, type RecordItem } from '@/components/RecordList'
@@ -14,7 +14,7 @@ import type { PatientAttachment } from '@/lib/types'
 
 import { categorizeRecord, type BodySystem } from '@/lib/ai-categorize'
 
-const FILTER_TABS = ['Segregated', 'Recent']
+const FILTER_TABS = ['Group', 'Recent']
 
 function RecordsPageContent() {
   const { 
@@ -30,7 +30,7 @@ function RecordsPageContent() {
     addAttachment 
   } = useClinicalStore()
   const { patient } = useUserStore()
-  const [activeFilter, setActiveFilter] = useState('Segregated')
+  const [activeFilter, setActiveFilter] = useState('Group')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -267,9 +267,9 @@ function RecordsPageContent() {
             onClick={() => setActiveFilter(tab)}
             className={cn(
               'px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all',
-              activeFilter === tab
-                ? 'bg-primary/20 text-primary ring-1 ring-primary/20'
-                : 'bg-foreground/5 text-foreground/40 hover:text-foreground/60'
+                activeFilter === tab
+                ? 'bg-primary/10 text-primary ring-1 ring-primary/30 shadow-[0_0_20px_-10px_rgba(59,130,246,0.3)]'
+                : 'bg-foreground/[0.03] text-foreground/40 hover:bg-foreground/[0.06] hover:text-foreground/60'
             )}
           >
             {tab}
@@ -278,27 +278,43 @@ function RecordsPageContent() {
       </div>
 
       {/* Content Sections */}
-      {activeFilter === 'Segregated' ? (
-        <div className="grid grid-cols-2 gap-3 pb-24">
-          {Object.entries(groupedRecords).map(([system, items]) => (
-            <button
-              key={system}
-              onClick={() => {
-                setSearchQuery(system === 'General' ? '' : system)
-                setActiveFilter('Recent')
-              }}
-              className="group relative flex flex-col p-5 rounded-2xl bg-foreground/[0.03] border border-foreground/[0.05] hover:bg-foreground/[0.06] hover:border-foreground/10 transition-all text-left"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-xl opacity-80 group-hover:scale-110 transition-transform">
-                  {categorizeRecord(system).icon}
-                </span>
-                <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">AI Categorized</span>
-              </div>
-              <h4 className="text-xs font-bold text-foreground mb-1">{system}</h4>
-              <p className="text-[10px] text-foreground/40">{items.length} file{items.length !== 1 ? 's' : ''}</p>
-            </button>
-          ))}
+      {activeFilter === 'Group' ? (
+        <div className="grid grid-cols-2 gap-4 pb-24">
+          {Object.entries(groupedRecords).map(([system, items]) => {
+            const info = categorizeRecord(system)
+            return (
+              <button
+                key={system}
+                onClick={() => {
+                  setSearchQuery(system === 'General' ? '' : system)
+                  setActiveFilter('Recent')
+                }}
+                className="group relative flex flex-col p-6 rounded-[32px] bg-foreground/[0.02] border border-foreground/[0.08] hover:bg-foreground/[0.04] hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all text-left overflow-hidden"
+              >
+                {/* Decorative background glow */}
+                <div className="absolute -right-4 -top-4 w-20 h-20 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
+
+                <div className="flex justify-between items-start mb-5">
+                  <div className="w-12 h-12 rounded-2xl bg-foreground/[0.03] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-sm">
+                    {info.icon}
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded-lg border border-primary/10">
+                    <Zap className="w-2 h-2 text-primary fill-primary" />
+                    <span className="text-[8px] text-primary font-black uppercase tracking-tight">AI</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-foreground tracking-tight group-hover:text-primary transition-colors">{system}</h4>
+                  <p className="text-[10px] text-foreground/40 font-medium">{items.length} record{items.length !== 1 ? 's' : ''}</p>
+                </div>
+                
+                <div className="mt-4 flex items-center gap-1 text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
+                  View records <ChevronRight className="w-2.5 h-2.5" />
+                </div>
+              </button>
+            )
+          })}
         </div>
       ) : (
         <>

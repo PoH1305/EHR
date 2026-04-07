@@ -2,16 +2,19 @@
 
 import React, { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UserPlus, Check, X, Loader2, Shield } from 'lucide-react'
+import { UserPlus, Check, X, Loader2, Shield, Plus } from 'lucide-react'
 import { useConsentStore } from '@/store/useConsentStore'
 import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 import { GlassCard } from '@/components/GlassCard'
+import { DataMinimizationView } from './DataMinimizationView'
+import type { AccessRequest } from '@/lib/types'
 
 export function PatientRequestInbox() {
   const { accessRequests, loadAccessRequests, respondToAccessRequest, isLoading } = useConsentStore()
   const { healthId, patient, firebaseUid } = useUserStore()
   const [selectedCats, setSelectedCats] = React.useState<Record<string, string[]>>({})
+  const [minimizingReq, setMinimizingReq] = React.useState<AccessRequest | null>(null)
 
   useEffect(() => {
     // UNIFIED IDENTITY: Use Auth UID as primary (matches what doctors save),
@@ -76,33 +79,43 @@ export function PatientRequestInbox() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                 >
-                  <GlassCard className="p-4 border-l-4 border-l-blue-500 overflow-hidden">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                          <Shield className="w-5 h-5 text-blue-400" />
+                  <GlassCard className="p-5 border border-white/5 overflow-hidden">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                      <div className="flex items-center gap-4">
+                        {/* Avatar with Initials */}
+                        <div className="w-12 h-12 rounded-full bg-[#E3F2ED] flex items-center justify-center shrink-0 border border-emerald-500/10">
+                          <span className="text-sm font-bold text-[#2D6A4F]">
+                            {req.doctorName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          </span>
                         </div>
-                        <div>
+                        
+                        <div className="space-y-1.5">
                           <h4 className="text-sm font-bold text-white tracking-tight">{req.doctorName}</h4>
-                          <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">{req.organization}</p>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-full w-fit">
+                            <Plus className="w-2.5 h-2.5 text-blue-400" />
+                            <span className="text-[10px] font-bold text-blue-400 tracking-tight">{req.doctorSpecialty}</span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Organization Center-Right */}
+                      <div className="hidden lg:block flex-1 text-center">
+                        <p className="text-[11px] text-white/40 font-medium tracking-wide">{req.organization}</p>
+                      </div>
                       
-                      <div className="flex items-center gap-2">
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-3">
                         <button
                           onClick={() => void respondToAccessRequest(req.id, false)}
-                          className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20 hover:bg-red-500/20 transition-all text-red-500"
+                          className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-red-500/10 hover:border-red-500/20 transition-all"
                         >
-                          <X className="w-4 h-4" />
+                          Deny
                         </button>
                         <button
-                          onClick={() => {
-                            console.log(`[PatientRequestInbox] Accepting request ${req.id} from ${req.doctorName}`)
-                            void respondToAccessRequest(req.id, true, selected)
-                          }}
-                          className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center border border-green-500/30 hover:bg-green-500/30 transition-all text-green-500 shadow-lg shadow-green-500/10"
+                          onClick={() => setMinimizingReq(req)}
+                          className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all font-medium"
                         >
-                          <Check className="w-5 h-5" />
+                          Configure & share
                         </button>
                       </div>
                     </div>
@@ -170,6 +183,19 @@ export function PatientRequestInbox() {
            </button>
         </div>
       )}
+
+      <AnimatePresence>
+        {minimizingReq && (
+          <DataMinimizationView 
+            request={minimizingReq}
+            onClose={() => setMinimizingReq(null)}
+            onConfirm={(cats) => {
+              void respondToAccessRequest(minimizingReq.id, true, cats)
+              setMinimizingReq(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
     </section>
   )
 }

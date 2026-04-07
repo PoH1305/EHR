@@ -165,6 +165,7 @@ export interface ConsentToken {
   tokenHash: string
   patientName?: string | undefined
   allowedFiles?: string[]
+  allowedBodySystems?: BodySystem[]
   tokenKey?: string | undefined
   purpose?: string
   maxHistoryMonths?: number | null
@@ -212,6 +213,22 @@ export enum DoctorSpecialty {
   RHEUMATOLOGIST = 'Rheumatologist',
   OPHTHALMOLOGIST = 'Ophthalmologist',
 }
+
+// ────────────────────────────────────────────────────────────────
+// Body Systems (AI Categorization)
+// ────────────────────────────────────────────────────────────────
+
+export type BodySystem = 
+  | 'Heart' 
+  | 'Bones' 
+  | 'Mental' 
+  | 'Lungs' 
+  | 'Digestive' 
+  | 'Blood' 
+  | 'Brain' 
+  | 'Skin' 
+  | 'General';
+
 
 // ────────────────────────────────────────────────────────────────
 // Filtered FHIR types
@@ -497,6 +514,7 @@ export interface AccessRequest {
   status: 'PENDING' | 'APPROVED' | 'DENIED'
   patientName?: string | null
   sharedCategories: string[]
+  sharedBodySystems?: BodySystem[]
   reason?: string | null
   requestedDuration?: number | null
   metadata?: Record<string, any>

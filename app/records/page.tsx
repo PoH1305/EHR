@@ -12,7 +12,9 @@ import { useClinicalStore } from '@/store/useClinicalStore'
 import { UploadModal } from '@/components/patient/UploadModal'
 import type { PatientAttachment } from '@/lib/types'
 
-const FILTER_TABS = ['Records', 'Vitals', 'Medications', 'Conditions', 'Allergies', 'Notes']
+import { categorizeRecord, type BodySystem } from '@/lib/ai-categorize'
+
+const FILTER_TABS = ['Segregated', 'Recent']
 
 function RecordsPageContent() {
   const { 
@@ -28,7 +30,7 @@ function RecordsPageContent() {
     addAttachment 
   } = useClinicalStore()
   const { patient } = useUserStore()
-  const [activeFilter, setActiveFilter] = useState('All')
+  const [activeFilter, setActiveFilter] = useState('Segregated')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -107,91 +109,111 @@ function RecordsPageContent() {
     const records: RecordItem[] = []
 
     for (const cond of conditions) {
+      const title = cond.code?.text ?? cond.code?.coding?.[0]?.display ?? 'Unknown Condition'
+      const subtitle = `ICD-10: ${cond.code?.coding?.[0]?.code ?? 'N/A'}`
       records.push({
         id: cond.id ?? '',
         resourceType: 'Condition',
-        title: cond.code?.text ?? cond.code?.coding?.[0]?.display ?? 'Unknown Condition',
-        subtitle: `ICD-10: ${cond.code?.coding?.[0]?.code ?? 'N/A'}`,
+        title,
+        subtitle,
         date: cond.recordedDate ?? '',
         status: cond.clinicalStatus?.coding?.[0]?.code,
         sensitive: cond.note?.some((n) => n.text?.includes('SENSITIVE')),
         verified: true,
+        bodySystem: categorizeRecord(title, subtitle).system
       })
     }
 
     for (const med of medications) {
+      const title = med.medicationCodeableConcept?.text ?? 'Unknown Medication'
+      const subtitle = med.dosageInstruction?.[0]?.text ?? ''
       records.push({
         id: med.id ?? '',
         resourceType: 'MedicationRequest',
-        title: med.medicationCodeableConcept?.text ?? 'Unknown Medication',
-        subtitle: med.dosageInstruction?.[0]?.text ?? '',
+        title,
+        subtitle,
         date: med.authoredOn ?? '',
         status: med.status,
         sensitive: med.note?.some((n) => n.text?.includes('SENSITIVE')),
         verified: true,
+        bodySystem: categorizeRecord(title, subtitle).system
       })
     }
 
     for (const allergy of allergies) {
+      const title = allergy.code?.text ?? 'Unknown Allergy'
+      const subtitle = `Criticality: ${allergy.criticality ?? 'unknown'} — ${allergy.reaction?.[0]?.manifestation?.[0]?.text ?? ''}`
       records.push({
         id: allergy.id ?? '',
         resourceType: 'AllergyIntolerance',
-        title: allergy.code?.text ?? 'Unknown Allergy',
-        subtitle: `Criticality: ${allergy.criticality ?? 'unknown'} — ${allergy.reaction?.[0]?.manifestation?.[0]?.text ?? ''}`,
+        title,
+        subtitle,
         date: allergy.recordedDate ?? '',
         status: allergy.clinicalStatus?.coding?.[0]?.code,
         verified: true,
+        bodySystem: categorizeRecord(title, subtitle).system
       })
     }
 
     for (const attachment of attachments) {
+      const title = attachment.fileName.replace(/\.[^/.]+$/, '')
+      const subtitle = attachment.description || attachment.category.replace('_', ' ')
       records.push({
         id: attachment.id,
         resourceType: 'DiagnosticReport',
-        category: attachment.category, // Pass the category through
-        title: attachment.fileName.replace(/\.[^/.]+$/, ''),
-        subtitle: attachment.description || attachment.category.replace('_', ' '),
+        title,
+        subtitle,
         date: attachment.uploadedAt,
         verified: attachment.isVerified || false,
         fileUrl: attachment.fileUrl,
         fileName: attachment.fileName,
         fileType: attachment.fileType,
         storagePath: attachment.storagePath,
+        bodySystem: categorizeRecord(title, subtitle).system
       })
     }
 
     for (const image of medicalImages) {
+      const title = image.type || 'Medical Image'
+      const subtitle = image.description || 'Clinical Capture'
       records.push({
         id: image.id,
         resourceType: 'DiagnosticReport',
-        title: image.type || 'Medical Image',
-        subtitle: image.description || 'Clinical Capture',
+        title,
+        subtitle,
         date: image.timestamp,
         verified: true,
         fileUrl: image.imageUrl,
         storagePath: (image as any).storagePath,
+        bodySystem: categorizeRecord(title, subtitle).system
       })
     }
 
     for (const note of clinicalNotes) {
+      const title = 'Clinical Note'
+      const subtitle = note.content.substring(0, 50) + (note.content.length > 50 ? '...' : '')
       records.push({
         id: note.id,
         resourceType: 'ClinicalNote',
-        title: 'Clinical Note',
-        subtitle: note.content.substring(0, 50) + (note.content.length > 50 ? '...' : ''),
+        title,
+        subtitle,
         date: note.timestamp,
         verified: true,
+        bodySystem: categorizeRecord(title, subtitle).system
       })
     }
 
     for (const series of vitals) {
+      const title = series.type.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase())
+      const subtitle = `${series.latestValue} ${series.unit} (${series.trend})`
       records.push({
         id: `vital-${series.type}`,
         resourceType: 'Observation',
-        title: series.type.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase()),
-        subtitle: `${series.latestValue} ${series.unit} (${series.trend})`,
+        title,
+        subtitle,
         date: series.readings?.[series.readings.length - 1]?.timestamp || new Date().toISOString(),
         verified: true,
+        bodySystem: categorizeRecord(title, subtitle).system
       })
     }
 
@@ -202,24 +224,6 @@ function RecordsPageContent() {
   const filteredRecords = useMemo(() => {
     let records = allRecords
 
-    if (activeFilter !== 'Records') {
-      const filterMap: Record<string, string> = {
-        Vitals: 'Observation',
-        Medications: 'MedicationRequest',
-        Conditions: 'Condition',
-        Allergies: 'AllergyIntolerance',
-        Notes: 'ClinicalNote',
-      }
-      const resourceType = filterMap[activeFilter]
-      if (resourceType) {
-        records = records.filter((r) => r.resourceType === resourceType)
-      }
-    } else {
-      // For "Records" tab, we show only the items that aren't specific FHIR resources
-      // such as Attachments, DiagnosticReports, and Medical Images
-      records = records.filter((r) => r.resourceType === 'DiagnosticReport' || r.resourceType === 'DocumentReference')
-    }
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       records = records.filter(
@@ -228,7 +232,18 @@ function RecordsPageContent() {
     }
 
     return records
-  }, [allRecords, activeFilter, searchQuery])
+  }, [allRecords, searchQuery])
+
+  // Group by BodySystem for Segregated View
+  const groupedRecords = useMemo(() => {
+    const groups: Record<string, RecordItem[]> = {}
+    filteredRecords.forEach(r => {
+      const system = r.bodySystem || 'General'
+      if (!groups[system]) groups[system] = []
+      groups[system].push(r)
+    })
+    return groups
+  }, [filteredRecords])
 
   return (
     <div className="space-y-4">
@@ -262,17 +277,43 @@ function RecordsPageContent() {
         ))}
       </div>
 
-      {/* Record count */}
-      <p className="text-[10px] text-foreground/20">
-        {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''}
-        {activeFilter !== 'Records' && ` in ${activeFilter}`}
-      </p>
+      {/* Content Sections */}
+      {activeFilter === 'Segregated' ? (
+        <div className="grid grid-cols-2 gap-3 pb-24">
+          {Object.entries(groupedRecords).map(([system, items]) => (
+            <button
+              key={system}
+              onClick={() => {
+                setSearchQuery(system === 'General' ? '' : system)
+                setActiveFilter('Recent')
+              }}
+              className="group relative flex flex-col p-5 rounded-2xl bg-foreground/[0.03] border border-foreground/[0.05] hover:bg-foreground/[0.06] hover:border-foreground/10 transition-all text-left"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xl opacity-80 group-hover:scale-110 transition-transform">
+                  {categorizeRecord(system).icon}
+                </span>
+                <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">AI Categorized</span>
+              </div>
+              <h4 className="text-xs font-bold text-foreground mb-1">{system}</h4>
+              <p className="text-[10px] text-foreground/40">{items.length} file{items.length !== 1 ? 's' : ''}</p>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Record count */}
+          <p className="text-[10px] text-foreground/20">
+            {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''} in Recent
+          </p>
 
-      {/* Record list */}
-      <RecordList 
-        records={filteredRecords} 
-        onRecordClick={setSelectedRecordId} 
-      />
+          {/* Record list */}
+          <RecordList 
+            records={filteredRecords} 
+            onRecordClick={setSelectedRecordId} 
+          />
+        </>
+      )}
 
       {/* Upload FAB */}
       {mounted && createPortal(

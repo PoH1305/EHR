@@ -96,7 +96,10 @@ export function PatientRequestInbox() {
                           <X className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => void respondToAccessRequest(req.id, true, selected)}
+                          onClick={() => {
+                            console.log(`[PatientRequestInbox] Accepting request ${req.id} from ${req.doctorName}`)
+                            void respondToAccessRequest(req.id, true, selected)
+                          }}
                           className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center border border-green-500/30 hover:bg-green-500/30 transition-all text-green-500 shadow-lg shadow-green-500/10"
                         >
                           <Check className="w-5 h-5" />

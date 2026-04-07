@@ -500,13 +500,18 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         // 2. Supabase Update
         try {
           const { supabase } = await import('@/lib/supabase')
-          if (supabase) {
+          const { firebaseUid } = useUserStore.getState()
+          
+          if (supabase && firebaseUid) {
+            console.log(`[ConsentStore] Responding to request ${requestId}: approved=${approved}. Healing identity to UID: ${firebaseUid}`)
+            
             const { error: updateError } = await supabase
               .from('access_requests')
               .update({ 
                 status, 
                 shared_categories: approved ? categories : [],
-                patient_name: patientName 
+                patient_name: patientName,
+                patient_id: firebaseUid // IDENTITY HEALING: Always bridge to Auth UID on approval
               })
               .eq('id', requestId)
             if (updateError) throw updateError

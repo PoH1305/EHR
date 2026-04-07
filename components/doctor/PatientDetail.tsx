@@ -124,7 +124,9 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
   }
 
   // Fallback when Supabase found no data or access was not granted
-  if (loadTimedOut || (!isClinicalLoading && resolvedPatientId && !useClinicalStore.getState().vitals.length && !useClinicalStore.getState().attachments.length)) {
+  const isAccessDenied = useClinicalStore(s => s.isAccessDenied)
+  
+  if (loadTimedOut || isAccessDenied) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0d1117]">
         <div className="flex flex-col items-center gap-4 text-center px-6">
@@ -133,7 +135,9 @@ export default function PatientDetail({ onBack, patientId }: PatientDetailProps)
           </div>
           <p className="text-sm font-bold text-white/40">Access has not been granted</p>
           <p className="text-[10px] text-white/20 uppercase tracking-widest max-w-[220px] leading-relaxed">
-            Please ask the patient to approve your access request in their Medical Vault dashboard.
+            {isAccessDenied 
+              ? "Please ask the patient to approve your access request in their Medical Vault dashboard."
+              : "Synchronizing with Clinical Node... This is taking longer than usual."}
           </p>
           <button
             onClick={onBack}

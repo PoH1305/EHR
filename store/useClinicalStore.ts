@@ -37,6 +37,7 @@ interface ClinicalState {
   selectedPatientProfile: any | null
   lastUpdated: string | null
   isLoaded: boolean
+  isAccessDenied: boolean
 }
 
 interface ClinicalActions {
@@ -83,6 +84,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       auditEvents: [],
       isLoading: false,
       isLoaded: false,
+      isAccessDenied: false,
       isEmergencyMode: false,
       isMinimizationActive: true, 
       emergencyPatientId: null,
@@ -154,7 +156,11 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           return
         }
         
-        set((state) => { state.isLoading = true; state.isLoaded = false })
+        set((state) => { 
+          state.isLoading = true; 
+          state.isLoaded = false;
+          state.isAccessDenied = false; // Reset on new load
+        })
         
         const timeoutId = setTimeout(() => {
           if (get().isLoading) {
@@ -169,22 +175,29 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           let sharedCats: string[] | null = null
           
           if (role === 'doctor' && firebaseUid && supabase) {
-            // UNIFIED IDENTITY: Fetch categories using ONLY the resolved Auth UID
-            console.log(`[ClinicalStore] Loading for Patient UID: ${resolvedId}`)
+            // UNIFIED IDENTITY: Support both Auth UID and Health ID in access check
+            // (Bridging the gap for requests sent before Identity Healing)
+            console.log(`[ClinicalStore] Verifying access for Doctor: ${firebaseUid} -> Patient: ${resolvedId} / ${healthId}`)
             
             const { data: accessData } = await supabase
               .from('access_requests')
               .select('shared_categories')
               .eq('doctor_id', firebaseUid)
               .eq('status', 'APPROVED')
-              .eq('patient_id', resolvedId)
+              .or(`patient_id.eq.${resolvedId}${healthId ? `,patient_id.eq.${healthId}` : ''}`)
               .maybeSingle()
             
             if (accessData) {
               sharedCats = accessData.shared_categories
-              console.log('[ClinicalStore] Filtering records by shared categories:', sharedCats)
+              console.log('[ClinicalStore] Access verified. Shared categories:', sharedCats)
             } else {
-              console.warn(`[ClinicalStore] No approved access found for Doctor UID: ${firebaseUid} and Patient UID: ${resolvedId}`)
+              console.warn(`[ClinicalStore] Access DENIED for Doctor UID: ${firebaseUid} and Patient ID: ${resolvedId}`)
+              set((state) => {
+                state.isAccessDenied = true
+                state.isLoading = false
+              })
+              clearTimeout(timeoutId)
+              return // HALT: Access not granted
             }
           }
 
@@ -691,6 +704,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           state.riskAnalyses = []
           state.lastUpdated = null
           state.isLoaded = false
+          state.isAccessDenied = false
         })
       },
 

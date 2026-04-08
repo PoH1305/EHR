@@ -63,21 +63,37 @@ function ActiveAccessRow({ token, onRevoke }: { token: ConsentToken, onRevoke: (
           timeInfo.urgent ? "bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-[#5B8DEF] shadow-[0_0_8px_rgba(91,141,239,0.3)]"
         )} />
         
-        <div className="space-y-1">
-          <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-            {token.recipientName}
-          </p>
-          <div className="flex items-center gap-3">
-            <p className="text-[10px] text-foreground/30 font-black uppercase tracking-[0.15em]">
-              {token.specialty}
+        <div className="space-y-2 flex-1">
+          <div className="flex items-center justify-between">
+            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+              {token.recipientName}
             </p>
-            <span className="w-1 h-1 rounded-full bg-foreground/10" />
             <p className={cn(
                "text-[10px] font-black uppercase tracking-[0.1em]",
                timeInfo.urgent ? "text-red-500" : "text-foreground/20"
             )}>
               {timeInfo.formatted} remaining
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] text-foreground/30 font-black uppercase tracking-[0.15em]">
+                {token.specialty}
+              </p>
+            </div>
+            
+            {/* Linear Representation of Time Elapsed */}
+            <div className="relative w-full h-1 bg-foreground/[0.03] rounded-full overflow-hidden">
+               <motion.div 
+                 className={cn(
+                   "absolute top-0 left-0 h-full rounded-full transition-all duration-1000",
+                   timeInfo.urgent ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" : "bg-[#5B8DEF] shadow-[0_0_8px_rgba(91,141,239,0.3)]"
+                 )}
+                 initial={{ width: 0 }}
+                 animate={{ width: `${timeInfo.percent}%` }}
+               />
+            </div>
           </div>
         </div>
       </div>

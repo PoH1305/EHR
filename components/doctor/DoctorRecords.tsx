@@ -61,17 +61,21 @@ export default function DoctorRecords({ patientId, healthId }: DoctorRecordsProp
    } = useClinicalStore()
 
    const { accessRequests } = useConsentStore()
-   const { firebaseUid, firebaseEmail } = useUserStore()
+   const { firebaseUid, firebaseEmail, doctor, role } = useUserStore()
+   const hasLoggedAccess = React.useRef(false)
 
    // 1. Initial Access Log
    useEffect(() => {
-      if (patientId && firebaseUid) {
+      if (patientId && firebaseUid && !hasLoggedAccess.current) {
+         hasLoggedAccess.current = true
+         const doctorName = role === 'doctor' && doctor ? `Dr. ${doctor.name}` : (firebaseEmail || 'Unknown Doctor')
+         
          void addAuditEvent({
             id: crypto.randomUUID(),
             type: 'ACCESS',
             timestamp: new Date().toISOString(),
             userId: firebaseUid,
-            description: `Doctor (${firebaseEmail || 'Unknown'}) accessed your clinical records dashboard.`,
+            description: `Doctor (${doctorName}) accessed your clinical records dashboard.`,
             metadata: { doctorId: firebaseUid, patientId }
          }, patientId)
 
@@ -82,7 +86,7 @@ export default function DoctorRecords({ patientId, healthId }: DoctorRecordsProp
             resourceType: 'PatientProfile'
          }).catch(() => {})
       }
-   }, [patientId, firebaseUid, firebaseEmail, attachments, addAuditEvent])
+   }, [patientId, firebaseUid, firebaseEmail, doctor, role, addAuditEvent])
 
    // 2. Fetch and Subscribe to Permissions
    useEffect(() => {

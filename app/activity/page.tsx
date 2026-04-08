@@ -29,9 +29,16 @@ export default function ActivityPage() {
   useEffect(() => {
     const verify = async () => {
       if (auditEvents.length > 0) {
-        const result = await verifyAuditChain(auditEvents)
+        // IMPORTANT: Chain verification requires ASCENDING order (oldest to newest)
+        // because each event links to the PREVIOUS one.
+        const chronologicalAudits = [...auditEvents].sort(
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        )
+        const result = await verifyAuditChain(chronologicalAudits)
         setVerification(result)
-        setDisplayEvents(auditEvents.map(formatAuditEventForDisplay).reverse())
+        
+        // Display remains newest first
+        setDisplayEvents(auditEvents.map(formatAuditEventForDisplay))
       }
     }
     void verify()

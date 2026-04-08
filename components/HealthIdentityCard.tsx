@@ -21,11 +21,11 @@ export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
 
   const qrValue = `ehi://connect?healthId=${patient.healthId}&name=${encodeURIComponent(patient.name)}`
 
-  if (!mounted) return <div className="w-full max-w-[500px] aspect-[1.6] bg-slate-100 dark:bg-slate-900 rounded-[40px] animate-pulse" />
+  if (!mounted) return <div className="w-full max-w-[650px] aspect-[1.6] bg-slate-100 dark:bg-slate-900 rounded-[40px] animate-pulse" />
 
   return (
     <div
-      className="relative w-full max-w-[500px] cursor-pointer"
+      className="relative w-full max-w-[650px] cursor-pointer"
       style={{ perspective: '2000px', aspectRatio: '1.6' }}
       onClick={() => setIsFlipped(!isFlipped)}
       role="button"
@@ -44,8 +44,8 @@ export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
               <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest">
                 DIGITAL HEALTH ID
               </p>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1 truncate max-w-[200px] sm:max-w-none">{patient.name}</h2>
-              <p className="text-xs sm:text-sm font-mono text-slate-400 font-medium tracking-wide">
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-1 truncate max-w-[300px] sm:max-w-none">{patient.name}</h2>
+              <p className="text-sm sm:text-base font-mono text-slate-400 font-medium tracking-wide">
                 {formatHealthId(patient.healthId)}
               </p>
             </div>

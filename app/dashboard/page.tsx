@@ -15,7 +15,7 @@ const DoctorHome = dynamic(() => import('@/components/doctor/DoctorHome'), { ssr
 
 export default function DashboardPage() {
   const { patient, initializeKeys, role } = useUserStore()
-  const { loadTokens, activeTokens, revokeToken } = useConsentStore()
+  const { loadTokens, activeTokens, revokeToken, accessRequests } = useConsentStore()
   const { loadClinicalData, loadAuditLog, auditEvents } = useClinicalStore()
   const accessSectionRef = React.useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
@@ -60,32 +60,29 @@ export default function DashboardPage() {
         
         {/* Identity Section */}
         <section className="space-y-8">
-           <div className="space-y-2">
-             <h1 className="font-plus-jakarta text-4xl font-extrabold text-foreground tracking-tight">Vault Overview</h1>
-             <p className="text-sm text-foreground/40 font-medium tracking-wide">
-               Subject: {patient.name} · Node: {patient.healthId}
-             </p>
-           </div>
-           
-           <div className="border border-white/5 rounded-[40px] overflow-hidden">
+            <div className="border border-foreground/[0.05] rounded-[40px] overflow-hidden">
              <HealthIdentityCard patient={patient} />
            </div>
         </section>
 
         {/* Access Center */}
-        <section ref={accessSectionRef} className="space-y-8">
-          <span className="text-[11px] font-black text-foreground/30 uppercase tracking-[0.4em] block">Security Inbox</span>
-          <PatientRequestInbox />
-        </section>
+        {accessRequests.some((r: any) => r.status === 'PENDING') && (
+          <section ref={accessSectionRef} className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+            <span className="text-[11px] font-black text-foreground/30 uppercase tracking-[0.4em] block">Security Inbox</span>
+            <PatientRequestInbox />
+          </section>
+        )}
 
         {/* Active Trust Connections */}
-        <section className="space-y-8">
-          <span className="text-[11px] font-black text-foreground/30 uppercase tracking-[0.4em] block">Active Trust Connections</span>
-          <ActiveAccessList 
-            tokens={activeTokens} 
-            onRevoke={(id, reason) => void revokeToken(id, reason)} 
-          />
-        </section>
+        {activeTokens.length > 0 && (
+          <section className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+            <span className="text-[11px] font-black text-foreground/30 uppercase tracking-[0.4em] block">Active Trust Connections</span>
+            <ActiveAccessList 
+              tokens={activeTokens} 
+              onRevoke={(id, reason) => void revokeToken(id, reason)} 
+            />
+          </section>
+        )}
 
         {/* Activity Ledger */}
         <section className="space-y-8">

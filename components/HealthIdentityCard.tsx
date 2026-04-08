@@ -21,11 +21,11 @@ export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
 
   const qrValue = `ehi://connect?healthId=${patient.healthId}&name=${encodeURIComponent(patient.name)}`
 
-  if (!mounted) return <div className="w-full max-w-[420px] aspect-[1.6] bg-slate-100 dark:bg-slate-900 rounded-[40px] animate-pulse" />
+  if (!mounted) return <div className="w-full max-w-[500px] aspect-[1.6] bg-slate-100 dark:bg-slate-900 rounded-[40px] animate-pulse" />
 
   return (
     <div
-      className="relative w-full max-w-[420px] cursor-pointer"
+      className="relative w-full max-w-[500px] cursor-pointer"
       style={{ perspective: '2000px', aspectRatio: '1.6' }}
       onClick={() => setIsFlipped(!isFlipped)}
       role="button"

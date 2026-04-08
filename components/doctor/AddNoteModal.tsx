@@ -144,7 +144,7 @@ export function AddNoteModal({ isOpen, onClose, patientId, patientName }: AddNot
                   <input
                     value={formData.tags}
                     onChange={e => setFormData({ ...formData, tags: e.target.value })}
-                    placeholder="follow-up, critical, cardiology..."
+                    placeholder="follow-up, observation, cardiology..."
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-white/10"
                   />
                 </div>

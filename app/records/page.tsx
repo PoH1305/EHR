@@ -14,7 +14,7 @@ import type { PatientAttachment } from '@/lib/types'
 
 import { categorizeRecord, type BodySystem } from '@/lib/ai-categorize'
 
-const FILTER_TABS = ['Group', 'Recent']
+const FILTER_TABS = ['Group', 'All']
 
 function RecordsPageContent() {
   const { 
@@ -38,9 +38,17 @@ function RecordsPageContent() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mounted, setMounted] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
   const searchParams = useSearchParams()
-
   const hasLoadedRef = useRef(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 120)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
    useEffect(() => {
     setMounted(true)
@@ -247,34 +255,70 @@ function RecordsPageContent() {
 
   return (
     <div className="space-y-4">
-      {/* Search bar */}
-      <div className="relative">
-        <Search className="absolute left-4 top-3.5 w-4 h-4 text-foreground/30" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search records..."
-          className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-        />
-      </div>
+      {/* Sticky Header with Search and Quick Filters */}
+      <div className={cn(
+        "sticky top-0 z-20 pt-4 pb-2 -mx-4 px-4 bg-background/80 backdrop-blur-xl transition-all duration-300 space-y-4",
+        isScrolled ? "shadow-sm border-b border-foreground/5 py-3" : ""
+      )}>
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-4 top-3.5 w-4 h-4 text-foreground/30" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search records and categories..."
+            className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+          />
+        </div>
 
-      {/* Filter chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {FILTER_TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveFilter(tab)}
-            className={cn(
-              'px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all',
-                activeFilter === tab
-                ? 'bg-primary/10 text-primary ring-1 ring-primary/30 shadow-[0_0_20px_-10px_rgba(59,130,246,0.3)]'
-                : 'bg-foreground/[0.03] text-foreground/40 hover:bg-foreground/[0.06] hover:text-foreground/60'
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+        {/* Categories / Tabs Row */}
+        <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex gap-1.5 pr-2 border-r border-foreground/10">
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveFilter(tab)}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter whitespace-nowrap transition-all',
+                    activeFilter === tab
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                    : 'bg-foreground/[0.03] text-foreground/40 hover:bg-foreground/[0.06] hover:text-foreground/60'
+                )}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className={cn(
+            "flex gap-1.5 transition-all duration-500",
+            isScrolled ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none"
+          )}>
+            {Object.keys(groupedRecords).map((system) => {
+              const info = categorizeRecord(system)
+              const isActive = searchQuery === system
+              return (
+                <button
+                  key={system}
+                  onClick={() => {
+                    setSearchQuery(system === 'General' ? '' : system)
+                    setActiveFilter('All')
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap",
+                    isActive 
+                      ? "bg-foreground text-background border-foreground shadow-sm" 
+                      : "bg-white/5 border-foreground/5 text-foreground/40 hover:border-foreground/20"
+                  )}
+                >
+                  <span className="text-xs">{info.icon}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-tighter">{system}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Content Sections */}
@@ -287,7 +331,7 @@ function RecordsPageContent() {
                 key={system}
                 onClick={() => {
                   setSearchQuery(system === 'General' ? '' : system)
-                  setActiveFilter('Recent')
+                  setActiveFilter('All')
                 }}
                 className="group relative flex flex-col p-6 rounded-[32px] bg-foreground/[0.02] border border-foreground/[0.08] hover:bg-foreground/[0.04] hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all text-left overflow-hidden"
               >
@@ -320,7 +364,7 @@ function RecordsPageContent() {
         <>
           {/* Record count */}
           <p className="text-[10px] text-foreground/20">
-            {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''} in Recent
+            {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''} in Total
           </p>
 
           {/* Record list */}

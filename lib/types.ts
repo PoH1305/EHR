@@ -511,7 +511,7 @@ export interface AccessRequest {
   organization: string
   patientId: string
   requestedAt: string
-  status: 'PENDING' | 'APPROVED' | 'DENIED'
+  status: 'PENDING' | 'APPROVED' | 'DENIED' | 'CANCELLED'
   patientName?: string | null
   sharedCategories: string[]
   sharedBodySystems?: BodySystem[]

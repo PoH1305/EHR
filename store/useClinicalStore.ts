@@ -86,7 +86,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
       isLoaded: false,
       isAccessDenied: false,
       isEmergencyMode: false,
-      isMinimizationActive: true, 
+      isMinimizationActive: false, 
       emergencyPatientId: null,
       selectedPatientProfile: null,
       lastUpdated: null,

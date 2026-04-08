@@ -47,6 +47,7 @@ interface ConsentActions {
   requestFileAccess: (patientId: string, doctorId: string, doctorName: string, doctorSpecialty: DoctorSpecialty, organization: string, fileId: string, fileName: string, reason?: string | null, patientName?: string | null) => Promise<void>
   loadAccessRequests: (uid: string, isDoctor: boolean, altId?: string) => void
   respondToAccessRequest: (requestId: string, approved: boolean, categories?: string[]) => Promise<void>
+  cancelAccessRequest: (requestId: string) => Promise<void>
   parseEHILink: (url: string) => { healthId: string; name: string } | null
 }
 
@@ -589,7 +590,38 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
           console.error('Failed to parse EHI link:', e)
         }
         return null
-      }
+      },
+      
+      cancelAccessRequest: async (requestId: string) => {
+        const state = get()
+        const req = state.accessRequests.find(r => r.id === requestId)
+        if (!req) return
+
+        // 1. Local Update
+        set((state) => {
+          const r = state.accessRequests.find(it => it.id === requestId)
+          if (r) r.status = 'CANCELLED'
+        })
+
+        if (typeof window !== 'undefined' && db) {
+          void db.access_requests.update(requestId, { status: 'CANCELLED' })
+        }
+
+        // 2. Supabase Update
+        try {
+          const { supabase } = await import('@/lib/supabase')
+          if (supabase) {
+            const { error: updateError } = await supabase
+              .from('access_requests')
+              .update({ status: 'CANCELLED' })
+              .eq('id', requestId)
+            if (updateError) throw updateError
+            console.log('[ConsentStore] Access request cancelled successfully')
+          }
+        } catch (err) {
+          console.error('[ConsentStore] Supabase cancellation failed:', err)
+        }
+      },
     })),
     { name: 'ConsentStore' }
   )

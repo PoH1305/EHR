@@ -1,146 +1,120 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
-import { Sparkles, Share2, ShieldCheck, Shield } from 'lucide-react'
+import React, { useEffect, useRef } from 'react'
+import { ShieldCheck, Clock } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useConsentStore } from '@/store/useConsentStore'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { formatAuditEventForDisplay } from '@/lib/auditLog'
-import { GlassCard } from '@/components/GlassCard'
 import { HealthIdentityCard } from '@/components/HealthIdentityCard'
-import { ConsentTokenCard } from '@/components/ConsentTokenCard'
-import { AISummaryModal } from '@/components/AISummaryModal'
-import type { ConsentTokenRequest, ConsentToken } from '@/lib/types'
 import { PatientRequestInbox } from '@/components/patient/PatientRequestInbox'
+import { ActiveAccessList } from '@/components/patient/ActiveAccessList'
 
 import dynamic from 'next/dynamic'
 const DoctorHome = dynamic(() => import('@/components/doctor/DoctorHome'), { ssr: false })
 
 export default function DashboardPage() {
   const { patient, initializeKeys, role } = useUserStore()
-  const { loadTokens, activeTokens, revokeToken, accessRequests } = useConsentStore()
+  const { loadTokens, activeTokens, revokeToken } = useConsentStore()
   const { loadClinicalData, loadAuditLog, auditEvents } = useClinicalStore()
-  const [showSummary, setShowSummary] = useState(false)
   const accessSectionRef = React.useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
 
-  const pendingCount = accessRequests.filter(r => r.status === 'PENDING').length
-
   useEffect(() => {
     const init = async () => {
-      // If no patient in state, attempt to load from local storage/keys
-      if (!patient) {
-        await initializeKeys()
-      }
+      if (!patient) await initializeKeys()
       
       const { firebaseUid } = useUserStore.getState()
       const targetId = firebaseUid || patient?.id
 
       if (targetId && !hasLoadedRef.current && !targetId.startsWith('pat-')) {
         hasLoadedRef.current = true
-        // UNIFIED KEY: Always use the Auth UID for clinical data lookups
         void loadClinicalData(targetId)
         void loadAuditLog(targetId)
         void loadTokens()
       }
     }
-    
-    void init()
-  }, [patient?.id, patient?.healthId, loadClinicalData, loadAuditLog, loadTokens, initializeKeys])
+    init()
+  }, [patient?.id, loadClinicalData, loadAuditLog, loadTokens, initializeKeys])
 
   if (role === 'doctor') {
-    return (
-      <div className="w-full">
-        <DoctorHome />
-      </div>
-    )
+    return <DoctorHome />
   }
 
   if (!patient) {
     return (
-      <div className="flex flex-col items-center justify-center p-10 space-y-4">
-        <ShieldCheck className="w-16 h-16 text-blue-500 animate-pulse" />
-        <h2 className="text-xl font-bold">No Patient Profile Loaded</h2>
-        <p className="text-center text-foreground/50 text-sm">
-          Please link your Health ID or ingest your medical records to initialize your Clinical Node.
+      <div className="flex flex-col items-center justify-center p-20 space-y-4 opacity-50">
+        <ShieldCheck className="w-12 h-12 text-white/20 animate-pulse" />
+        <p className="text-xs font-bold uppercase tracking-widest text-white/20 text-center">
+           Clinical Node Offline
         </p>
       </div>
     )
   }
 
-  const recentAudit = auditEvents.slice(0, 3).map(formatAuditEventForDisplay)
-
-  const handleGenerateToken = async (request: ConsentTokenRequest) => {
-    const { generateToken } = useConsentStore.getState()
-    await generateToken(request)
-  }
+  const recentAudit = auditEvents.slice(0, 5).map(formatAuditEventForDisplay)
 
   return (
-    <div className="space-y-6">
-
-
-
-
-      {/* Health Identity Card */}
-      <section>
-        <HealthIdentityCard patient={patient} />
-      </section>
-
-      {/* Action buttons removed as requested */}
-
-
-      {/* Active Consent Tokens */}
-      {activeTokens.length > 0 && (
-        <section>
-          <h3 className="text-sm font-semibold text-foreground/40 mb-3">Active Consent Tokens</h3>
-          <div className="space-y-3">
-            {activeTokens.map((token: ConsentToken) => (
-              <ConsentTokenCard
-                key={token.id}
-                token={token}
-                onRevoke={(id, reason) => void revokeToken(id, reason)}
-              />
-            ))}
-          </div>
+    <div className="minimalist-grain min-h-[calc(100vh-80px)]">
+      <div className="premium-minimalist-content space-y-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        
+        {/* Identity Section */}
+        <section className="space-y-8">
+           <div className="space-y-2">
+             <h1 className="font-plus-jakarta text-4xl font-extrabold text-white tracking-tight">Vault Overview</h1>
+             <p className="text-sm text-white/40 font-medium tracking-wide">
+               Subject: {patient.name} · Node: {patient.healthId}
+             </p>
+           </div>
+           
+           <div className="border border-white/5 rounded-[40px] overflow-hidden">
+             <HealthIdentityCard patient={patient} />
+           </div>
         </section>
-      )}
 
-      {/* Access Center — Inline Request Inbox with 6-Slide Wizard */}
-      <section ref={accessSectionRef}>
-        <PatientRequestInbox />
-      </section>
+        {/* Access Center */}
+        <section ref={accessSectionRef} className="space-y-8">
+          <span className="text-[11px] font-bold text-white/10 uppercase tracking-[0.3em] block">Security Inbox</span>
+          <PatientRequestInbox />
+        </section>
 
-      {/* Recent Activity */}
-      <section>
-        <h3 className="text-sm font-semibold text-foreground/40 mb-3">Recent Activity</h3>
-        <div className="space-y-2">
-          {recentAudit.map((event) => (
-            <GlassCard key={event.id} className="p-3">
-              <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-lg bg-foreground/[0.05] flex items-center justify-center flex-shrink-0 text-xs" style={{ color: event.colorToken }}>
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-foreground/70">{event.description}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-foreground/30">{event.relativeTime}</span>
-                    <span className="text-[10px] text-foreground/15 font-mono">{event.displayHash}</span>
+        {/* Active Trust Connections */}
+        <section className="space-y-8">
+          <span className="text-[11px] font-bold text-white/10 uppercase tracking-[0.3em] block">Active Access List</span>
+          <ActiveAccessList 
+            tokens={activeTokens} 
+            onRevoke={(id, reason) => void revokeToken(id, reason)} 
+          />
+        </section>
+
+        {/* Activity Ledger */}
+        <section className="space-y-8">
+          <span className="text-[11px] font-bold text-white/10 uppercase tracking-[0.3em] block">Activity Ledger</span>
+          <div className="divide-y divide-white/5 border-t border-white/5">
+            {recentAudit.length > 0 ? recentAudit.map((event) => (
+              <div key={event.id} className="zero-border-row group">
+                <div className="flex items-center gap-6">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: event.colorToken }} />
+                  <div>
+                    <p className="text-base font-semibold text-white group-hover:text-white/80 transition-colors">
+                      {event.description}
+                    </p>
+                    <p className="text-[10px] text-white/20 font-medium uppercase tracking-wider mt-0.5">
+                       {event.relativeTime} · {event.displayHash}
+                    </p>
                   </div>
                 </div>
               </div>
-            </GlassCard>
-          ))}
-        </div>
-      </section>
+            )) : (
+              <div className="py-20 flex flex-col items-center justify-center text-center opacity-20">
+                 <Clock className="w-8 h-8 mb-4 stroke-1" />
+                 <p className="text-sm font-bold tracking-tight">No recorded activity</p>
+              </div>
+            )}
+          </div>
+        </section>
 
-      {/* Modals */}
-      {patient && (
-        <AISummaryModal
-          isOpen={showSummary}
-          onClose={() => setShowSummary(false)}
-          patientId={patient.id}
-        />
-      )}
+      </div>
     </div>
   )
 }

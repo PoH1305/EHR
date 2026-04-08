@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Shield, 
@@ -12,7 +12,8 @@ import {
   Clipboard, 
   CheckCircle2, 
   User,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react'
 import { useUserStore } from '@/store/useUserStore'
 import { useConsentStore } from '@/store/useConsentStore'
@@ -35,7 +36,7 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
   const [foundPatient, setFoundPatient] = useState<PatientProfile | null>(null)
   const [recentRequests, setRecentRequests] = useState<AccessRequest[]>([])
   const { createAccessRequest, parseEHILink } = useConsentStore()
-  const { firebaseEmail, firebaseUid } = useUserStore()
+  const { firebaseEmail, firebaseUid, doctor } = useUserStore()
   
   useEffect(() => {
     setMounted(true)
@@ -122,6 +123,28 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
       prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
     )
   }
+
+  const specialtyIntents = useMemo(() => {
+    const defaultIntents = ['Routine Checkup', 'General Consultation', 'Follow-up', 'Lab Review', 'Referral']
+    if (!doctor?.specialty) return defaultIntents
+    
+    const mapping: Record<string, string[]> = {
+      [DoctorSpecialty.GENERAL_PRACTITIONER]: defaultIntents,
+      [DoctorSpecialty.CARDIOLOGIST]: ['ECG Review', 'BP Monitoring', 'Stress Test', 'Cardio Clearance', 'Heart Failure Sync'],
+      [DoctorSpecialty.DERMATOLOGIST]: ['Skin Analysis', 'Rash Follow-up', 'Biopsy Review', 'Acne Treatment', 'Suture Removal'],
+      [DoctorSpecialty.NEUROLOGIST]: ['EEG Sync', 'Reflex Assessment', 'Migraine Tracking', 'Cognitive Exam', 'Epilepsy Review'],
+      [DoctorSpecialty.ORTHOPEDIST]: ['X-Ray Review', 'Joint Mobility', 'Fracture Check', 'Post-Op Followup', 'Cast Removal'],
+      [DoctorSpecialty.GYNECOLOGIST]: ['Prenatal Care', 'Pelvic Exam', 'Hormonal Sync', 'Ultrasound Review', 'OB Follow-up'],
+      [DoctorSpecialty.PULMONOLOGIST]: ['PFT Review', 'Asthma Control', 'Sleep Study', 'Lung Scan', 'COPD Management'],
+      [DoctorSpecialty.ONCOLOGIST]: ['Chemo Check', 'Biopsy Results', 'Staging Review', 'Tumor Marker', 'Remission Sync'],
+      [DoctorSpecialty.EMERGENCY]: ['Acute Triage', 'Vitals Stabilization', 'Trauma Assessment', 'FAST Sync', 'Critical Access'],
+      [DoctorSpecialty.PSYCHIATRIST]: ['Meds Management', 'Behavioral Sync', 'Crisis Intervention', 'Cognitive Therapy'],
+      [DoctorSpecialty.GASTROENTEROLOGIST]: ['Endoscopy Review', 'IBS Management', 'Liver Function', 'GI Consultation'],
+      [DoctorSpecialty.ENDOCRINOLOGIST]: ['Diabetes Sync', 'Thyroid Profile', 'A1C Assessment', 'Hormone Review'],
+    }
+    
+    return mapping[doctor.specialty] || defaultIntents
+  }, [doctor?.specialty])
 
   const handleSubmit = async () => {
     if (!patientId.trim()) return
@@ -252,41 +275,19 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
 
                 {foundPatient && (
                   <div className="space-y-4">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Data Access Scope</label>
-                      <div className="grid grid-cols-2 gap-2">
-                         {categories.map(cat => (
-                           <button
-                             key={cat.id}
-                             type="button"
-                             onClick={() => toggleCategory(cat.id)}
-                             className={cn(
-                               "flex items-center gap-2 p-3 rounded-xl border text-[9px] font-bold uppercase tracking-wider transition-all",
-                               selectedCategories.includes(cat.id)
-                                 ? "bg-blue-500/10 border-blue-500/40 text-blue-400"
-                                 : "bg-white/5 border-white/5 text-white/20 hover:bg-white/10"
-                             )}
-                           >
-                              <cat.icon className="w-3 h-3" />
-                              {cat.label}
-                           </button>
-                         ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between px-1">
-                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Intent of Access</label>
-                      <span className="text-[9px] text-blue-500/60 font-bold uppercase tracking-widest">Required</span>
+                    <div className="flex items-center justify-between px-1 pt-4">
+                       <div className="flex items-center gap-2">
+                         <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">Intent of Access</label>
+                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 rounded-md border border-blue-500/20">
+                            <Zap className="w-2 h-2 text-blue-400 fill-blue-400" />
+                            <span className="text-[7px] text-blue-400 font-black uppercase tracking-tighter">AI Specialty Sugggestion</span>
+                         </div>
+                       </div>
+                       <span className="text-[9px] text-blue-500/60 font-bold uppercase tracking-widest">Required</span>
                     </div>
                     
                     <div className="flex flex-wrap gap-2 mb-2">
-                        {[
-                          'Checkup',
-                          'Consultation',
-                          'Emergency',
-                          'Follow-up',
-                          'Lab Review'
-                        ].map(chip => (
+                        {specialtyIntents.map(chip => (
                           <button
                             key={chip}
                             type="button"
@@ -309,33 +310,6 @@ export default function AddPatientModal({ isOpen, onClose }: AddPatientModalProp
                       placeholder="Or enter a custom clinical reason..."
                       className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-xs text-white placeholder:text-white/10 focus:outline-none focus:border-blue-500/50 transition-all min-h-[80px] resize-none mb-6"
                     />
-
-                    <div className="flex items-center justify-between px-1 mb-3">
-                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] block">How long do you need?</label>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mb-6">
-                      {[
-                        { label: '1 Hour', seconds: 3600 },
-                        { label: '4 Hours', seconds: 14400 },
-                        { label: '24 Hours', seconds: 86400 },
-                        { label: '7 Days', seconds: 604800 },
-                      ].map(dur => (
-                        <button
-                          key={dur.seconds}
-                          type="button"
-                          onClick={() => setRequestedDuration(dur.seconds)}
-                          className={cn(
-                            "py-3 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all",
-                            requestedDuration === dur.seconds 
-                              ? "bg-blue-500 border-blue-500 text-white" 
-                              : "bg-white/5 border-white/5 text-white/40 hover:border-white/20"
-                          )}
-                        >
-                          {dur.label}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
 

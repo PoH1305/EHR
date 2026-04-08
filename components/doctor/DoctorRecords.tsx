@@ -395,7 +395,7 @@ export default function DoctorRecords({ patientId, healthId }: DoctorRecordsProp
                         </div>
                         <div>
                            <p className="font-bold text-white">{a.code?.text || 'Allergy'}</p>
-                           <p className="text-xs text-rose-500/60 font-medium uppercase tracking-widest">{a.criticality || 'Normal'} Priority</p>
+                           <p className="text-[10px] text-rose-500/60 font-bold uppercase tracking-widest">Recorded Observation</p>
                         </div>
                      </div>
                   )) : <EmptyState icon={<AlertCircle className="w-8 h-8 text-white/10" />} label="No allergies recorded" />}

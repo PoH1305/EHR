@@ -16,15 +16,7 @@ export function PatientRequestInbox() {
   const [selectedCats, setSelectedCats] = React.useState<Record<string, string[]>>({})
   const [minimizingReq, setMinimizingReq] = React.useState<AccessRequest | null>(null)
 
-  useEffect(() => {
-    // UNIFIED IDENTITY: Use Auth UID as primary (matches what doctors save),
-    // with Health ID as altId for legacy/dual-identity support
-    const pHealthId = (patient?.healthId || healthId)?.trim().toUpperCase()
-    if (firebaseUid) {
-      console.log(`[PatientRequestInbox] Fetching requests for uid: ${firebaseUid}, altId: ${pHealthId}`)
-      loadAccessRequests(firebaseUid, false, pHealthId || undefined)
-    }
-  }, [firebaseUid, healthId, patient?.healthId, loadAccessRequests])
+  // Synchronized via DashboardPage to ensure real-time visibility
 
   const SYSTEM_TO_CAT_MAP: Record<string, string[]> = {
     'Heart': ['vitals', 'medicalImages'],

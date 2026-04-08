@@ -14,28 +14,32 @@ import dynamic from 'next/dynamic'
 const DoctorHome = dynamic(() => import('@/components/doctor/DoctorHome'), { ssr: false })
 
 export default function DashboardPage() {
-  const { patient, initializeKeys, role } = useUserStore()
-  const { loadTokens, activeTokens, revokeToken, accessRequests } = useConsentStore()
+  const { patient, initializeKeys, role, firebaseUid } = useUserStore()
+  const { loadTokens, activeTokens, revokeToken, accessRequests, loadAccessRequests } = useConsentStore()
   const { loadClinicalData, loadAuditLog, auditEvents } = useClinicalStore()
   const accessSectionRef = React.useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
 
   useEffect(() => {
-    const init = async () => {
-      if (!patient) await initializeKeys()
-      
-      const { firebaseUid } = useUserStore.getState()
-      const targetId = firebaseUid || patient?.id
-
-      if (targetId && !hasLoadedRef.current && !targetId.startsWith('pat-')) {
+    // 1. Initial Load for Identity & Keys
+    if (patient) {
+      if (!hasLoadedRef.current) {
         hasLoadedRef.current = true
-        void loadClinicalData(targetId)
-        void loadAuditLog(targetId)
+        void initializeKeys()
         void loadTokens()
+        void loadClinicalData(patient.id)
+        void loadAuditLog(patient.id)
+      }
+
+      // 2. Real-time Request Listener (BREAKS CIRCULAR DEPENDENCY)
+      // Must be at dashboard level to detect first request while Inbox is hidden
+      const pHealthId = (patient.healthId)?.trim().toUpperCase()
+      if (firebaseUid) {
+        console.log(`[Dashboard] Syncing access requests for: ${firebaseUid}`)
+        loadAccessRequests(firebaseUid, false, pHealthId || undefined)
       }
     }
-    init()
-  }, [patient?.id, loadClinicalData, loadAuditLog, loadTokens, initializeKeys])
+  }, [patient, firebaseUid, initializeKeys, loadTokens, loadClinicalData, loadAuditLog, loadAccessRequests])
 
   if (role === 'doctor') {
     return <DoctorHome />

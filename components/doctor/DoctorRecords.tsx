@@ -40,11 +40,7 @@ interface Permission {
 
 const VIEW_ONLY_CATEGORIES = [
   { key: 'attachments', label: 'Records', icon: FileText, color: 'purple' },
-  { key: 'vitals', label: 'Vitals', icon: Activity, color: 'blue' },
-  { key: 'medications', label: 'Medications', icon: Pill, color: 'emerald' },
-  { key: 'conditions', label: 'Conditions', icon: ClipboardList, color: 'amber' },
-  { key: 'allergies', label: 'Allergies', icon: AlertCircle, color: 'rose' },
-  { key: 'clinicalNotes', label: 'Notes', icon: Edit3, color: 'indigo' },
+  { key: 'medications', label: 'Medications', icon: Pill, color: 'emerald' }
 ]
 
 export default function DoctorRecords({ patientId, healthId }: DoctorRecordsProps) {

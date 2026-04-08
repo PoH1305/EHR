@@ -104,25 +104,7 @@ export function PatientRequestInbox() {
               ))}
           </AnimatePresence>
         </div>
-      ) : (
-        <div className="py-20 border-t border-white/5 flex flex-col items-center justify-center text-center opacity-30">
-           <Shield className="w-8 h-8 mb-4 stroke-1" />
-           <p className="text-sm font-bold tracking-tight">Access Inbox Clear</p>
-           <p className="text-[9px] text-white/40 mt-1 uppercase tracking-widest">Awaiting synchronization</p>
-           
-           <button 
-             onClick={() => {
-                if (firebaseUid) {
-                  const pHealthId = (patient?.healthId || healthId)?.trim().toUpperCase()
-                  loadAccessRequests(firebaseUid, false, pHealthId || undefined)
-                }
-             }}
-             className="mt-6 px-4 py-2 rounded-xl bg-white/5 text-[9px] font-bold text-white/40 hover:bg-white/10 transition-all uppercase tracking-widest"
-           >
-             Force Sync
-           </button>
-        </div>
-      )}
+      ) : null}
 
       <AnimatePresence>
         {minimizingReq && (

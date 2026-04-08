@@ -125,7 +125,8 @@ export function validateConsentToken(token: ConsentToken): ConsentTokenValidatio
  * Get time remaining display info
  */
 export function getTimeRemaining(
-  expiresAt: string
+  expiresAt: string,
+  totalTtl?: number
 ): { formatted: string; percent: number; urgent: boolean } {
   const expiresMs = new Date(expiresAt).getTime()
   const nowMs = Date.now()
@@ -135,13 +136,20 @@ export function getTimeRemaining(
     ? `${Math.floor(remainingSeconds / 60)}m ${remainingSeconds % 60}s`
     : secondsToHuman(remainingSeconds)
 
-  // Approximate percent used (we don't know original TTL from expiresAt alone,
-  // but we flag urgent based on absolute threshold)
   const urgent = remainingSeconds < 900 // < 15 minutes
+  
+  // Calculate true percentage if totalTtl is available
+  let percent = 0
+  if (totalTtl && totalTtl > 0) {
+    percent = Math.min(100, Math.max(0, (remainingSeconds / totalTtl) * 100))
+  } else {
+    // Fallback logic for legacy tokens
+    percent = urgent ? Math.max(80, 100 - (remainingSeconds / 900) * 20) : 0
+  }
 
   return {
     formatted,
-    percent: urgent ? Math.max(80, 100 - (remainingSeconds / 900) * 20) : 0,
+    percent,
     urgent,
   }
 }

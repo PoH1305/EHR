@@ -225,6 +225,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
           const isMinimization = get().isMinimizationActive
           
+          let cloudData: any = null
           if (supabase) {
             console.log('[ClinicalStore] Checking Cloud (Supabase) for updates...')
             const { data: cloudRow, error } = await supabase
@@ -234,7 +235,7 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               .maybeSingle()
               
             if (!error && cloudRow?.data) {
-              const cloudData = cloudRow.data
+              cloudData = cloudRow.data
               
               if (cloudData.attachments && Array.isArray(cloudData.attachments)) {
                 for (const att of cloudData.attachments) {
@@ -287,7 +288,16 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
               ? (isMinimization ? [] : medicalImages)
               : []
             state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (attachments as any[]) : []
-            state.auditEvents = (auditEvents as any[]).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            // DEDUPLICATION: Merge Lexie results with cloud audit events and unique-ify by ID
+            const allAudits = [...(auditEvents as any[]), ...(cloudData?.auditEvents || [])]
+            const seenIds = new Set()
+            const uniqueAudits = allAudits.filter(ev => {
+              if (!ev.id || seenIds.has(ev.id)) return false
+              seenIds.add(ev.id)
+              return true
+            })
+
+            state.auditEvents = uniqueAudits.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             state.riskAnalyses = riskAnalyses
             state.isLoading = false
             state.isLoaded = true
@@ -684,7 +694,10 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
         if (db) await db.audit_log.put(finalEvent)
         set((state) => {
-          state.auditEvents.unshift(finalEvent)
+          // Guard against accidental duplicate pushes
+          if (!state.auditEvents.some(e => e.id === finalEvent.id)) {
+            state.auditEvents.unshift(finalEvent)
+          }
         })
         
         if (patientId) {

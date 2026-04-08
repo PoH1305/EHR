@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedVault - Premium Minimalist</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #0a0a0a;
+            --text: #ffffff;
+            --text-muted: #666666;
+            --text-ghost: #262626;
+            --accent: #3b82f6;
+            --border: #171717;
+            --success: #10b981;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Sophisticated Grain Overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.02;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 540px;
+            padding: 120px 24px;
+            display: none;
+        }
+
+        .container.active {
+            display: block;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- NAVIGATION --- */
+        nav.minimal-nav {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 24px;
+            z-index: 100;
+            background: rgba(10, 10, 10, 0.4);
+            backdrop-filter: blur(20px);
+            padding: 8px 12px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-link {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-link.active {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* --- HEADER --- */
+        .header {
+            margin-bottom: 80px;
+            text-align: left;
+        }
+
+        .header h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 40px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin: 0 0 8px 0;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin: 0;
+            font-weight: 500;
+        }
+
+        /* --- METRICS --- */
+        .metrics-row {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 80px;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-cap {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .metric-num {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .metric-num.blue { color: var(--accent); }
+
+        /* --- LISTS --- */
+        .ledger-title {
+            font-size: 11px;
+            color: var(--text-ghost);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            font-weight: 800;
+            margin-bottom: 32px;
+            display: block;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border);
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+
+        .row:hover {
+            opacity: 0.6;
+        }
+
+        .row-name {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .row-info {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .status-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--text-ghost);
+            border-radius: 10px;
+            display: inline-block;
+            margin-left: 12px;
+            vertical-align: middle;
+        }
+
+        .status-dot.active {
+            background: var(--success);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
+
+        /* --- DOCUMENT VIEW --- */
+        .doc-sheet {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            margin-top: 20px;
+        }
+
+        .doc-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .doc-text {
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .doc-line {
+            height: 1px;
+            background: var(--border);
+            margin: 24px 0;
+        }
+
+        /* --- HUD ELEMENTS --- */
+        .status-header {
+            position: fixed;
+            top: 40px;
+            right: 40px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: var(--text-ghost);
+            text-align: right;
+            z-index: 50;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            width: 52px;
+            height: 52px;
+            background: var(--text);
+            color: var(--bg);
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .fab:hover { transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+    <div class="status-header">
+        FLUX STATUS: SECURE<br>
+        <span id="clock">19:37:42:01</span>
+    </div>
+
+    <nav class="minimal-nav">
+        <div class="nav-link active" onclick="showPage('dash')">Overview</div>
+        <div class="nav-link" onclick="showPage('activity')">Activity</div>
+        <div class="nav-link" onclick="showPage('records')">Vault</div>
+    </nav>
+
+    <!-- DASHBOARD -->
+    <div id="page-dash" class="container active">
+        <div class="header">
+            <h1>Sarah Chen</h1>
+            <p>Clinical Practitioner · Node #12</p>
+        </div>
+
+        <div class="metrics-row">
+            <div class="metric">
+                <span class="metric-cap">Queue Today</span>
+                <span class="metric-num">12</span>
+            </div>
+            <div class="metric">
+                <span class="metric-cap">Incoming</span>
+                <span class="metric-num blue">03</span>
+            </div>
+        </div>
+
+        <span class="ledger-title">Active Trust Connections</span>
+
+        <div class="row" onclick="showPage('records')">
+            <span class="row-name">Abilash Makkapati</span>
+            <div class="row-info">Authorized <div class="status-dot active"></div></div>
+        </div>
+        <div class="row">
+            <span class="row-name">Emma Watson</span>
+            <div class="row-info">Authorized <div class="status-dot active"></div></div>
+        </div>
+        <div class="row">
+            <span class="row-name">John Doe</span>
+            <div class="row-info">Pending <div class="status-dot"></div></div>
+        </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div id="page-activity" class="container">
+        <div class="header">
+            <h1>Activity</h1>
+            <p>Recent data interactions and logs.</p>
+        </div>
+
+        <div class="row">
+            <span class="row-name">Blood Panel Accessed</span>
+            <div class="row-info">Sarah Chen · 19:30</div>
+        </div>
+        <div class="row">
+            <span class="row-name">Vault Decryption</span>
+            <div class="row-info">System · 19:12</div>
+        </div>
+        <div class="row">
+            <span class="row-name">Handshake Verified</span>
+            <div class="row-info">Gateway · 18:55</div>
+        </div>
+    </div>
+
+    <!-- VAULT -->
+    <div id="page-records" class="container">
+        <div class="header">
+            <h1>Clinical Vault</h1>
+            <p>Subject: Abilash Makkapati</p>
+        </div>
+
+        <div class="doc-sheet">
+            <div class="doc-label">Primary Observation</div>
+            <div class="doc-text">Patient exhibits optimal recovery signatures following node synchronization. Vitals remain within baseline tolerance levels.</div>
+            
+            <div class="doc-line"></div>
+            
+            <div class="doc-label">Clinical Data Node</div>
+            <div class="doc-text" style="font-family: 'JetBrains Mono'; color: var(--accent); font-size: 13px;">HR: 72 BPM · BP: 120/80 · SpO2: 98%</div>
+            
+            <div class="doc-label">Strategy</div>
+            <div class="doc-text" style="color: var(--text-muted); font-size: 14px;">Restrictive flux monitoring active. No further anomalies detected in last 24H cycle.</div>
+        </div>
+    </div>
+
+    <div class="fab">
+        <i data-lucide="plus"></i>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function showPage(id) {
+            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById('page-' + id).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour12: false }) + ":" + now.getMilliseconds().toString().padStart(2, '0').slice(0, 2);
+            document.getElementById('clock').innerText = timeStr;
+        }
+        setInterval(updateClock, 10);
+    </script>
+</body>
+</html>

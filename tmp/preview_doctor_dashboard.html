@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard - Refined Minimalism</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --text: #ffffff;
+            --text-dim: #666666;
+            --text-ghost: #222222;
+            --accent: #5B8DEF;
+            --border: #1a1a1a;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 80px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Subtle Background Grain/Orb */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle at 10% 10%, rgba(91, 141, 239, 0.03) 0%, transparent 40%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            position: relative;
+        }
+
+        /* Header - Refined Typography */
+        header {
+            margin-bottom: 100px;
+        }
+
+        header .label {
+            font-family: 'IBM+Plex+Mono', monospace;
+            font-size: 9px;
+            color: var(--accent);
+            letter-spacing: 0.4em;
+            margin-bottom: 12px;
+            display: block;
+            font-weight: 500;
+        }
+
+        header .title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header .title span {
+            color: var(--text-dim);
+            font-weight: 300;
+        }
+
+        /* Stats - Sophisticated Metrics */
+        .metrics {
+            display: flex;
+            gap: 60px;
+            margin-bottom: 80px;
+            border-top: 1px solid var(--border);
+            padding-top: 40px;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .metric-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            line-height: 1;
+        }
+
+        .metric-value.highlight {
+            color: var(--accent);
+        }
+
+        .metric-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        /* Access Ledger */
+        .ledger-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ledger-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 24px;
+            border-bottom: 2px solid var(--text-ghost);
+            margin-bottom: 32px;
+        }
+
+        .ledger-header h3 {
+            font-family: 'IBM+Plex+Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.4em;
+            color: var(--text-dim);
+            margin: 0;
+        }
+
+        .ledger-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            padding: 28px 0;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .ledger-row::after {
+            content: '';
+            position: absolute;
+            left: -20px;
+            width: 2px;
+            height: 0;
+            background: var(--accent);
+            transition: height 0.3s ease, left 0.3s ease;
+        }
+
+        .ledger-row:hover {
+            padding-left: 20px;
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .ledger-row:hover::after {
+            height: 30%;
+            left: 0;
+        }
+
+        .patient-name {
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+        }
+
+        .status-chip {
+            font-family: 'IBM+Plex+Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            padding: 4px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-right: 24px;
+            transition: all 0.2s ease;
+        }
+
+        .ledger-row:hover .status-chip {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .pulse-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 10px;
+            background: var(--text-ghost);
+            transition: background 0.3s ease;
+        }
+
+        .ledger-row.active .pulse-dot {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse-ring 2s infinite;
+        }
+
+        .ledger-row.pending .pulse-dot {
+            background: var(--warning);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Global Control */
+        .action-circle {
+            position: fixed;
+            bottom: 60px;
+            right: 60px;
+            width: 64px;
+            height: 64px;
+            background: var(--text);
+            color: var(--bg);
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .action-circle:hover {
+            transform: translateY(-5px) rotate(90deg);
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .time-now {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            font-family: 'IBM+Plex+Mono', monospace;
+            font-size: 10px;
+            color: var(--text-ghost);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="time-now" id="clock">19:30:15</div>
+
+    <div class="container">
+        <header>
+            <span class="label">SECURE MEDICAL FLUX</span>
+            <div class="title">Sarah Chen <span>/ MD</span></div>
+        </header>
+
+        <div class="metrics">
+            <div class="metric-item">
+                <div class="metric-value">12</div>
+                <div class="metric-label">Daily Queue</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value highlight">03</div>
+                <div class="metric-label">Pending Approval</div>
+            </div>
+        </div>
+
+        <div class="ledger-section">
+            <div class="ledger-header">
+                <h3>Access Ledger</h3>
+                <i data-lucide="info" style="width: 12px; color: var(--text-ghost);"></i>
+            </div>
+
+            <div class="ledger-row active">
+                <div class="patient-name">Abilash Makkapati</div>
+                <div class="status-chip">Authorized</div>
+                <div class="pulse-dot"></div>
+            </div>
+
+            <div class="ledger-row active">
+                <div class="patient-name">Emma Watson</div>
+                <div class="status-chip">Authorized</div>
+                <div class="pulse-dot"></div>
+            </div>
+
+            <div class="ledger-row pending">
+                <div class="patient-name">John Doe</div>
+                <div class="status-chip">Awaiting Response</div>
+                <div class="pulse-dot"></div>
+            </div>
+
+            <div class="ledger-row active" style="opacity: 0.4;">
+                <div class="patient-name">Robert Miles</div>
+                <div class="status-chip">Authorized</div>
+                <div class="pulse-dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-circle">
+        <i data-lucide="plus" style="width: 24px; stroke-width: 3px;"></i>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        // Simple Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString([], { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>

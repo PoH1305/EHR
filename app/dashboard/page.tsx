@@ -74,13 +74,13 @@ export default function DashboardPage() {
 
         {/* Access Center */}
         <section ref={accessSectionRef} className="space-y-8">
-          <span className="text-[11px] font-bold text-white/10 uppercase tracking-[0.3em] block">Security Inbox</span>
+          <span className="text-[11px] font-black text-foreground/30 uppercase tracking-[0.4em] block">Security Inbox</span>
           <PatientRequestInbox />
         </section>
 
         {/* Active Trust Connections */}
         <section className="space-y-8">
-          <span className="text-[11px] font-bold text-white/10 uppercase tracking-[0.3em] block">Active Access List</span>
+          <span className="text-[11px] font-black text-foreground/30 uppercase tracking-[0.4em] block">Active Trust Connections</span>
           <ActiveAccessList 
             tokens={activeTokens} 
             onRevoke={(id, reason) => void revokeToken(id, reason)} 
@@ -89,26 +89,32 @@ export default function DashboardPage() {
 
         {/* Activity Ledger */}
         <section className="space-y-8">
-          <span className="text-[11px] font-bold text-white/10 uppercase tracking-[0.3em] block">Activity Ledger</span>
-          <div className="divide-y divide-white/5 border-t border-white/5">
+          <span className="text-[11px] font-black text-foreground/30 uppercase tracking-[0.4em] block">Security Activity</span>
+          <div className="divide-y divide-foreground/[0.05] border-t border-foreground/[0.05]">
             {recentAudit.length > 0 ? recentAudit.map((event) => (
-              <div key={event.id} className="zero-border-row group">
+              <div key={event.id} className="zero-border-row group py-6">
                 <div className="flex items-center gap-6">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: event.colorToken }} />
-                  <div>
-                    <p className="text-base font-semibold text-white group-hover:text-white/80 transition-colors">
+                  <div className="w-2.5 h-2.5 rounded-full ring-4 ring-foreground/[0.02]" style={{ backgroundColor: event.colorToken }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors truncate">
                       {event.description}
                     </p>
-                    <p className="text-[10px] text-white/20 font-medium uppercase tracking-wider mt-0.5">
-                       {event.relativeTime} · {event.displayHash}
-                    </p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <p className="text-[10px] text-foreground/30 font-black uppercase tracking-[0.1em]">
+                         {event.relativeTime}
+                      </p>
+                      <span className="w-1 h-1 rounded-full bg-foreground/10" />
+                      <p className="text-[10px] text-foreground/20 font-mono tracking-tighter">
+                         {event.displayHash}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             )) : (
-              <div className="py-20 flex flex-col items-center justify-center text-center opacity-20">
-                 <Clock className="w-8 h-8 mb-4 stroke-1" />
-                 <p className="text-sm font-bold tracking-tight">No recorded activity</p>
+              <div className="py-24 flex flex-col items-center justify-center text-center opacity-20">
+                 <Clock className="w-8 h-8 mb-4 stroke-1 text-foreground" />
+                 <p className="text-xs font-black uppercase tracking-widest text-foreground">Purified Environment • No Activity</p>
               </div>
             )}
           </div>

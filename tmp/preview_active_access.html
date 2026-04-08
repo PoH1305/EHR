@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Access Hub Preview</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030712;
+            --primary: #6366f1;
+            --secondary: #06b6d4;
+            --accent: #f43f5e;
+            --gold: #f59e0b;
+            --text: #f8fafc;
+            --text-muted: #64748b;
+            --card-border: rgba(255, 255, 255, 0.08);
+            --card-bg: rgba(15, 23, 42, 0.6);
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.05) 0%, transparent 30%);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            padding: 80px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* Mock Header */
+        .mock-section {
+            padding: 24px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            text-align: center;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+
+        /* Active Access Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .header-title h2 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            background: linear-gradient(to right, var(--text), var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--secondary);
+            background: rgba(6, 182, 212, 0.1);
+            padding: 4px 10px;
+            border-radius: 100px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .pulse {
+            width: 6px;
+            height: 6px;
+            background: var(--secondary);
+            border-radius: 100px;
+            box-shadow: 0 0 10px var(--secondary);
+            animation: pulse-anim 2s infinite;
+        }
+
+        @keyframes pulse-anim {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Access Card */
+        .access-card {
+            position: relative;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 32px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .access-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.02) 100%);
+            pointer-events: none;
+        }
+
+        .access-card:hover {
+            transform: translateY(-4px) scale(1.01);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.1);
+        }
+
+        .card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .doctor-profile {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .avatar-wrap {
+            position: relative;
+            width: 52px;
+            height: 52px;
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 20px;
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 14px;
+            height: 14px;
+            background: #10b981;
+            border-radius: 100px;
+            border: 3px solid var(--bg);
+        }
+
+        .doctor-meta h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .doctor-meta p {
+            margin: 2px 0 0;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .specialty-tag {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+            padding: 4px 10px;
+            border-radius: 8px;
+            margin-top: 6px;
+            display: inline-block;
+        }
+
+        /* Access Timeline */
+        .timeline-wrap {
+            position: relative;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .time-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--gold);
+        }
+
+        .timestamp {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        .progress-track {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 100px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-glow {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 100px;
+            width: 75%;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .card-actions {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+        }
+
+        .view-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            padding: 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .view-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .revoke-action {
+            width: 44px;
+            height: 44px;
+            background: rgba(244, 63, 94, 0.05);
+            border: 1px solid rgba(244, 63, 94, 0.1);
+            color: var(--accent);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .revoke-action:hover {
+            background: var(--accent);
+            color: white;
+            transform: rotate(90deg);
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+        }
+
+        /* Floating Background Element */
+        .glass-orb {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: var(--primary);
+            filter: blur(80px);
+            opacity: 0.1;
+            z-index: -1;
+            top: -50px;
+            right: -50px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- Mock Previous Section -->
+        <div class="mock-section">
+            Connection Requests List
+        </div>
+
+        <!-- Real Design Starts Here -->
+        <div class="header">
+            <div class="header-title">
+                <h2>Clinical Trust Network</h2>
+            </div>
+            <div class="live-indicator">
+                <div class="pulse"></div>
+                Live Node
+            </div>
+        </div>
+
+        <!-- Node 1 -->
+        <div class="access-card">
+            <div class="glass-orb"></div>
+            <div class="card-top">
+                <div class="doctor-profile">
+                    <div class="avatar-wrap">
+                        <div class="avatar">
+                            <i data-lucide="user-round"></i>
+                        </div>
+                        <div class="status-dot"></div>
+                    </div>
+                    <div class="doctor-meta">
+                        <h3>Dr. Sarah Chen</h3>
+                        <p>General Hospital East</p>
+                        <div class="specialty-tag">Cardiologist</div>
+                    </div>
+                </div>
+                <div class="node-id" style="font-family: 'JetBrains Mono'; font-size: 9px; color: var(--text-muted);">
+                    #NODE-8821
+                </div>
+            </div>
+
+            <div class="timeline-wrap">
+                <div class="timeline-header">
+                    <div class="time-left">
+                        <i data-lucide="clock" style="width: 14px;"></i>
+                        2h 14m Remaining
+                    </div>
+                    <div class="timestamp">EXT: 2024-04-08 22:30</div>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-glow"></div>
+                </div>
+            </div>
+
+            <div class="card-actions">
+                <button class="view-btn">
+                    <i data-lucide="eye" style="width: 14px;"></i>
+                    Audit View Log
+                </button>
+                <div class="revoke-action">
+                    <i data-lucide="shield-off" style="width: 18px;"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Node 2 -->
+        <div class="access-card" style="opacity: 0.9;">
+            <div class="card-top">
+                <div class="doctor-profile">
+                    <div class="avatar-wrap">
+                        <div class="avatar" style="color: var(--secondary); background: rgba(6, 182, 212, 0.05);">
+                            <i data-lucide="user-round"></i>
+                        </div>
+                        <div class="status-dot" style="background: var(--gold);"></div>
+                    </div>
+                    <div class="doctor-meta">
+                        <h3>Dr. James Wilson</h3>
+                        <p>Neurology Associates</p>
+                        <div class="specialty-tag" style="color: var(--secondary); background: rgba(6, 182, 212, 0.1);">Neurologist</div>
+                    </div>
+                </div>
+                <div class="node-id" style="font-family: 'JetBrains Mono'; font-size: 9px; color: var(--text-muted);">
+                    #NODE-4492
+                </div>
+            </div>
+
+            <div class="timeline-wrap">
+                <div class="timeline-header">
+                    <div class="time-left" style="color: var(--accent);">
+                        <i data-lucide="alert-circle" style="width: 14px;"></i>
+                        12m Remaining
+                    </div>
+                    <div class="timestamp">EXT: 2024-04-08 19:45</div>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-glow" style="width: 15%; background: var(--accent); box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);"></div>
+                </div>
+            </div>
+
+            <div class="card-actions">
+                <button class="view-btn">
+                    <i data-lucide="eye" style="width: 14px;"></i>
+                    Audit View Log
+                </button>
+                <div class="revoke-action">
+                    <i data-lucide="shield-off" style="width: 18px;"></i>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

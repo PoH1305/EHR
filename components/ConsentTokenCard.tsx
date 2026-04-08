@@ -25,66 +25,65 @@ const SPECIALTY_COLORS: Record<string, string> = {
 }
 
 export function ConsentTokenCard({ token, onRevoke }: ConsentTokenCardProps) {
-  const [timeInfo, setTimeInfo] = useState(getTimeRemaining(token.expiresAt))
+  const [timeInfo, setTimeInfo] = useState(getTimeRemaining(token.expiresAt, token.ttlSeconds))
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
   const [revokeReason, setRevokeReason] = useState('')
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeInfo(getTimeRemaining(token.expiresAt))
+      setTimeInfo(getTimeRemaining(token.expiresAt, token.ttlSeconds))
     }, 1000)
     return () => clearInterval(interval)
-  }, [token.expiresAt])
-
-  const progressDegrees = (timeInfo.percent / 100) * 360
+  }, [token.expiresAt, token.ttlSeconds])
 
   return (
     <GlassCard
       className={cn(
         'relative transition-all duration-300',
-        timeInfo.urgent && 'animate-pulse border-red-500/50 border'
+        timeInfo.urgent && 'border-red-500/30'
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-foreground truncate">{token.recipientName}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-foreground truncate">{token.recipientName}</h3>
+            {timeInfo.urgent && (
+              <span className="animate-pulse w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+            )}
+          </div>
           <span className={cn(
-            'inline-block px-2 py-0.5 rounded-full text-[10px] font-medium mt-1',
+            'inline-block px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest mt-1',
             SPECIALTY_COLORS[token.specialty] ?? 'bg-foreground/[0.05] text-foreground/40'
           )}>
             {token.specialty}
           </span>
         </div>
 
-        {/* Countdown arc */}
-        <div className="relative w-14 h-14 flex-shrink-0">
-          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-            <circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" strokeWidth="3" className="text-foreground/[0.05]" />
-            <circle
-              cx="28" cy="28" r="24"
-              fill="none"
-              stroke={timeInfo.urgent ? '#ef4444' : '#3b82f6'}
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray={`${(progressDegrees / 360) * 150.8} 150.8`}
-              className="transition-all duration-1000"
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Clock className={cn('w-4 h-4', timeInfo.urgent ? 'text-red-500' : 'text-foreground/30')} />
-          </div>
+        <div className="text-right shrink-0">
+           <div className={cn(
+             "text-xs font-black uppercase tracking-widest",
+             timeInfo.urgent ? "text-red-500" : "text-foreground/20"
+           )}>
+             {timeInfo.formatted}
+           </div>
         </div>
       </div>
 
-      {/* Time remaining */}
-      <div className="flex items-center gap-1.5 mt-3">
-        <span className={cn(
-          'text-sm font-mono font-semibold',
-          timeInfo.urgent ? 'text-red-500' : 'text-foreground/70'
-        )}>
-          {timeInfo.formatted}
-        </span>
-        <span className="text-[10px] text-foreground/30">remaining</span>
+      {/* NEW: Live representation (Progress Bar) */}
+      <div className="mt-4 space-y-1.5">
+        <div className="h-1 w-full bg-foreground/[0.03] rounded-full overflow-hidden">
+          <div 
+            className={cn(
+              "h-full transition-all duration-1000 ease-linear rounded-full",
+              timeInfo.urgent ? "bg-red-500" : "bg-blue-500"
+            )}
+            style={{ width: `${timeInfo.percent}%` }}
+          />
+        </div>
+        <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest opacity-30">
+          <span>Active Session</span>
+          <span>{Math.round(timeInfo.percent)}% Life</span>
+        </div>
       </div>
 
       {/* Access count */}

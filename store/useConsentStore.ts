@@ -476,12 +476,18 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         fetchRequests()
       },
 
-      respondToAccessRequest: async (requestId, approved, categories = []) => {
-        const state = get()
-        const req = state.accessRequests.find(r => r.id === requestId)
+      respondToAccessRequest: async (requestId: string, approved: boolean, categories: string[] = []) => {
+        const { accessRequests } = get()
+        const req = accessRequests.find(r => r.id === requestId)
         if (!req) return
 
         const status = approved ? 'APPROVED' : 'DENIED'
+        
+        // --- GUARD: Prevent duplicate processing ---
+        if (req.status === status && JSON.stringify(req.sharedCategories) === JSON.stringify(categories)) {
+          console.log(`[ConsentStore] respondToAccessRequest skipped: requestId ${requestId} already in state ${status}`)
+          return
+        }
         const patientName = approved ? useUserStore.getState().patient?.name || null : null
         
         set((state) => {

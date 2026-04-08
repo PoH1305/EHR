@@ -61,8 +61,8 @@ export default function DashboardPage() {
         {/* Identity Section */}
         <section className="space-y-8">
            <div className="space-y-2">
-             <h1 className="font-plus-jakarta text-4xl font-extrabold text-white tracking-tight">Vault Overview</h1>
-             <p className="text-sm text-white/40 font-medium tracking-wide">
+             <h1 className="font-plus-jakarta text-4xl font-extrabold text-foreground tracking-tight">Vault Overview</h1>
+             <p className="text-sm text-foreground/40 font-medium tracking-wide">
                Subject: {patient.name} · Node: {patient.healthId}
              </p>
            </div>

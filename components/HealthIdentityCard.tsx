@@ -21,7 +21,7 @@ export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
 
   const qrValue = `ehi://connect?healthId=${patient.healthId}&name=${encodeURIComponent(patient.name)}`
 
-  if (!mounted) return <div className="w-full max-w-[420px] aspect-[1.6] bg-[#1a2233] rounded-[40px] animate-pulse" />
+  if (!mounted) return <div className="w-full max-w-[420px] aspect-[1.6] bg-slate-100 dark:bg-slate-900 rounded-[40px] animate-pulse" />
 
   return (
     <div
@@ -36,7 +36,7 @@ export function HealthIdentityCard({ patient }: HealthIdentityCardProps) {
         <div 
           className={cn(
             "absolute inset-0 rounded-[40px] p-8 flex flex-col justify-between border transition-all duration-500",
-              "border-white/10 bg-[#1a2233] text-white shadow-2xl shadow-black/40"
+              "border-slate-200 dark:border-white/10 bg-slate-900 text-white shadow-2xl shadow-slate-900/20 dark:shadow-black/40 overflow-hidden"
           )}
         >
           <div className="flex justify-between items-start">

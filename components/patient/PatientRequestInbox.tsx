@@ -73,14 +73,14 @@ export function PatientRequestInbox() {
                 >
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-6 w-full">
                     <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-black text-white/80">
+                      <div className="w-12 h-12 rounded-full bg-foreground/[0.03] border border-foreground/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-black text-foreground/40">
                           {req.doctorName[0]}
                         </span>
                       </div>
                       
                       <div className="space-y-1">
-                        <h4 className="text-base font-bold text-white tracking-tight leading-none">{req.doctorName}</h4>
+                        <h4 className="text-base font-bold text-foreground tracking-tight leading-none">{req.doctorName}</h4>
                         <p className="text-[10px] font-black text-[#5B8DEF] uppercase tracking-[0.2em]">{req.doctorSpecialty}</p>
                       </div>
                     </div>
@@ -88,13 +88,13 @@ export function PatientRequestInbox() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => void respondToAccessRequest(req.id, false)}
-                        className="px-6 py-2 rounded-xl bg-white/5 text-[10px] font-black text-white/40 hover:bg-red-500/10 hover:text-red-400 transition-all uppercase tracking-widest"
+                        className="px-6 py-2 rounded-xl bg-foreground/[0.03] text-[10px] font-black text-foreground/40 hover:bg-red-500/10 hover:text-red-500 transition-all uppercase tracking-widest"
                       >
                         Deny
                       </button>
                       <button
                         onClick={() => setMinimizingReq(req)}
-                        className="px-8 py-2 rounded-xl bg-white text-black text-[10px] font-black hover:bg-white/90 transition-all uppercase tracking-widest"
+                        className="px-8 py-2 rounded-xl bg-foreground text-background text-[10px] font-black hover:opacity-90 transition-all uppercase tracking-widest"
                       >
                         Configure
                       </button>

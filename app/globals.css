@@ -9,8 +9,8 @@
 /* ────────────────────────────────────────────────────────────── */
 
 :root {
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
+  --color-bg: #FAFAFA;
+  --color-surface: #FFFFFF;
   --color-primary: #3b82f6;
   --color-secondary: #60a5fa;
   --color-success: #10b981;
@@ -18,22 +18,20 @@
   --color-danger: #ef4444;
   --color-info: #06b6d4;
   --color-muted: #475569;
-  --color-foreground: #020617;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(59, 130, 246, 0.2);
-  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --color-foreground: #111111;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   --radius: 24px;
   
-  /* Premium Minimalist Tokens */
-  --premium-bg: #000000;
-  --premium-surface: #0a0a0a;
-  --premium-border: #171717;
-  --premium-text-muted: #666666;
+  /* Premium Minimalist Tokens - Theme Aware */
+  --premium-border: rgba(0, 0, 0, 0.06);
+  --premium-text-muted: #999999;
 }
 
 .dark {
-  --color-bg: #0a0e1a;
-  --color-surface: #111827;
+  --color-bg: #000000;
+  --color-surface: #0a0a0a;
   --color-primary: #3b82f6;
   --color-secondary: #8b5cf6;
   --color-success: #10b981;
@@ -41,10 +39,13 @@
   --color-danger: #ef4444;
   --color-info: #06b6d4;
   --color-muted: #6b7280;
-  --color-foreground: #f1f5f9;
+  --color-foreground: #FFFFFF;
   --glass-bg: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  
+  --premium-border: #171717;
+  --premium-text-muted: #666666;
 }
 
 /* ────────────────────────────────────────────────────────────── */

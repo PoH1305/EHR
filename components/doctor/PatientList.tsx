@@ -39,8 +39,18 @@ export default function PatientList({ onSelect }: PatientListProps) {
           return
         }
 
+        // --- NEW: Deduplicate approvedRequests by patient_id ---
+        const uniqueRequests = approvedRequests.reduce((acc: any[], current) => {
+          const x = acc.find(item => item.patient_id === current.patient_id);
+          if (!x) {
+            return acc.concat([current]);
+          } else {
+            return acc;
+          }
+        }, []);
+
         // 2. Fetch profiles ONLY for approved patients (by EHI ID)
-        const approvedEhiIds = approvedRequests.map(r => r.patient_id)
+        const approvedEhiIds = uniqueRequests.map(r => r.patient_id)
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -49,7 +59,7 @@ export default function PatientList({ onSelect }: PatientListProps) {
         if (profileError) throw profileError
 
         // 3. Merge request data with profile data (Fallback for missing profiles)
-        const approvedPatients = approvedRequests.map(req => {
+        const approvedPatients = uniqueRequests.map(req => {
           const profile = (profileData || []).find(p => p.health_id === req.patient_id)
           
           if (profile) {

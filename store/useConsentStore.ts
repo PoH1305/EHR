@@ -554,6 +554,30 @@ export const useConsentStore = create<ConsentState & ConsentActions>()(
         } catch (err) {
           console.error('Supabase response sync failed:', err)
         }
+
+        // 3. Generate Crypto Token on Approval
+        if (approved) {
+          const { firebaseUid } = useUserStore.getState()
+          if (firebaseUid) {
+            try {
+              // Construct the token request from the access request metadata
+              const tokenReq: any = {
+                patientId: firebaseUid,
+                recipientId: req.doctorId,
+                recipientName: req.doctorName,
+                specialty: req.doctorSpecialty,
+                ttlSeconds: req.requestedDuration || 3600, // Map duration to TTL
+                allowedCategories: categories,
+                patientName: useUserStore.getState().patient?.name || 'Unknown Patient'
+              }
+              
+              await get().generateToken(tokenReq)
+              console.log('[ConsentStore] Cryptographic token generated for approved request')
+            } catch (err) {
+              console.error('[ConsentStore] Token generation failed during approval:', err)
+            }
+          }
+        }
       },
 
       refreshTokenStatuses: () => {

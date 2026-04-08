@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldOff, Eye, AlertCircle, Clock } from 'lucide-react'
+import { ShieldOff, Eye, AlertCircle, Clock, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getTimeRemaining } from '@/lib/consentTokens'
 import type { ConsentToken } from '@/lib/types'
@@ -14,7 +14,14 @@ interface ActiveAccessListProps {
 }
 
 export function ActiveAccessList({ tokens, onRevoke }: ActiveAccessListProps) {
-  if (tokens.length === 0) return null
+  if (tokens.length === 0) {
+    return (
+      <div className="py-12 border-t border-white/5 flex flex-col items-center justify-center text-center opacity-10">
+         <ShieldCheck className="w-6 h-6 mb-2 stroke-1" />
+         <p className="text-[10px] font-bold uppercase tracking-widest">No Active Connections</p>
+      </div>
+    )
+  }
 
   return (
     <div className="divide-y divide-white/5 border-t border-white/5">

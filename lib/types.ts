@@ -182,6 +182,7 @@ export interface ConsentTokenRequest {
   patientName: string
   allowedFiles?: string[]
   tokenKey?: string | undefined
+  encryptedBundle?: string
   purpose?: string
   maxHistoryMonths?: number | null
 }

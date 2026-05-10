@@ -44,7 +44,7 @@ export default function OnboardingPage() {
     conditions: string[]
     allergies: string[]
   }>>({
-    name: '',
+    name: useUserStore.getState().firebaseEmail?.split('@')[0] || '',
     birthDate: '',
     gender: 'other',
     bloodGroup: '',

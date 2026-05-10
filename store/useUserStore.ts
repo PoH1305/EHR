@@ -240,8 +240,32 @@ export const useUserStore = create<UserState & UserActions>()(
         try {
           const { supabase } = await import('@/lib/supabase')
           if (supabase) await supabase.auth.signOut()
+          
+          // CRITICAL SECURITY FIX: Clear all local medical records on signout
+          if (typeof window !== 'undefined' && db) {
+            await Promise.all([
+              db.patient_profiles.clear(),
+              db.vitals.clear(),
+              db.conditions.clear(),
+              db.medications.clear(),
+              db.allergies.clear(),
+              db.observations.clear(),
+              db.diagnostic_reports.clear(),
+              db.immunizations.clear(),
+              db.procedures.clear(),
+              db.clinical_notes.clear(),
+              db.medical_images.clear(),
+              db.patient_attachments.clear(),
+              db.risk_analysis.clear(),
+              db.consent_tokens.clear(),
+              db.audit_log.clear(),
+              db.access_requests.clear(),
+              db.temporary_records.clear()
+            ])
+            console.log('[UserStore] Local clinical database wiped securely on signout')
+          }
         } catch (e) {
-          console.error('[UserStore] Supabase signout failed:', e)
+          console.error('[UserStore] Signout failed:', e)
         }
 
         set((state) => {
@@ -251,7 +275,10 @@ export const useUserStore = create<UserState & UserActions>()(
           state.firebaseEmail = null
           state.doctor = null
           state.lastActiveAt = null
-          // Note: we keep 'patient' and 'healthId' to allow "Continue where you left off"
+          // FIX: Do NOT keep patient and healthId. 
+          // If multiple accounts are created on the same browser, keeping this causes the new account to inherit the old EHI ID.
+          state.patient = null
+          state.healthId = null
         })
 
         if (typeof window !== 'undefined') {

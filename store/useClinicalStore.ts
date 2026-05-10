@@ -15,6 +15,26 @@ import type {
   PatientAttachment
 } from '@/lib/types'
 import type { Condition, MedicationRequest, AllergyIntolerance } from 'fhir/r4'
+import { filterPatientDataBySpecialty } from '@/lib/minimization'
+import type { FHIRBundle } from '@/lib/types'
+
+const applyDoctorSemanticFilter = (items: any[], resourceType: string, sharedCats: string[] | null) => {
+  const { role, doctor } = useUserStore.getState()
+  if (role !== 'doctor' || !doctor?.specialty) return items
+  
+  const bundle = {
+    resourceType: 'Bundle' as const,
+    entry: items.map(item => ({ resource: { ...item, resourceType } }))
+  }
+  
+  const redactedBundle = filterPatientDataBySpecialty(bundle as any, doctor.specialty, sharedCats || [])
+  return redactedBundle.entry
+    .filter(e => !(e.resource as any).redacted)
+    .map(e => {
+      const { resourceType, ...rest } = e.resource as any
+      return rest
+    })
+}
 
 interface ClinicalState {
   vitals: VitalSeries[]
@@ -249,13 +269,13 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
 
               if (vitals.length === 0 && conditions.length === 0 && clinicalNotes.length === 0) {
                 set((state) => {
-                  state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : []
-                  state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : []
-                  state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications')) ? (cloudData.medications || []) : []
-                  state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : []
-                  state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : []
-                  state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : []
-                  state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : []
+                  state.vitals = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) ? (cloudData.vitals || []) : [], 'Observation', sharedCats)
+                  state.conditions = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions')) ? (cloudData.conditions || []) : [], 'Condition', sharedCats)
+                  state.medications = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications')) ? (cloudData.medications || []) : [], 'MedicationRequest', sharedCats)
+                  state.allergies = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? (cloudData.allergies || []) : [], 'AllergyIntolerance', sharedCats)
+                  state.clinicalNotes = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes')) ? (cloudData.clinicalNotes || []) : [], 'ClinicalNote', sharedCats)
+                  state.medicalImages = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages')) ? (cloudData.medicalImages || []) : [], 'MedicalImage', sharedCats)
+                  state.attachments = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (cloudData.attachments || []) : [], 'DiagnosticReport', sharedCats)
                   state.auditEvents = cloudData.auditEvents || []
                   state.riskAnalyses = cloudData.riskAnalyses || []
                   state.isLoading = false
@@ -269,25 +289,25 @@ export const useClinicalStore = create<ClinicalState & ClinicalActions>()(
           }
 
           set((state) => {
-            state.vitals = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) 
+            state.vitals = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('vitals')) 
               ? (isMinimization ? vitals.slice(-4) : vitals) 
-              : []
-            state.conditions = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions'))
+              : [], 'Observation', sharedCats)
+            state.conditions = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('conditions'))
               ? (isMinimization 
                   ? conditions.filter(c => typeof c.clinicalStatus === 'string' ? c.clinicalStatus === 'active' : (c.clinicalStatus as any)?.coding?.[0]?.code === 'active')
                   : conditions)
-              : []
-            state.medications = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications'))
+              : [], 'Condition', sharedCats)
+            state.medications = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('medications'))
               ? (isMinimization ? medications.filter(m => m.status === 'active') : medications)
-              : []
-            state.allergies = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? allergies : []
-            state.clinicalNotes = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes'))
+              : [], 'MedicationRequest', sharedCats)
+            state.allergies = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('allergies')) ? allergies : [], 'AllergyIntolerance', sharedCats)
+            state.clinicalNotes = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('clinicalNotes'))
               ? (isMinimization ? clinicalNotes.slice(-2) : clinicalNotes)
-              : []
-            state.medicalImages = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages'))
+              : [], 'ClinicalNote', sharedCats)
+            state.medicalImages = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('medicalImages'))
               ? (isMinimization ? [] : medicalImages)
-              : []
-            state.attachments = (!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (attachments as any[]) : []
+              : [], 'MedicalImage', sharedCats)
+            state.attachments = applyDoctorSemanticFilter((!sharedCats || sharedCats.length === 0 || sharedCats.includes('attachments')) ? (attachments as any[]) : [], 'DiagnosticReport', sharedCats)
             // DEDUPLICATION: Merge Lexie results with cloud audit events and unique-ify by ID
             const allAudits = [...(auditEvents as any[]), ...(cloudData?.auditEvents || [])]
             const seenIds = new Set()

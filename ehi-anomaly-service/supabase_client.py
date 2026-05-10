@@ -67,6 +67,11 @@ def verify_supabase_token(credentials: HTTPAuthorizationCredentials = Depends(se
     Dependency to verify a Supabase JWT token.
     Extracts Bearer token from the Authorization header and verifies it via the Supabase Client.
     """
+    if not supabase:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Supabase client not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+        )
     token = credentials.credentials
     try:
         # Get the user using the provided JWT

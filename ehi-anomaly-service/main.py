@@ -96,7 +96,7 @@ def _process_audit_event(event: AuditEvent):
     status = "flagged" if is_anomaly else "normal"
     
     if is_anomaly:
-        create_alert(event.dict(), score, rule_flagged)
+        create_alert(event.model_dump(), score, rule_flagged)
         
     return {
         "status": status,

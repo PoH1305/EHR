@@ -179,7 +179,7 @@ export function filterPatientDataBySpecialty(
       const content = JSON.stringify(resource).toLowerCase()
       const matchesKeyword = config.allowedKeywords.some(k => content.includes(k.toLowerCase()))
       
-      const requiresSemanticMatch = ['DiagnosticReport', 'ClinicalNote', 'MedicalImage', 'Condition'].includes(resource.resourceType)
+      const requiresSemanticMatch = ['DiagnosticReport', 'ClinicalNote', 'MedicalImage', 'Condition', 'MedicationRequest'].includes(resource.resourceType)
       
       if (requiresSemanticMatch && !matchesKeyword) {
         layersTriggered.add('Semantic Layer (Non-Relevant Context)')

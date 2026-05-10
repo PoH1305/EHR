@@ -7,7 +7,7 @@ import { X, ChevronRight, ChevronLeft, Shield, Search, Clock, Tag, CheckCircle, 
 import { cn } from '@/lib/utils'
 import { DoctorSpecialty, type ConsentTokenRequest, type FHIRBundle } from '@/lib/types'
 import { TTL_OPTIONS } from '@/lib/consentTokens'
-import { filterPatientDataBySpecialty } from '@/lib/minimization'
+import { filterPatientDataBySpecialty, getRecommendedCategories } from '@/lib/minimization'
 import { useClinicalStore } from '@/store/useClinicalStore'
 import { FilterPreviewCard } from './FilterPreviewCard'
 
@@ -46,6 +46,15 @@ export function ShareRecordsModal({ isOpen, onClose, onConfirm, patientId }: Sha
       ...clinicalData.procedures.map(p => ({ resource: p }))
     ]
   }), [clinicalData])
+
+  // Auto-select AI recommended categories when specialty changes
+  useEffect(() => {
+    if (specialty) {
+      setAllowedCategories(getRecommendedCategories(specialty))
+    } else {
+      setAllowedCategories([])
+    }
+  }, [specialty])
 
   // Effect to re-run filtering on state change
   useEffect(() => {

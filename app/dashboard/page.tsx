@@ -23,12 +23,12 @@ export default function DashboardPage() {
   useEffect(() => {
     // 1. Initial Load for Identity & Keys
     if (patient) {
-      if (!hasLoadedRef.current) {
+      if (!hasLoadedRef.current && firebaseUid) {
         hasLoadedRef.current = true
         void initializeKeys()
         void loadTokens()
-        void loadClinicalData(patient.id)
-        void loadAuditLog(patient.id)
+        void loadClinicalData(firebaseUid)
+        void loadAuditLog(firebaseUid)
       }
 
       // 2. Real-time Request Listener (BREAKS CIRCULAR DEPENDENCY)

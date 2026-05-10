@@ -264,6 +264,13 @@ export const useUserStore = create<UserState & UserActions>()(
           state.firebaseUid = uid
           state.firebaseEmail = email
           state.sessionState = uid ? 'AUTHENTICATED' : 'UNAUTHENTICATED'
+          
+          // IDENTITY HEALING: If the persisted patient profile has a stale 'pat-' ID,
+          // overwrite it with the real Firebase UID so all downstream code uses the correct ID.
+          if (uid && state.patient && state.patient.id.startsWith('pat-')) {
+            console.log('[UserStore] Identity Healing: Replacing stale patient.id', state.patient.id, '→', uid)
+            state.patient = { ...state.patient, id: uid }
+          }
         })
       },
 
@@ -375,16 +382,15 @@ export const useUserStore = create<UserState & UserActions>()(
 
           if (!syncData) return
 
-          // IDENTITY EXORCISM: We perform an upsert that specifically targets the 
-          // HEALTH_ID column for conflicts. This ensures that any existing legacy 
-          // 'pat-' record for this patient is strictly overwritten by their new UUID.
+          // IDENTITY SYNC: Upsert using the authenticated UID as the primary key.
+          // RLS requires 'id' to match auth.uid(), so we conflict on 'id' not 'health_id'.
           const { error } = await supabase
             .from('profiles')
             .upsert({
               id: firebaseUid, 
               health_id: syncHealthId,
               data: syncData
-            }, { onConflict: 'health_id' }) // Explicitly target Health ID to merge "Ghost" identities
+            }, { onConflict: 'id' })
 
           if (error) throw error
           console.log('[UserStore] Profile synced to Supabase')

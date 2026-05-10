@@ -13,25 +13,25 @@ export const SPECIALTY_FIELD_MAP: Record<DoctorSpecialty, {
 }> = {
   [DoctorSpecialty.CARDIOLOGIST]: {
     allowedResources: ['Observation', 'DiagnosticReport', 'MedicationRequest', 'Condition', 'Procedure'],
-    allowedKeywords: ['heart', 'cardiac', 'blood pressure', 'valvular', 'cholesterol', 'stent', 'ecg', 'ekg', 'pulse', 'arrhythmia'],
+    allowedKeywords: ['heart', 'cardiac', 'blood pressure', 'valvular', 'cholesterol', 'stent', 'ecg', 'ekg', 'pulse', 'arrhythmia', 'hypertension', 'atrial', 'fibrillation', 'amlodipine', 'atenolol', 'metoprolol', 'lisinopril', 'valsartan', 'angina', 'coronary', 'myocardial', 'infarction', 'palpitation', 'aorta', 'angioplasty', 'bypass', 'ischemia', 'systolic', 'diastolic', 'troponin', 'bnp', 'lipid', 'murmur', 'tachycardia', 'bradycardia'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 24
   },
   [DoctorSpecialty.DERMATOLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'MedicationRequest', 'MedicalImage'],
-    allowedKeywords: ['skin', 'rash', 'dermatitis', 'lesion', 'melanoma', 'biopsy', 'psoriasis', 'eczema', 'acne'],
+    allowedKeywords: ['skin', 'rash', 'dermatitis', 'lesion', 'melanoma', 'biopsy', 'psoriasis', 'eczema', 'acne', 'hives', 'urticaria', 'fungal', 'cellulitis', 'pruritus', 'vitiligo', 'wart', 'mole', 'wound', 'burn', 'allergy'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 36
   },
   [DoctorSpecialty.ONCOLOGIST]: {
     allowedResources: ['Condition', 'DiagnosticReport', 'MedicationRequest', 'Procedure', 'Observation', 'MedicalImage'],
-    allowedKeywords: ['tumor', 'malignancy', 'chemo', 'radiation', 'biopsy', 'staged', 'cancer', 'metastasis', 'remission'],
+    allowedKeywords: ['tumor', 'malignancy', 'chemo', 'radiation', 'biopsy', 'staged', 'cancer', 'metastasis', 'remission', 'oncology', 'carcinoma', 'lymphoma', 'leukemia', 'neoplasm', 'cytology', 'marker', 'pet scan'],
     defaultBlockedSensitive: ['psychiatric', 'reproductive'],
     maxHistoryMonths: 60
   },
   [DoctorSpecialty.PSYCHIATRIST]: {
     allowedResources: ['Condition', 'MedicationRequest', 'Observation', 'DiagnosticReport', 'ClinicalNote'],
-    allowedKeywords: ['mood', 'anxiety', 'behavior', 'psychosis', 'therapy', 'counseling', 'depression', 'bipolar', 'sleep'],
+    allowedKeywords: ['mood', 'anxiety', 'behavior', 'psychosis', 'therapy', 'counseling', 'depression', 'bipolar', 'sleep', 'sertraline', 'fluoxetine', 'antidepressant', 'antipsychotic', 'psychiatric', 'mental', 'stress', 'ptsd', 'adhd', 'ocd', 'panic', 'phobia', 'insomnia', 'schizophrenia', 'wellbutrin', 'lexapro', 'zoloft', 'prozac', 'citalopram', 'ssri'],
     defaultBlockedSensitive: ['genetic', 'reproductive'],
     maxHistoryMonths: 48
   },
@@ -49,55 +49,55 @@ export const SPECIALTY_FIELD_MAP: Record<DoctorSpecialty, {
   },
   [DoctorSpecialty.NEUROLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'Procedure', 'DiagnosticReport', 'MedicalImage'],
-    allowedKeywords: ['brain', 'nerve', 'seizure', 'reflex', 'motor', 'epilepsy', 'stroke', 'mri', 'ct'],
+    allowedKeywords: ['brain', 'nerve', 'seizure', 'reflex', 'motor', 'epilepsy', 'stroke', 'mri', 'ct', 'neuropathy', 'parkinson', 'alzheimer', 'dementia', 'tremor', 'vertigo', 'meningitis', 'cerebral', 'eeg', 'migraine', 'headache', 'concussion', 'cognitive', 'spinal cord'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 24
   },
   [DoctorSpecialty.ENDOCRINOLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'MedicationRequest', 'DiagnosticReport'],
-    allowedKeywords: ['hormone', 'thyroid', 'diabetes', 'insulin', 'glucose', 'metabolic', 'pituitary', 'adrenal'],
+    allowedKeywords: ['hormone', 'thyroid', 'diabetes', 'insulin', 'glucose', 'metabolic', 'pituitary', 'adrenal', 'hba1c', 'metformin', 'levothyroxine', 'cortisol', 'testosterone', 'estrogen', 'cushing', 'addison', 'pancreatic', 'endocrine'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 24
   },
   [DoctorSpecialty.GYNECOLOGIST]: {
     allowedResources: ['Condition', 'Procedure', 'MedicationRequest', 'Observation', 'DiagnosticReport'],
-    allowedKeywords: ['reproductive', 'ovary', 'uterus', 'pregnancy', 'obstetric', 'period', 'menopause', 'breast'],
+    allowedKeywords: ['reproductive', 'ovary', 'uterus', 'pregnancy', 'obstetric', 'period', 'menopause', 'breast', 'cervical', 'pap smear', 'fertility', 'contraceptive', 'prenatal', 'postpartum', 'pcos', 'endometriosis', 'mammogram'],
     defaultBlockedSensitive: ['psychiatric', 'genetic'],
     maxHistoryMonths: 48
   },
   [DoctorSpecialty.UROLOGIST]: {
     allowedResources: ['Condition', 'Procedure', 'MedicationRequest', 'Observation', 'DiagnosticReport'],
-    allowedKeywords: ['urinary', 'kidney', 'bladder', 'prostate', 'calculus', 'renal'],
+    allowedKeywords: ['urinary', 'kidney', 'bladder', 'prostate', 'calculus', 'renal', 'nephro', 'urethra', 'incontinence', 'dialysis', 'creatinine', 'uti', 'catheter', 'lithotripsy'],
     defaultBlockedSensitive: ['psychiatric', 'genetic'],
     maxHistoryMonths: 24
   },
   [DoctorSpecialty.ORTHOPEDIST]: {
     allowedResources: ['Observation', 'Condition', 'Procedure', 'DiagnosticReport', 'MedicalImage'],
-    allowedKeywords: ['bone', 'joint', 'fracture', 'spinal', 'ligament', 'vertebra', 'cast', 'orthosis'],
+    allowedKeywords: ['bone', 'joint', 'fracture', 'spinal', 'ligament', 'vertebra', 'cast', 'orthosis', 'lumbar', 'disc', 'herniation', 'arthroscopy', 'tendon', 'osteoporosis', 'scoliosis', 'cartilage', 'meniscus', 'rotator', 'knee', 'hip', 'shoulder', 'sciatica', 'arthritis'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 36
   },
   [DoctorSpecialty.PULMONOLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'DiagnosticReport', 'MedicationRequest', 'Procedure'],
-    allowedKeywords: ['lung', 'respiratory', 'asthma', 'breath', 'oxygen', 'copd', 'bronchial', 'pleural'],
+    allowedKeywords: ['lung', 'respiratory', 'asthma', 'breath', 'oxygen', 'copd', 'bronchial', 'pleural', 'inhaler', 'nebulizer', 'spirometry', 'pulmonary', 'tuberculosis', 'pneumonia', 'ventilator', 'dyspnea', 'wheezing', 'spo2', 'chest'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 24
   },
   [DoctorSpecialty.GASTROENTEROLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'DiagnosticReport', 'Procedure'],
-    allowedKeywords: ['stomach', 'bowel', 'liver', 'gastric', 'endoscopy', 'colonoscopy', 'pancreas', 'digestive'],
+    allowedKeywords: ['stomach', 'bowel', 'liver', 'gastric', 'endoscopy', 'colonoscopy', 'pancreas', 'digestive', 'gastritis', 'ulcer', 'crohn', 'colitis', 'hepatitis', 'cirrhosis', 'gerd', 'reflux', 'ibs', 'gallbladder', 'abdominal', 'nausea'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 24
   },
   [DoctorSpecialty.RHEUMATOLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'AllergyIntolerance', 'DiagnosticReport', 'MedicationRequest'],
-    allowedKeywords: ['autoimmune', 'joint', 'inflammation', 'arthritis', 'lupus', 'crp', 'esr', 'connective'],
+    allowedKeywords: ['autoimmune', 'joint', 'inflammation', 'arthritis', 'lupus', 'crp', 'esr', 'connective', 'rheumatoid', 'fibromyalgia', 'gout', 'vasculitis', 'scleroderma', 'sjogren', 'ana', 'anti-ccp'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: 36
   },
   [DoctorSpecialty.OPHTHALMOLOGIST]: {
     allowedResources: ['Observation', 'Condition', 'Procedure', 'DiagnosticReport'],
-    allowedKeywords: ['eye', 'vision', 'retina', 'cornea', 'cataract', 'glaucoma', 'macular', 'optics'],
+    allowedKeywords: ['eye', 'vision', 'retina', 'cornea', 'cataract', 'glaucoma', 'macular', 'optics', 'ophthalmol', 'lens', 'intraocular', 'conjunctivitis', 'astigmatism', 'myopia', 'presbyopia', 'laser eye', 'oct scan'],
     defaultBlockedSensitive: ['psychiatric', 'genetic', 'reproductive'],
     maxHistoryMonths: null // GP-like for vision history
   }
@@ -254,11 +254,15 @@ export function getRecommendedCategories(specialty: DoctorSpecialty): string[] {
 
 function getResourceCategory(resource: FHIRResource): string {
   const text = JSON.stringify(resource).toLowerCase()
-  if (text.includes('psychi') || text.includes('mental') || text.includes('behavioral')) return 'psychiatric'
+  if (text.includes('psychi') || text.includes('mental') || text.includes('behavioral') || text.includes('anxiety') || text.includes('depression') || text.includes('sertraline') || text.includes('antidepressant')) return 'psychiatric'
   if (text.includes('genet') || text.includes('chromosom') || text.includes('dna')) return 'genetic'
-  if (text.includes('repro') || text.includes('obstetr') || text.includes('pregnan') || text.includes('fertility')) return 'reproductive'
-  if (text.includes('heart') || text.includes('cardiac')) return 'cardiovascular'
-  if (text.includes('skin') || text.includes('derma')) return 'dermatology'
-  if (text.includes('diabet') || text.includes('insulin')) return 'endocrine'
+  if (text.includes('repro') || text.includes('obstetr') || text.includes('pregnan') || text.includes('fertility') || text.includes('contracepti')) return 'reproductive'
+  if (text.includes('heart') || text.includes('cardiac') || text.includes('hypertension') || text.includes('atrial') || text.includes('fibrillation') || text.includes('amlodipine') || text.includes('coronary') || text.includes('arrhythmia') || text.includes('angina') || text.includes('myocardial')) return 'cardiovascular'
+  if (text.includes('skin') || text.includes('derma') || text.includes('rash') || text.includes('eczema') || text.includes('psoriasis')) return 'dermatology'
+  if (text.includes('diabet') || text.includes('insulin') || text.includes('thyroid') || text.includes('hormone') || text.includes('glucose') || text.includes('hba1c')) return 'endocrine'
+  if (text.includes('bone') || text.includes('fracture') || text.includes('lumbar') || text.includes('arthroscopy') || text.includes('herniation') || text.includes('ortho')) return 'orthopedic'
+  if (text.includes('lung') || text.includes('asthma') || text.includes('respiratory') || text.includes('pneumonia') || text.includes('copd')) return 'pulmonary'
+  if (text.includes('brain') || text.includes('neuro') || text.includes('seizure') || text.includes('migraine') || text.includes('stroke')) return 'neurological'
+  if (text.includes('stomach') || text.includes('gastric') || text.includes('liver') || text.includes('bowel') || text.includes('digestive')) return 'gastrointestinal'
   return 'general'
 }

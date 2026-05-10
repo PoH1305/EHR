@@ -21,15 +21,15 @@ export interface CategorizedRecord {
 }
 
 const SYSTEM_KEYWORDS: Record<BodySystem, string[]> = {
-  Heart: ['ecg', 'cardio', 'heart', 'bp', 'blood pressure', 'pulse', 'tachycardia', 'bradycardia', 'murmur', 'vessel', 'cholesterol', 'lipid', 'statin', 'atv'],
-  Bones: ['bone', 'fracture', 'ortho', 'joint', 'spine', 'vertebra', 'x-ray', 'mri bone', 'cast', 'calcium', 'knee', 'hip', 'shoulder'],
-  Mental: ['anxiety', 'depression', 'therapy', 'psych', 'mood', 'mental', 'stress', 'session', 'counseling', 'behavioral', 'adhd', 'ptsd'],
-  Lungs: ['lung', 'respiratory', 'breath', 'asthma', 'copd', 'cough', 'spo2', 'oxygen', 'pneumonia', 'chest x-ray', 'bronchial'],
-  Digestive: ['stomach', 'gut', 'gi', 'digestive', 'colon', 'liver', 'gallbladder', 'abdominal', 'nausea', 'vomiting', 'heartburn'],
-  Blood: ['blood', 'hemoglobin', 'cbc', 'wbc', 'rbc', 'platelet', 'anemia', 'glucose', 'sugar', 'diabetic', 'insulin', 'hba1c'],
-  Brain: ['brain', 'neuro', 'seizure', 'epilepsy', 'headache', 'migraine', 'stroke', 'concussion', 'memory', 'cognitive'],
-  Skin: ['skin', 'derma', 'rash', 'lesion', 'mole', 'acne', 'eczema', 'psoriasis', 'burn', 'wound'],
-  General: ['vitals', 'visit', 'consult', 'note', 'follow up', 'checkup', 'general', 'primary']
+  Heart: ['ecg', 'cardio', 'heart', 'bp', 'blood pressure', 'pulse', 'tachycardia', 'bradycardia', 'murmur', 'vessel', 'cholesterol', 'lipid', 'statin', 'atv', 'hypertension', 'atrial', 'fibrillation', 'arrhythmia', 'amlodipine', 'atenolol', 'metoprolol', 'lisinopril', 'valsartan', 'angina', 'coronary', 'myocardial', 'infarction', 'palpitation', 'valve', 'aorta', 'angioplasty', 'bypass', 'ischemia', 'systolic', 'diastolic', 'troponin', 'bnp'],
+  Bones: ['bone', 'fracture', 'ortho', 'joint', 'spine', 'vertebra', 'x-ray', 'mri bone', 'cast', 'calcium', 'knee', 'hip', 'shoulder', 'lumbar', 'disc', 'herniation', 'arthroscopy', 'ligament', 'tendon', 'osteoporosis', 'scoliosis', 'cartilage', 'meniscus', 'rotator', 'cervical', 'spinal', 'sciatica', 'arthritis'],
+  Mental: ['anxiety', 'depression', 'therapy', 'psych', 'mood', 'mental', 'stress', 'session', 'counseling', 'behavioral', 'adhd', 'ptsd', 'sertraline', 'fluoxetine', 'antidepressant', 'antipsychotic', 'bipolar', 'schizophrenia', 'ocd', 'panic', 'phobia', 'insomnia', 'psychiatric', 'wellbutrin', 'lexapro', 'zoloft', 'prozac', 'citalopram'],
+  Lungs: ['lung', 'respiratory', 'breath', 'asthma', 'copd', 'cough', 'spo2', 'oxygen', 'pneumonia', 'chest x-ray', 'bronchial', 'inhaler', 'nebulizer', 'spirometry', 'pulmonary', 'tuberculosis', 'pleural', 'ventilator', 'dyspnea', 'wheezing'],
+  Digestive: ['stomach', 'gut', 'gi', 'digestive', 'colon', 'liver', 'gallbladder', 'abdominal', 'nausea', 'vomiting', 'heartburn', 'gastritis', 'ulcer', 'crohn', 'colitis', 'endoscopy', 'colonoscopy', 'pancreas', 'hepatitis', 'cirrhosis', 'gerd', 'reflux', 'bowel', 'ibs'],
+  Blood: ['blood', 'hemoglobin', 'cbc', 'wbc', 'rbc', 'platelet', 'anemia', 'glucose', 'sugar', 'diabetic', 'insulin', 'hba1c', 'leukemia', 'lymphoma', 'coagulation', 'transfusion', 'sickle', 'thalassemia', 'hematocrit', 'ferritin', 'iron'],
+  Brain: ['brain', 'neuro', 'seizure', 'epilepsy', 'headache', 'migraine', 'stroke', 'concussion', 'memory', 'cognitive', 'neuropathy', 'parkinson', 'alzheimer', 'dementia', 'tremor', 'vertigo', 'meningitis', 'cerebral', 'eeg'],
+  Skin: ['skin', 'derma', 'rash', 'lesion', 'mole', 'acne', 'eczema', 'psoriasis', 'burn', 'wound', 'melanoma', 'hives', 'urticaria', 'fungal', 'cellulitis', 'biopsy skin', 'pruritus', 'vitiligo', 'wart'],
+  General: ['vitals', 'visit', 'consult', 'note', 'follow up', 'checkup', 'general', 'primary', 'routine', 'annual', 'wellness', 'screening', 'physical exam']
 };
 
 const SYSTEM_ICONS: Record<BodySystem, string> = {
